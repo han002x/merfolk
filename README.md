@@ -16,6 +16,11 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 - **Shapes** — rectangle, rounded, diamond, circle (mapped to Mermaid
   `[]`, `()`, `{}`, `(())`). Double-click a node to rename.
 
+## Design
+
+The bar for every screen and API: [`DESIGN.md`](DESIGN.md) — simple purpose,
+simple architecture, simple design, simple implementation, no filler text.
+
 ## Run
 
 ```bash
