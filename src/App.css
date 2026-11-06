@@ -1,0 +1,182 @@
+:root {
+  --mf-bg: #0f1115;
+  --mf-panel: #171a21;
+  --mf-border: #2a2f3a;
+  --mf-text: #e6e8ec;
+  --mf-muted: #9aa3b2;
+  --mf-accent: #6aa3ff;
+  --mf-node: #1e2530;
+  --mf-group: #24303f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body,
+#root {
+  margin: 0;
+  height: 100vh;
+  background: var(--mf-bg);
+  color: var(--mf-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.mf-app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+.mf-canvas {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.mf-toolbar {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: var(--mf-panel);
+  border: 1px solid var(--mf-border);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.mf-brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--mf-accent);
+  margin-right: 6px;
+}
+
+.mf-toolbar button,
+.mf-panel button,
+.mf-reopen {
+  background: var(--mf-node);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.mf-toolbar button:hover,
+.mf-panel button:hover {
+  border-color: var(--mf-accent);
+}
+
+/* nodes */
+.mf-node {
+  background: var(--mf-node);
+  border: 1px solid var(--mf-border);
+  color: var(--mf-text);
+  min-width: 120px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.mf-node.is-group {
+  background: var(--mf-group);
+  border-color: var(--mf-accent);
+  border-style: dashed;
+}
+
+.mf-node.selected {
+  outline: 2px solid var(--mf-accent);
+  outline-offset: 2px;
+}
+
+.mf-node-body {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mf-node-label {
+  white-space: nowrap;
+}
+
+.mf-node-input {
+  background: #0c0e12;
+  color: var(--mf-text);
+  border: 1px solid var(--mf-accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 13px;
+  width: 120px;
+}
+
+.mf-collapse {
+  background: rgba(106, 163, 255, 0.15);
+  color: var(--mf-accent);
+  border: 1px solid var(--mf-accent);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* mermaid panel */
+.mf-panel {
+  width: 360px;
+  background: var(--mf-panel);
+  border-left: 1px solid var(--mf-border);
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 10px;
+}
+
+.mf-panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mf-mermaid-text {
+  flex: 1;
+  resize: none;
+  background: #0c0e12;
+  color: var(--mf-text);
+  border: 1px solid var(--mf-border);
+  border-radius: 8px;
+  padding: 10px;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.mf-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.mf-err {
+  color: #ff8a8a;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.mf-reopen {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+}
+
+/* react-flow dark tweaks */
+.react-flow__attribution {
+  display: none;
+}
