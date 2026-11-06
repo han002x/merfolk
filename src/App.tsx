@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
   Controls,
@@ -21,6 +21,13 @@ import { MermaidPanel } from './components/MermaidPanel';
 import { Icon } from './components/Icon';
 import { toggleTheme, useTheme } from './theme';
 import { useHotkeys } from './useHotkeys';
+import {
+  startAutosave,
+  restore,
+  exportFile,
+  importFile,
+  clearSaved,
+} from './persist';
 import type { NodeShape } from './types';
 import { SAMPLE } from './sample';
 import './App.css';
@@ -62,8 +69,30 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const hiddenNodeIds = useDiagram((s) => s.hiddenNodeIds);
   const autoLayout = useDiagram((s) => s.autoLayout);
   const { fitView } = useReactFlow();
+  const load = useDiagram((s) => s.load);
   const theme = useTheme();
   const [selected, setSelected] = useState<string[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const onPickFile = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      e.target.value = ''; // allow re-importing the same file
+      if (!file) return;
+      try {
+        await importFile(file);
+        window.requestAnimationFrame(() => fitView({ padding: 0.2, duration: 300 }));
+      } catch {
+        // ignore malformed files; a real validation UI can come later
+      }
+    },
+    [fitView],
+  );
+
+  const clearCanvas = useCallback(() => {
+    clearSaved();
+    load({ nodes: [], edges: [] });
+  }, [load]);
 
   const tidy = useCallback(
     (direction: 'TB' | 'LR') => {
@@ -197,6 +226,18 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           </ToolButton>
         </div>
         <span className="mf-sep" />
+        <div className="mf-group-btns">
+          <ToolButton label="Export file" onClick={() => exportFile()}>
+            <Icon name="export" />
+          </ToolButton>
+          <ToolButton label="Import file" onClick={() => fileInput.current?.click()}>
+            <Icon name="import" />
+          </ToolButton>
+          <ToolButton label="Clear canvas" onClick={clearCanvas}>
+            <Icon name="trash" />
+          </ToolButton>
+        </div>
+        <span className="mf-sep" />
         <ToolButton
           label={theme === 'dark' ? 'Light theme' : 'Dark theme'}
           hotkey="T"
@@ -204,6 +245,13 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         >
           <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
         </ToolButton>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          onChange={onPickFile}
+        />
       </div>
       <ReactFlow
         nodes={rfNodes}
@@ -230,9 +278,14 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(true);
   const load = useDiagram((s) => s.load);
 
-  // seed once with a sample so the canvas isn't empty on first run
-  useMemo(() => {
-    if (useDiagram.getState().nodes.length === 0) load(SAMPLE);
+  // on first mount: restore the saved diagram, or seed the sample; then
+  // begin autosaving every change back to localStorage
+  useEffect(() => {
+    if (useDiagram.getState().nodes.length === 0 && !restore()) {
+      load(SAMPLE);
+    }
+    const stop = startAutosave();
+    return stop;
   }, [load]);
 
   return (

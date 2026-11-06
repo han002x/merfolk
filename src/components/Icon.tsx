@@ -11,7 +11,10 @@ type IconName =
   | 'sun'
   | 'moon'
   | 'code'
-  | 'close';
+  | 'close'
+  | 'export'
+  | 'import'
+  | 'trash';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   rect: <rect x="3" y="6" width="18" height="12" rx="2" />,
@@ -39,6 +42,27 @@ const PATHS: Record<IconName, React.ReactNode> = {
   moon: <path d="M20 13A8 8 0 1 1 11 4a6 6 0 0 0 9 9Z" />,
   code: <path d="m8 7-5 5 5 5M16 7l5 5-5 5" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  export: (
+    <>
+      <path d="M12 3v12" />
+      <path d="m8 11 4 4 4-4" />
+      <path d="M5 19h14" />
+    </>
+  ),
+  import: (
+    <>
+      <path d="M12 15V3" />
+      <path d="m8 7 4-4 4 4" />
+      <path d="M5 19h14" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M4 7h16" />
+      <path d="M9 7V5h6v2" />
+      <path d="M6 7l1 13h10l1-13" />
+    </>
+  ),
 };
 
 export function Icon({

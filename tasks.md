@@ -7,16 +7,7 @@ highest-leverage unchecked task, executes it, and checks it off here.
 
 - [ ] _(none)_
 
-## Backlog — M7 Persistence (next up)
-
-- [ ] Autosave `{nodes, edges}` to `localStorage` on change (debounced).
-- [ ] Restore from `localStorage` on startup; fall back to the sample only when
-      nothing is saved.
-- [ ] Export the diagram as a downloadable `.merfolk.json` file.
-- [ ] Import a `.merfolk.json` file back onto the canvas.
-- [ ] "New / clear canvas" action (with the single undo line it deserves).
-
-## Backlog — M8 Edge editing
+## Backlog — M8 Edge editing (next up)
 
 - [ ] Inline-rename an edge label (double-click the edge).
 - [ ] Delete an edge (select + ⌫, matching node delete).
@@ -37,3 +28,5 @@ highest-leverage unchecked task, executes it, and checks it off here.
 - [x] M4 Motion — drag translations, hover, join previews.
 - [x] M5 Theming — dark/light, OS default, persisted.
 - [x] M6 UI polish — SVG icons, hotkeys, typography, segmented toolbar.
+- [x] M7 Persistence — debounced localStorage autosave + restore; file
+      export/import; clear canvas.

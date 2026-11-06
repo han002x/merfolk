@@ -23,6 +23,9 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   `prefers-reduced-motion`.
 - **Shapes** — rectangle, rounded, diamond, circle (mapped to Mermaid
   `[]`, `()`, `{}`, `(())`). Double-click a node to rename.
+- **Persistence** — the diagram autosaves to `localStorage` and restores on
+  reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
+  or clear the canvas, from the toolbar.
 - **Dark / light themes** — toolbar toggle (☀ / ☾). Follows the OS by default,
   remembers your choice in `localStorage`. The whole UI — canvas, nodes, panel,
   React Flow controls and minimap — is driven by CSS variables + React Flow's
@@ -64,6 +67,7 @@ npm run build    # type-check + production bundle to dist/
 | `src/mermaid/io.ts` | `fromMermaid` / `toMermaid` — pragmatic flowchart parser + emitter (subgraphs ↔ groups) |
 | `src/layout.ts` | Dagre auto-layout over the visible graph; returns positions keyed by node id |
 | `src/theme.ts` | Theme store: OS default, `localStorage` persistence, `<html data-theme>` flip |
+| `src/persist.ts` | Diagram autosave/restore + `.merfolk.json` export/import |
 | `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, collapse toggle |
 | `src/components/Icon.tsx` | Inline-SVG icon set (currentColor, theme-aware) |
 | `src/useHotkeys.ts` | Global keyboard shortcuts, suspended while typing |
