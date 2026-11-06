@@ -48,6 +48,13 @@ body,
   padding: 8px 10px;
 }
 
+.mf-sep {
+  width: 1px;
+  align-self: stretch;
+  background: var(--mf-border);
+  margin: 0 2px;
+}
+
 .mf-brand {
   font-weight: 700;
   letter-spacing: 0.02em;

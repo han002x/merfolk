@@ -4,6 +4,7 @@ import { useDiagram } from '../store';
 export function MermaidPanel({ onClose }: { onClose: () => void }) {
   const exportMermaid = useDiagram((s) => s.exportMermaid);
   const loadMermaid = useDiagram((s) => s.loadMermaid);
+  const autoLayout = useDiagram((s) => s.autoLayout);
   const nodes = useDiagram((s) => s.nodes);
   const edges = useDiagram((s) => s.edges);
 
@@ -18,6 +19,7 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
   const apply = () => {
     try {
       loadMermaid(text);
+      autoLayout('TB');
       setErr(null);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));

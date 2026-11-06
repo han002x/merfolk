@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Diagram, DiagramEdge, DiagramNode, NodeShape } from './types';
 import { fromMermaid, toMermaid } from './mermaid/io';
+import { layout, type Direction } from './layout';
 
 let idSeq = 0;
 const nextId = (prefix: string) => `${prefix}${Date.now().toString(36)}${idSeq++}`;
@@ -21,6 +22,7 @@ interface State {
   connect: (source: string, target: string) => void;
   toggleCollapse: (id: string) => void;
   nestInto: (childId: string, groupId: string | null) => void;
+  autoLayout: (direction?: Direction) => void;
 
   // interop
   loadMermaid: (src: string) => void;
@@ -127,6 +129,20 @@ export const useDiagram = create<State>((set, get) => ({
       return {
         nodes: s.nodes.map((n) =>
           n.id === childId ? { ...n, parentId: groupId } : n,
+        ),
+      };
+    }),
+
+  autoLayout: (direction = 'TB') =>
+    set((s) => {
+      // only lay out what's currently on screen; hidden nodes keep positions
+      const hidden = computeHidden(s.nodes);
+      const visible = s.nodes.filter((n) => !hidden.has(n.id));
+      if (visible.length === 0) return s;
+      const positions = layout(visible, s.edges, direction);
+      return {
+        nodes: s.nodes.map((n) =>
+          positions[n.id] ? { ...n, position: positions[n.id] } : n,
         ),
       };
     }),

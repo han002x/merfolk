@@ -5,6 +5,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
   type Connection,
   type Edge,
   type Node,
@@ -30,6 +31,19 @@ function Canvas() {
   const connect = useDiagram((s) => s.connect);
   const isGroup = useDiagram((s) => s.isGroup);
   const hiddenNodeIds = useDiagram((s) => s.hiddenNodeIds);
+  const autoLayout = useDiagram((s) => s.autoLayout);
+  const { fitView } = useReactFlow();
+
+  const tidy = useCallback(
+    (direction: 'TB' | 'LR') => {
+      autoLayout(direction);
+      // let positions commit, then frame the result
+      window.requestAnimationFrame(() =>
+        fitView({ padding: 0.2, duration: 300 }),
+      );
+    },
+    [autoLayout, fitView],
+  );
 
   const hidden = useMemo(() => hiddenNodeIds(), [hiddenNodeIds, nodes]);
 
@@ -97,6 +111,9 @@ function Canvas() {
         <button onClick={() => addAt('round')}>+ Round</button>
         <button onClick={() => addAt('diamond')}>+ Diamond</button>
         <button onClick={() => addAt('circle')}>+ Circle</button>
+        <span className="mf-sep" />
+        <button onClick={() => tidy('TB')}>Tidy ↓</button>
+        <button onClick={() => tidy('LR')}>Tidy →</button>
       </div>
       <ReactFlow
         nodes={rfNodes}
