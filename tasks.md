@@ -16,8 +16,8 @@ highest-leverage unchecked task, executes it, and checks it off here.
 
 ## Backlog — M9 Offline fonts
 
-- [ ] Vendor Inter + JetBrains Mono woff2 into the build; drop the Google
-      Fonts `<link>`.
+- [x] Vendor Inter + JetBrains Mono woff2 into the build (`@fontsource`); drop
+      the Google Fonts `<link>`.
 
 ## Done
 
@@ -31,3 +31,4 @@ highest-leverage unchecked task, executes it, and checks it off here.
 - [x] M7 Persistence — debounced localStorage autosave + restore; file
       export/import; clear canvas.
 - [x] M8 Edge editing — inline labels, delete, mermaid label round-trip.
+- [x] M9 Offline fonts — self-hosted Inter + JetBrains Mono via @fontsource.

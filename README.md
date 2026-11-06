@@ -83,8 +83,15 @@ Parses the common `flowchart` / `graph` subset: shaped node declarations,
 itself produces; exotic Mermaid syntax (styling directives, class defs, etc.)
 is ignored rather than erroring.
 
+## Fonts
+
+Inter and JetBrains Mono are self-hosted via `@fontsource` and bundled into the
+build, so there's no Google Fonts network dependency and the app renders
+correctly offline.
+
 ## Next ideas
 
-- Persist to `localStorage` / file export
-- Edge editing (labels, rerouting, delete)
 - Live Mermaid *render* preview using the `mermaid` package
+- Undo / redo
+- Quick-add a connected node by dragging a handle onto empty canvas
+- Shareable URL / embed
