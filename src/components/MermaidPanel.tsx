@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDiagram } from '../store';
+import { Icon } from './Icon';
 
 export function MermaidPanel({ onClose }: { onClose: () => void }) {
   const exportMermaid = useDiagram((s) => s.exportMermaid);
@@ -26,13 +27,25 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
     }
   };
 
-  const copy = () => navigator.clipboard?.writeText(text);
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard?.writeText(text);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1200);
+  };
 
   return (
     <aside className="mf-panel">
       <div className="mf-panel-head">
-        <strong>Mermaid</strong>
-        <button onClick={onClose}>✕</button>
+        <span className="mf-panel-title">Mermaid</span>
+        <button
+          className="mf-tool"
+          aria-label="Close panel"
+          title="Close  ·  M"
+          onClick={onClose}
+        >
+          <Icon name="close" size={15} />
+        </button>
       </div>
       <textarea
         className="mf-mermaid-text"
@@ -42,8 +55,10 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
       />
       {err && <div className="mf-err">{err}</div>}
       <div className="mf-panel-actions">
-        <button onClick={apply}>Import → canvas</button>
-        <button onClick={copy}>Copy</button>
+        <button className="mf-primary" onClick={apply}>
+          Import
+        </button>
+        <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
       </div>
     </aside>
   );

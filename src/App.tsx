@@ -18,24 +18,52 @@ import { useDiagram } from './store';
 import { DiagramNode, type NodeData } from './components/DiagramNode';
 import { JoinPreview } from './components/JoinPreview';
 import { MermaidPanel } from './components/MermaidPanel';
+import { Icon } from './components/Icon';
 import { toggleTheme, useTheme } from './theme';
+import { useHotkeys } from './useHotkeys';
 import type { NodeShape } from './types';
 import { SAMPLE } from './sample';
 import './App.css';
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode };
 
-function Canvas() {
+/** A toolbar button whose tooltip announces its keyboard shortcut. */
+function ToolButton({
+  label,
+  hotkey,
+  onClick,
+  children,
+}: {
+  label: string;
+  hotkey?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      className="mf-tool"
+      aria-label={label}
+      title={hotkey ? `${label}  ·  ${hotkey}` : label}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const nodes = useDiagram((s) => s.nodes);
   const edges = useDiagram((s) => s.edges);
   const addNode = useDiagram((s) => s.addNode);
   const moveNode = useDiagram((s) => s.moveNode);
+  const removeNode = useDiagram((s) => s.removeNode);
   const connect = useDiagram((s) => s.connect);
   const isGroup = useDiagram((s) => s.isGroup);
   const hiddenNodeIds = useDiagram((s) => s.hiddenNodeIds);
   const autoLayout = useDiagram((s) => s.autoLayout);
   const { fitView } = useReactFlow();
   const theme = useTheme();
+  const [selected, setSelected] = useState<string[]>([]);
 
   const tidy = useCallback(
     (direction: 'TB' | 'LR') => {
@@ -86,10 +114,14 @@ function Canvas() {
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
       for (const c of changes) {
-        if (c.type === 'position' && c.position && c.dragging === false) {
+        if (c.type === 'position' && c.position) {
           moveNode(c.id, c.position);
-        } else if (c.type === 'position' && c.position && c.dragging) {
-          moveNode(c.id, c.position);
+        } else if (c.type === 'select') {
+          setSelected((prev) =>
+            c.selected
+              ? [...new Set([...prev, c.id])]
+              : prev.filter((id) => id !== c.id),
+          );
         }
       }
     },
@@ -105,28 +137,73 @@ function Canvas() {
 
   const [connecting, setConnecting] = useState(false);
 
-  const addAt = (shape: NodeShape) =>
-    addNode(shape, { x: 120 + Math.random() * 240, y: 120 + Math.random() * 180 });
+  const addAt = useCallback(
+    (shape: NodeShape) =>
+      addNode(shape, {
+        x: 120 + Math.random() * 240,
+        y: 120 + Math.random() * 180,
+      }),
+    [addNode],
+  );
+
+  const deleteSelected = useCallback(() => {
+    selected.forEach((id) => removeNode(id));
+    setSelected([]);
+  }, [selected, removeNode]);
+
+  useHotkeys(
+    useMemo(
+      () => [
+        { key: 'r', run: () => addAt('rect') },
+        { key: 'o', run: () => addAt('round') },
+        { key: 'd', run: () => addAt('diamond') },
+        { key: 'c', run: () => addAt('circle') },
+        { key: 'l', run: () => tidy('TB') },
+        { key: 'l', shift: true, run: () => tidy('LR') },
+        { key: 't', run: () => toggleTheme() },
+        { key: 'm', run: onTogglePanel },
+        { key: 'backspace', run: deleteSelected },
+        { key: 'delete', run: deleteSelected },
+      ],
+      [addAt, tidy, onTogglePanel, deleteSelected],
+    ),
+  );
 
   return (
     <div className={`mf-canvas ${connecting ? 'is-connecting' : ''}`}>
       <div className="mf-toolbar">
         <span className="mf-brand">merfolk</span>
-        <button onClick={() => addAt('rect')}>+ Rect</button>
-        <button onClick={() => addAt('round')}>+ Round</button>
-        <button onClick={() => addAt('diamond')}>+ Diamond</button>
-        <button onClick={() => addAt('circle')}>+ Circle</button>
+        <div className="mf-group-btns">
+          <ToolButton label="Rectangle" hotkey="R" onClick={() => addAt('rect')}>
+            <Icon name="rect" />
+          </ToolButton>
+          <ToolButton label="Rounded" hotkey="O" onClick={() => addAt('round')}>
+            <Icon name="round" />
+          </ToolButton>
+          <ToolButton label="Diamond" hotkey="D" onClick={() => addAt('diamond')}>
+            <Icon name="diamond" />
+          </ToolButton>
+          <ToolButton label="Circle" hotkey="C" onClick={() => addAt('circle')}>
+            <Icon name="circle" />
+          </ToolButton>
+        </div>
         <span className="mf-sep" />
-        <button onClick={() => tidy('TB')}>Tidy ↓</button>
-        <button onClick={() => tidy('LR')}>Tidy →</button>
+        <div className="mf-group-btns">
+          <ToolButton label="Tidy down" hotkey="L" onClick={() => tidy('TB')}>
+            <Icon name="tidy-down" />
+          </ToolButton>
+          <ToolButton label="Tidy right" hotkey="⇧L" onClick={() => tidy('LR')}>
+            <Icon name="tidy-right" />
+          </ToolButton>
+        </div>
         <span className="mf-sep" />
-        <button
-          className="mf-icon"
-          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        <ToolButton
+          label={theme === 'dark' ? 'Light theme' : 'Dark theme'}
+          hotkey="T"
           onClick={() => toggleTheme()}
         >
-          {theme === 'dark' ? '☀' : '☾'}
-        </button>
+          <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
+        </ToolButton>
       </div>
       <ReactFlow
         nodes={rfNodes}
@@ -138,6 +215,7 @@ function Canvas() {
         onConnectEnd={() => setConnecting(false)}
         connectionLineComponent={JoinPreview}
         colorMode={theme}
+        deleteKeyCode={null}
         fitView
       >
         <Background gap={18} />
@@ -160,12 +238,17 @@ export default function App() {
   return (
     <ReactFlowProvider>
       <div className="mf-app">
-        <Canvas />
+        <Canvas onTogglePanel={() => setPanelOpen((v) => !v)} />
         {panelOpen ? (
           <MermaidPanel onClose={() => setPanelOpen(false)} />
         ) : (
-          <button className="mf-reopen" onClick={() => setPanelOpen(true)}>
-            Mermaid
+          <button
+            className="mf-reopen"
+            title="Mermaid  ·  M"
+            aria-label="Open Mermaid panel"
+            onClick={() => setPanelOpen(true)}
+          >
+            <Icon name="code" />
           </button>
         )}
       </div>

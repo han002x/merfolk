@@ -33,6 +33,20 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 The bar for every screen and API: [`DESIGN.md`](DESIGN.md) — simple purpose,
 simple architecture, simple design, simple implementation, no filler text.
 
+## Hotkeys
+
+| Key | Action |
+| --- | --- |
+| `R` / `O` / `D` / `C` | Add rectangle / rounded / diamond / circle |
+| `L` | Tidy top-down |
+| `⇧L` | Tidy left-right |
+| `T` | Toggle theme |
+| `M` | Toggle Mermaid panel |
+| `⌫` / `Del` | Delete selected node(s) |
+
+Shortcuts are suspended while you're typing in a field. Every toolbar button
+shows its key in the tooltip.
+
 ## Run
 
 ```bash
@@ -51,6 +65,8 @@ npm run build    # type-check + production bundle to dist/
 | `src/layout.ts` | Dagre auto-layout over the visible graph; returns positions keyed by node id |
 | `src/theme.ts` | Theme store: OS default, `localStorage` persistence, `<html data-theme>` flip |
 | `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, collapse toggle |
+| `src/components/Icon.tsx` | Inline-SVG icon set (currentColor, theme-aware) |
+| `src/useHotkeys.ts` | Global keyboard shortcuts, suspended while typing |
 | `src/components/MermaidPanel.tsx` | Live Mermaid text view + import/copy |
 | `src/App.tsx` | Canvas wiring, toolbar, visibility filtering |
 
