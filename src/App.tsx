@@ -16,6 +16,7 @@ import '@xyflow/react/dist/style.css';
 
 import { useDiagram } from './store';
 import { DiagramNode, type NodeData } from './components/DiagramNode';
+import { JoinPreview } from './components/JoinPreview';
 import { MermaidPanel } from './components/MermaidPanel';
 import type { NodeShape } from './types';
 import { SAMPLE } from './sample';
@@ -100,11 +101,13 @@ function Canvas() {
     [connect],
   );
 
+  const [connecting, setConnecting] = useState(false);
+
   const addAt = (shape: NodeShape) =>
     addNode(shape, { x: 120 + Math.random() * 240, y: 120 + Math.random() * 180 });
 
   return (
-    <div className="mf-canvas">
+    <div className={`mf-canvas ${connecting ? 'is-connecting' : ''}`}>
       <div className="mf-toolbar">
         <span className="mf-brand">merfolk</span>
         <button onClick={() => addAt('rect')}>+ Rect</button>
@@ -121,6 +124,9 @@ function Canvas() {
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onConnect={onConnect}
+        onConnectStart={() => setConnecting(true)}
+        onConnectEnd={() => setConnecting(false)}
+        connectionLineComponent={JoinPreview}
         fitView
       >
         <Background gap={18} />

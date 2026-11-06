@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Handle, Position, useConnection, type NodeProps } from '@xyflow/react';
 import type { NodeShape } from '../types';
 import { useDiagram } from '../store';
 
@@ -25,12 +25,19 @@ function shapeStyle(shape: NodeShape): React.CSSProperties {
   }
 }
 
-function DiagramNodeInner({ id, data, selected }: NodeProps) {
+function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
   const d = data as NodeData;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(d.label);
   const updateLabel = useDiagram((s) => s.updateLabel);
   const toggleCollapse = useDiagram((s) => s.toggleCollapse);
+
+  // live connection state: true while dragging a new edge, and whether this
+  // node is the current drop target (for the join-preview highlight)
+  const connecting = useConnection((c) => c.inProgress);
+  const isConnectionTarget = useConnection(
+    (c) => c.inProgress && c.toNode?.id === id,
+  );
 
   const commit = () => {
     updateLabel(id, draft.trim() || 'Untitled');
@@ -39,9 +46,20 @@ function DiagramNodeInner({ id, data, selected }: NodeProps) {
 
   const diamond = d.shape === 'diamond';
 
+  const cls = [
+    'mf-node',
+    d.isGroup ? 'is-group' : '',
+    selected ? 'selected' : '',
+    dragging ? 'dragging' : '',
+    connecting ? 'connecting' : '',
+    isConnectionTarget ? 'join-target' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div
-      className={`mf-node ${d.isGroup ? 'is-group' : ''} ${selected ? 'selected' : ''}`}
+      className={cls}
       style={shapeStyle(d.shape)}
       onDoubleClick={() => {
         setDraft(d.label);

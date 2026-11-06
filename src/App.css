@@ -79,6 +79,23 @@ body,
   border-color: var(--mf-accent);
 }
 
+/* ---- drag translations ---------------------------------------------------
+   React Flow positions each node via transform on .react-flow__node. Easing
+   that transform animates layout moves (Tidy) and drag-end snaps. We turn the
+   easing OFF mid-drag so the node tracks the cursor 1:1, then back on. */
+.react-flow__node {
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.react-flow__node.dragging {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__node {
+    transition: none;
+  }
+}
+
 /* nodes */
 .mf-node {
   background: var(--mf-node);
@@ -92,6 +109,61 @@ body,
   padding: 8px 12px;
   font-size: 13px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition:
+    box-shadow 160ms ease,
+    border-color 160ms ease,
+    filter 160ms ease;
+}
+
+/* ---- hover animations ---- */
+.mf-node:hover {
+  border-color: var(--mf-accent);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 0 1px var(--mf-accent);
+  filter: brightness(1.08);
+}
+
+.mf-node.dragging {
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  filter: brightness(1.12);
+  cursor: grabbing;
+}
+
+/* ---- join previews ---- */
+/* while a connection is being dragged, dim non-target nodes slightly... */
+.mf-node.connecting {
+  opacity: 0.85;
+}
+/* ...and spotlight the node the cursor is currently over */
+.mf-node.join-target {
+  opacity: 1;
+  border-color: var(--mf-accent);
+  border-style: solid;
+  box-shadow:
+    0 0 0 2px var(--mf-accent),
+    0 0 18px rgba(106, 163, 255, 0.55);
+  animation: mf-pulse 900ms ease-in-out infinite;
+}
+
+@keyframes mf-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px var(--mf-accent),
+      0 0 12px rgba(106, 163, 255, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px var(--mf-accent),
+      0 0 22px rgba(106, 163, 255, 0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mf-node.join-target {
+    animation: none;
+  }
 }
 
 .mf-node.is-group {
@@ -181,6 +253,48 @@ body,
   top: 12px;
   right: 12px;
   z-index: 5;
+}
+
+/* ---- handles + join preview ---- */
+.react-flow__handle {
+  width: 9px;
+  height: 9px;
+  background: var(--mf-node);
+  border: 1.5px solid var(--mf-muted);
+  transition:
+    transform 140ms ease,
+    background 140ms ease,
+    border-color 140ms ease;
+}
+.mf-node:hover .react-flow__handle {
+  border-color: var(--mf-accent);
+}
+/* make handles pop as drop zones while a join is in progress */
+.mf-canvas.is-connecting .react-flow__handle {
+  transform: scale(1.5);
+  background: var(--mf-accent);
+  border-color: var(--mf-accent);
+}
+
+/* the live join-preview line drawn to the cursor */
+.mf-join-path {
+  stroke: var(--mf-accent);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  animation: mf-dash 600ms linear infinite;
+}
+.mf-join-dot {
+  fill: var(--mf-accent);
+}
+@keyframes mf-dash {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mf-join-path {
+    animation: none;
+  }
 }
 
 /* react-flow dark tweaks */

@@ -16,6 +16,11 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 - **Auto-layout (dagre)** — **Tidy ↓** / **Tidy →** re-flow the diagram top-down
   or left-right. Only visible nodes are laid out, so collapsing a group re-flows
   the rest. Mermaid imports are tidied automatically.
+- **Motion** — nodes ease to their new positions on drag-end and Tidy (drag
+  itself tracks the cursor 1:1), lift and glow on hover, and show a live
+  animated **join preview** while you drag a new edge — the hovered node pulses
+  as the drop target and handles enlarge. All motion respects
+  `prefers-reduced-motion`.
 - **Shapes** — rectangle, rounded, diamond, circle (mapped to Mermaid
   `[]`, `()`, `{}`, `(())`). Double-click a node to rename.
 
