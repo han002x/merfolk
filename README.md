@@ -56,6 +56,7 @@ shows its key in the tooltip.
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # type-check + production bundle to dist/
+npm test         # mermaid round-trip check (node --experimental-strip-types)
 ```
 
 ## Architecture

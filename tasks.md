@@ -11,8 +11,8 @@ highest-leverage unchecked task, executes it, and checks it off here.
 
 - [x] Inline-rename an edge label (double-click the edge).
 - [x] Delete an edge (select + ⌫, matching node delete).
-- [ ] Carry edge labels through `toMermaid` / `fromMermaid` (parser already
-      reads `|label|`).
+- [x] Carry edge labels through `toMermaid` / `fromMermaid` (verified by
+      `npm test` round-trip).
 
 ## Backlog — M9 Offline fonts
 
@@ -30,3 +30,4 @@ highest-leverage unchecked task, executes it, and checks it off here.
 - [x] M6 UI polish — SVG icons, hotkeys, typography, segmented toolbar.
 - [x] M7 Persistence — debounced localStorage autosave + restore; file
       export/import; clear canvas.
+- [x] M8 Edge editing — inline labels, delete, mermaid label round-trip.
