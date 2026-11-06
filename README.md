@@ -23,6 +23,10 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   `prefers-reduced-motion`.
 - **Shapes** — rectangle, rounded, diamond, circle (mapped to Mermaid
   `[]`, `()`, `{}`, `(())`). Double-click a node to rename.
+- **Dark / light themes** — toolbar toggle (☀ / ☾). Follows the OS by default,
+  remembers your choice in `localStorage`. The whole UI — canvas, nodes, panel,
+  React Flow controls and minimap — is driven by CSS variables + React Flow's
+  `colorMode`, so it's a single attribute flip.
 
 ## Design
 
@@ -45,6 +49,7 @@ npm run build    # type-check + production bundle to dist/
 | `src/store.ts` | Zustand store + mutations; `hiddenNodeIds()` derives what a collapse hides |
 | `src/mermaid/io.ts` | `fromMermaid` / `toMermaid` — pragmatic flowchart parser + emitter (subgraphs ↔ groups) |
 | `src/layout.ts` | Dagre auto-layout over the visible graph; returns positions keyed by node id |
+| `src/theme.ts` | Theme store: OS default, `localStorage` persistence, `<html data-theme>` flip |
 | `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, collapse toggle |
 | `src/components/MermaidPanel.tsx` | Live Mermaid text view + import/copy |
 | `src/App.tsx` | Canvas wiring, toolbar, visibility filtering |

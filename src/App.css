@@ -1,4 +1,7 @@
-:root {
+/* Palettes. :root is the dark default; [data-theme] on <html> overrides it.
+   Every surface reads these variables, so theming is a single attribute flip. */
+:root,
+:root[data-theme='dark'] {
   --mf-bg: #0f1115;
   --mf-panel: #171a21;
   --mf-border: #2a2f3a;
@@ -7,6 +10,23 @@
   --mf-accent: #6aa3ff;
   --mf-node: #1e2530;
   --mf-group: #24303f;
+  --mf-input: #0c0e12;
+  --mf-glow: rgba(106, 163, 255, 0.55);
+  --mf-shadow: rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme='light'] {
+  --mf-bg: #f7f8fa;
+  --mf-panel: #ffffff;
+  --mf-border: #d9dde5;
+  --mf-text: #1b1f27;
+  --mf-muted: #6b7380;
+  --mf-accent: #2f6ee0;
+  --mf-node: #ffffff;
+  --mf-group: #eef3fb;
+  --mf-input: #ffffff;
+  --mf-glow: rgba(47, 110, 224, 0.4);
+  --mf-shadow: rgba(30, 41, 59, 0.18);
 }
 
 * {
@@ -20,6 +40,9 @@ body,
   background: var(--mf-bg);
   color: var(--mf-text);
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  transition:
+    background 200ms ease,
+    color 200ms ease;
 }
 
 .mf-app {
@@ -79,6 +102,13 @@ body,
   border-color: var(--mf-accent);
 }
 
+.mf-icon {
+  width: 32px;
+  padding: 6px 0;
+  text-align: center;
+  font-size: 14px;
+}
+
 /* ---- drag translations ---------------------------------------------------
    React Flow positions each node via transform on .react-flow__node. Easing
    that transform animates layout moves (Tidy) and drag-end snaps. We turn the
@@ -108,10 +138,12 @@ body,
   justify-content: center;
   padding: 8px 12px;
   font-size: 13px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 10px var(--mf-shadow);
   transition:
     box-shadow 160ms ease,
     border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
     filter 160ms ease;
 }
 
@@ -119,14 +151,14 @@ body,
 .mf-node:hover {
   border-color: var(--mf-accent);
   box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 6px 20px var(--mf-shadow),
     0 0 0 1px var(--mf-accent);
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
 
 .mf-node.dragging {
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
-  filter: brightness(1.12);
+  box-shadow: 0 12px 28px var(--mf-shadow);
+  filter: brightness(1.08);
   cursor: grabbing;
 }
 
@@ -142,7 +174,7 @@ body,
   border-style: solid;
   box-shadow:
     0 0 0 2px var(--mf-accent),
-    0 0 18px rgba(106, 163, 255, 0.55);
+    0 0 18px var(--mf-glow);
   animation: mf-pulse 900ms ease-in-out infinite;
 }
 
@@ -151,12 +183,12 @@ body,
   100% {
     box-shadow:
       0 0 0 2px var(--mf-accent),
-      0 0 12px rgba(106, 163, 255, 0.4);
+      0 0 12px var(--mf-glow);
   }
   50% {
     box-shadow:
       0 0 0 2px var(--mf-accent),
-      0 0 22px rgba(106, 163, 255, 0.75);
+      0 0 22px var(--mf-glow);
   }
 }
 
@@ -188,7 +220,7 @@ body,
 }
 
 .mf-node-input {
-  background: #0c0e12;
+  background: var(--mf-input);
   color: var(--mf-text);
   border: 1px solid var(--mf-accent);
   border-radius: 4px;
@@ -198,7 +230,7 @@ body,
 }
 
 .mf-collapse {
-  background: rgba(106, 163, 255, 0.15);
+  background: color-mix(in srgb, var(--mf-accent) 15%, transparent);
   color: var(--mf-accent);
   border: 1px solid var(--mf-accent);
   border-radius: 6px;
@@ -227,7 +259,7 @@ body,
 .mf-mermaid-text {
   flex: 1;
   resize: none;
-  background: #0c0e12;
+  background: var(--mf-input);
   color: var(--mf-text);
   border: 1px solid var(--mf-border);
   border-radius: 8px;

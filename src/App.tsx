@@ -18,6 +18,7 @@ import { useDiagram } from './store';
 import { DiagramNode, type NodeData } from './components/DiagramNode';
 import { JoinPreview } from './components/JoinPreview';
 import { MermaidPanel } from './components/MermaidPanel';
+import { toggleTheme, useTheme } from './theme';
 import type { NodeShape } from './types';
 import { SAMPLE } from './sample';
 import './App.css';
@@ -34,6 +35,7 @@ function Canvas() {
   const hiddenNodeIds = useDiagram((s) => s.hiddenNodeIds);
   const autoLayout = useDiagram((s) => s.autoLayout);
   const { fitView } = useReactFlow();
+  const theme = useTheme();
 
   const tidy = useCallback(
     (direction: 'TB' | 'LR') => {
@@ -117,6 +119,14 @@ function Canvas() {
         <span className="mf-sep" />
         <button onClick={() => tidy('TB')}>Tidy ↓</button>
         <button onClick={() => tidy('LR')}>Tidy →</button>
+        <span className="mf-sep" />
+        <button
+          className="mf-icon"
+          aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+          onClick={() => toggleTheme()}
+        >
+          {theme === 'dark' ? '☀' : '☾'}
+        </button>
       </div>
       <ReactFlow
         nodes={rfNodes}
@@ -127,6 +137,7 @@ function Canvas() {
         onConnectStart={() => setConnecting(true)}
         onConnectEnd={() => setConnecting(false)}
         connectionLineComponent={JoinPreview}
+        colorMode={theme}
         fitView
       >
         <Background gap={18} />
