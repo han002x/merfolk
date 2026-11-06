@@ -1,30 +1,129 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDiagram } from '../store';
+import { toMermaidWithMap } from '../mermaid/io';
 import { Icon } from './Icon';
 
 export function MermaidPanel({ onClose }: { onClose: () => void }) {
-  const exportMermaid = useDiagram((s) => s.exportMermaid);
-  const loadMermaid = useDiagram((s) => s.loadMermaid);
   const autoLayout = useDiagram((s) => s.autoLayout);
+  const syncMermaid = useDiagram((s) => s.syncMermaid);
   const nodes = useDiagram((s) => s.nodes);
   const edges = useDiagram((s) => s.edges);
+  const highlight = useDiagram((s) => s.highlight);
+  const setHighlight = useDiagram((s) => s.setHighlight);
+  const setInsertion = useDiagram((s) => s.setInsertion);
+  const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
+  const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
 
   const [text, setText] = useState('');
+  // line map is only valid while the textarea matches the live diagram; while
+  // a parse error stands we null the mapping so stale highlights don't point at
+  // wrong lines. On a clean parse the text and canvas agree, so it stays live.
+  const [lineRefs, setLineRefs] = useState<Map<number, { kind: 'node' | 'edge'; id: string }>>(
+    new Map(),
+  );
+  // true only while the textarea text does not cleanly map to the live diagram
+  // (an in-flight debounce or a standing parse error); gates highlight/gap sync
+  const [edited, setEdited] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // keep export view in sync with the live diagram
-  useEffect(() => {
-    setText(exportMermaid());
-  }, [nodes, edges, exportMermaid]);
+  /** boundary index where an insertion caret is shown: caret sits *above* line
+   *  `gapLine` (so 0 = before the first line). null when not hovering a gap. */
+  const [gapLine, setGapLine] = useState<number | null>(null);
 
-  const apply = () => {
-    try {
-      loadMermaid(text);
-      autoLayout('TB');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // the text we last derived from the store, so the store->text effect can tell
+  // its own echo (after a sync) from a genuine canvas-side change
+  const derivedText = useRef('');
+
+  // keep the editor in sync with the live diagram. This fires for every store
+  // change — our own synced edits included. We only push text into the textarea
+  // for canvas-origin changes, detected as the derived text changing from its
+  // previous value (a drag has no text effect; add/delete/tidy/undo do). A
+  // user's own edit leaves the derived text matching what they typed once it
+  // syncs, so we never snap their in-progress text to canonical form.
+  useEffect(() => {
+    const { text: t, lineRefs: refs } = toMermaidWithMap({ nodes, edges });
+    setLineRefs(refs);
+    const canvasOrigin = t !== derivedText.current;
+    derivedText.current = t;
+    if (canvasOrigin && !edited) {
+      setText(t);
       setErr(null);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
     }
+  }, [nodes, edges, edited]);
+
+  // never leave a preview caret/ghost behind when the panel closes
+  useEffect(() => () => setInsertion(null), [setInsertion]);
+
+  // reverse index: element -> line number, for highlighting the editor from canvas
+  const refToLine = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [line, ref] of lineRefs) m.set(`${ref.kind}:${ref.id}`, line);
+    return m;
+  }, [lineRefs]);
+
+  const activeLine = useMemo(() => {
+    if (edited || !highlight) return null;
+    const line = refToLine.get(`${highlight.kind}:${highlight.id}`);
+    return line ?? null;
+  }, [edited, highlight, refToLine]);
+
+  // lines for the elements selected on the canvas, so a canvas selection
+  // highlights the matching editor lines (persistent, unlike the hover above).
+  // Suppressed while the text is mid-edit so stale lines don't mismark.
+  const selectedLines = useMemo(() => {
+    const s = new Set<number>();
+    if (edited) return s;
+    for (const id of selectedNodeIds) {
+      const line = refToLine.get(`node:${id}`);
+      if (line != null) s.add(line);
+    }
+    for (const id of selectedEdgeIds) {
+      const line = refToLine.get(`edge:${id}`);
+      if (line != null) s.add(line);
+    }
+    return s;
+  }, [edited, selectedNodeIds, selectedEdgeIds, refToLine]);
+
+  const lines = useMemo(() => text.split('\n'), [text]);
+
+  // debounced live sync: on a clean parse the canvas follows and `edited`
+  // clears (re-enabling highlight/gap sync); on a parse error we hold the last
+  // good canvas and surface the message inline
+  const syncTimer = useRef<number | null>(null);
+  const runSync = (src: string) => {
+    const res = syncMermaid(src);
+    if (res.ok) {
+      setErr(null);
+      setEdited(false);
+    } else {
+      setErr(res.error);
+    }
+  };
+  const scheduleSync = (src: string) => {
+    if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    syncTimer.current = window.setTimeout(() => {
+      syncTimer.current = null;
+      runSync(src);
+    }, 400);
+  };
+  useEffect(
+    () => () => {
+      if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    },
+    [],
+  );
+
+  // Tidy: flush any pending edit, then auto-layout the live diagram
+  const tidy = () => {
+    if (syncTimer.current) {
+      window.clearTimeout(syncTimer.current);
+      syncTimer.current = null;
+      runSync(text);
+    }
+    autoLayout('TB');
   };
 
   const [copied, setCopied] = useState(false);
@@ -32,6 +131,174 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
     await navigator.clipboard?.writeText(text);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1200);
+  };
+
+  // mirror the textarea's scroll onto the highlight layer
+  const syncScroll = () => {
+    const ta = textareaRef.current;
+    const sc = scrollRef.current;
+    if (ta && sc) sc.scrollTop = ta.scrollTop;
+  };
+
+  // line height in px — read once from the textarea so hover math matches layout
+  const lineHeight = useRef(0);
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (ta) lineHeight.current = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+  }, []);
+
+  // Gaps a node can be inserted into: after the `flowchart` header and up to
+  // the first edge line (node declarations only, so a committed node lands
+  // exactly where the caret was shown).
+  const gapRange = useMemo(() => {
+    let last = lines.length;
+    for (const [ln, ref] of lineRefs) if (ref.kind === 'edge' && ln < last) last = ln;
+    return { first: 1, last };
+  }, [lines, lineRefs]);
+
+  // Hover hit-testing. A gap is only a thin band straddling a line boundary,
+  // with hysteresis (easier to stay in than to enter) and a short dwell before
+  // the caret shows, so sweeping the pointer across lines just walks the line
+  // highlight instead of blinking caret / ghost / highlight on every boundary.
+  const GAP_ENTER = 3; // px either side of a boundary to start a gap
+  const GAP_EXIT = 6; // px either side of the active boundary to keep it
+  const GAP_DWELL = 180; // ms the pointer must rest in the band
+  const gapRef = useRef<number | null>(null);
+  const dwell = useRef<{ boundary: number; timer: number } | null>(null);
+
+  const cancelDwell = () => {
+    if (dwell.current) window.clearTimeout(dwell.current.timer);
+    dwell.current = null;
+  };
+  useEffect(() => cancelDwell, []);
+
+  const showGap = (boundary: number | null) => {
+    gapRef.current = boundary;
+    setGapLine(boundary);
+    if (boundary === null) {
+      setInsertion(null);
+    } else {
+      setHighlight(null);
+      setInsertion(neighboursOf(boundary));
+    }
+  };
+
+  const hoverFromMouse = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (edited) return;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const padTop = parseFloat(getComputedStyle(ta).paddingTop) || 0;
+    const y = e.clientY - ta.getBoundingClientRect().top - padTop + ta.scrollTop;
+    const lh = lineHeight.current || 20;
+
+    // stay in the active gap while inside its (wider) exit band
+    const active = gapRef.current;
+    if (active !== null && Math.abs(y - active * lh) <= GAP_EXIT) return;
+
+    const nearest = Math.round(y / lh);
+    const inBand =
+      Math.abs(y - nearest * lh) <= GAP_ENTER &&
+      nearest >= gapRange.first &&
+      nearest <= gapRange.last;
+
+    if (inBand) {
+      // leave the current line highlight alone until the pointer settles
+      if (active !== null) showGap(null);
+      if (dwell.current?.boundary !== nearest) {
+        cancelDwell();
+        dwell.current = {
+          boundary: nearest,
+          timer: window.setTimeout(() => {
+            dwell.current = null;
+            showGap(nearest);
+          }, GAP_DWELL),
+        };
+      }
+      return;
+    }
+
+    // over a line's body → highlight the element that line renders
+    cancelDwell();
+    if (active !== null) showGap(null);
+    const ref = lineRefs.get(Math.floor(y / lh));
+    setHighlight(ref ? { kind: ref.kind, id: ref.id } : null);
+  };
+
+  // clicking the shown caret inserts a node there (at the ghost's position)
+  const commitInsertion = useDiagram((s) => s.commitInsertion);
+  const setSelection = useDiagram((s) => s.setSelection);
+  const insertAtGap = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (edited || gapRef.current === null || e.button !== 0) return;
+    e.preventDefault(); // don't move the text caret / start a selection
+    const id = commitInsertion();
+    gapRef.current = null;
+    setGapLine(null);
+    if (id) {
+      setSelection([id], []);
+      setHighlight({ kind: 'node', id });
+    }
+  };
+
+  // the sibling nodes declared just above and just below `boundary`, so the
+  // canvas can place the ghost between them. Subgraphs are respected: a whole
+  // subgraph above the gap counts as one sibling (its group node), and the
+  // `end` of the enclosing subgraph stops the search below (null = the gap is
+  // the last slot in its scope / before everything).
+  const neighboursOf = (boundary: number) => {
+    const isEnd = (ln: number) => lines[ln]?.trim() === 'end';
+    const nodeAt = (ln: number) => {
+      const ref = lineRefs.get(ln);
+      return ref?.kind === 'node' ? ref.id : null;
+    };
+
+    let afterNodeId: string | null = null;
+    let depth = 0; // subgraphs closed between here and the gap, walking up
+    for (let ln = boundary - 1; ln >= 0; ln--) {
+      if (isEnd(ln)) {
+        depth++;
+        continue;
+      }
+      const id = nodeAt(ln);
+      if (id === null) continue;
+      // a subgraph opener belongs to an `end` we passed: that is the sibling
+      if (depth > 0 && lines[ln].trim().startsWith('subgraph')) depth--;
+      if (depth === 0) {
+        afterNodeId = id;
+        break;
+      }
+    }
+
+    let beforeNodeId: string | null = null;
+    for (let ln = boundary; ln < lines.length; ln++) {
+      if (isEnd(ln)) break; // leaving the enclosing subgraph
+      const id = nodeAt(ln);
+      if (id !== null) {
+        beforeNodeId = id;
+        break;
+      }
+    }
+    // enclosing subgraph: the first opener above the gap that is not closed
+    // by an `end` between it and the gap
+    let parentId: string | null = null;
+    let open = 0;
+    for (let ln = boundary - 1; ln >= 0; ln--) {
+      if (isEnd(ln)) open++;
+      else if (lines[ln].trim().startsWith('subgraph') && nodeAt(ln) !== null) {
+        if (open === 0) {
+          parentId = nodeAt(ln);
+          break;
+        }
+        open--;
+      }
+    }
+    return { afterNodeId, beforeNodeId, parentId };
+  };
+
+  const clearHover = () => {
+    cancelDwell();
+    if (edited) return;
+    setHighlight(null);
+    showGap(null);
   };
 
   return (
@@ -47,16 +314,52 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
           <Icon name="close" size={15} />
         </button>
       </div>
-      <textarea
-        className="mf-mermaid-text"
-        value={text}
-        spellCheck={false}
-        onChange={(e) => setText(e.target.value)}
-      />
+
+      <div className="mf-mermaid-wrap">
+        {/* highlight + hover overlay, scroll-synced behind/over the textarea */}
+        <div className="mf-mermaid-overlay" ref={scrollRef} aria-hidden>
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              className={`mf-mline${i === activeLine ? ' active' : ''}${
+                selectedLines.has(i) ? ' selected' : ''
+              }${i === gapLine ? ' insert-before' : ''}`}
+            >
+              {line === '' ? '\u200b' : line}
+            </div>
+          ))}
+          {/* caret below the last line when inserting at the very end */}
+          {gapLine === lines.length && (
+            <div className="mf-mline insert-before" aria-hidden>
+              {'\u200b'}
+            </div>
+          )}
+        </div>
+        <textarea
+          ref={textareaRef}
+          className="mf-mermaid-text"
+          value={text}
+          spellCheck={false}
+          onScroll={syncScroll}
+          onMouseMove={hoverFromMouse}
+          onMouseLeave={clearHover}
+          onMouseDown={insertAtGap}
+          style={gapLine !== null ? { cursor: 'copy' } : undefined}
+          title={gapLine !== null ? 'Click to insert a node here' : undefined}
+          onChange={(e) => {
+            setText(e.target.value);
+            setEdited(true);
+            cancelDwell();
+            showGap(null);
+            scheduleSync(e.target.value);
+          }}
+        />
+      </div>
+
       {err && <div className="mf-err">{err}</div>}
       <div className="mf-panel-actions">
-        <button className="mf-primary" onClick={apply}>
-          Import
+        <button className="mf-primary" onClick={tidy}>
+          Tidy
         </button>
         <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
       </div>

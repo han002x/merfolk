@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types scripts/roundtrip.ts",
+    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/sync.ts",
     "preview": "vite preview"
   },
   "dependencies": {

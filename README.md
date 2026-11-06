@@ -7,9 +7,14 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 
 - **Infinite canvas** — pan, zoom, minimap, drag nodes, draw edges by dragging
   between handles. Built on [React Flow](https://reactflow.dev) (`@xyflow/react`).
-- **Collapsible / drill-down groups** — any node that has children is a *group*.
-  Click its `▾ / ▸` toggle to collapse the whole subtree, so you can zoom out of
-  detail and drill back in. Nesting is arbitrary depth.
+- **Origami folding** — any node that has children is a *group*, and an
+  unfolded group lies on a sheet of paper wrapping its subtree. Click the
+  sheet's dog-eared corner (or select it and press `F`) to fold: the subtree
+  slides into the group card and creases flat, leaving a card with its pages
+  stacked beneath and a count tab; click the tab to pop it back open. Edges into
+  a folded card crease onto the card (dashed, merged as `×n`) so folding never
+  loses connections. `[` / `]` fold or unfold the whole diagram one level at a
+  time. Nesting is arbitrary depth.
 - **Mermaid interop** — the side panel stays in sync with the canvas as Mermaid
   `flowchart` text. Edit the text and **Import → canvas** to parse it back, or
   **Copy** to paste into any Mermaid renderer (GitHub, docs, etc.).
@@ -45,6 +50,8 @@ simple architecture, simple design, simple implementation, no filler text.
 | `⇧L` | Tidy left-right |
 | `T` | Toggle theme |
 | `M` | Toggle Mermaid panel |
+| `F` | Fold / unfold the selected group (or the sheet a selected node sits on) |
+| `[` / `]` | Fold / unfold one level |
 | `⌫` / `Del` | Delete selected node(s) |
 
 Shortcuts are suspended while you're typing in a field. Every toolbar button
@@ -56,7 +63,7 @@ shows its key in the tooltip.
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # type-check + production bundle to dist/
-npm test         # mermaid round-trip check (node --experimental-strip-types)
+npm test         # mermaid round-trip + fold logic checks (node --experimental-strip-types)
 ```
 
 ## Architecture
@@ -66,10 +73,13 @@ npm test         # mermaid round-trip check (node --experimental-strip-types)
 | `src/types.ts` | `Diagram` data model: flat nodes + edges, `parentId` for nesting, `collapsed` flag |
 | `src/store.ts` | Zustand store + mutations; `hiddenNodeIds()` derives what a collapse hides |
 | `src/mermaid/io.ts` | `fromMermaid` / `toMermaid` — pragmatic flowchart parser + emitter (subgraphs ↔ groups) |
-| `src/layout.ts` | Dagre auto-layout over the visible graph; returns positions keyed by node id |
+| `src/fold.ts` | Pure fold logic: hidden set, edge creases, fold levels, sheet geometry |
+| `src/foldMotion.ts` | Fold / unfold choreography; commits one undo step per fold |
+| `src/layout.ts` | Dagre auto-layout over the visible graph; unfolded groups are clusters so sheets don't overlap |
 | `src/theme.ts` | Theme store: OS default, `localStorage` persistence, `<html data-theme>` flip |
 | `src/persist.ts` | Diagram autosave/restore + `.merfolk.json` export/import |
-| `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, collapse toggle |
+| `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, folded-card tab |
+| `src/components/SheetNode.tsx` | Paper sheet behind an unfolded group, with the dog-ear fold control |
 | `src/components/Icon.tsx` | Inline-SVG icon set (currentColor, theme-aware) |
 | `src/useHotkeys.ts` | Global keyboard shortcuts, suspended while typing |
 | `src/components/MermaidPanel.tsx` | Live Mermaid text view + import/copy |
