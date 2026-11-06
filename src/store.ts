@@ -20,6 +20,7 @@ interface State {
   moveNode: (id: string, position: { x: number; y: number }) => void;
   removeNode: (id: string) => void;
   connect: (source: string, target: string) => void;
+  updateEdgeLabel: (id: string, label: string) => void;
   toggleCollapse: (id: string) => void;
   nestInto: (childId: string, groupId: string | null) => void;
   autoLayout: (direction?: Direction) => void;
@@ -115,6 +116,13 @@ export const useDiagram = create<State>((set, get) => ({
         edges: [...s.edges, { id: nextId('e'), source, target }],
       };
     }),
+
+  updateEdgeLabel: (id, label) =>
+    set((s) => ({
+      edges: s.edges.map((e) =>
+        e.id === id ? { ...e, label: label.trim() || undefined } : e,
+      ),
+    })),
 
   toggleCollapse: (id) =>
     set((s) => ({

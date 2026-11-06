@@ -8,6 +8,7 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
+  type EdgeTypes,
   type Node,
   type NodeChange,
   type NodeTypes,
@@ -16,6 +17,7 @@ import '@xyflow/react/dist/style.css';
 
 import { useDiagram } from './store';
 import { DiagramNode, type NodeData } from './components/DiagramNode';
+import { DiagramEdge } from './components/DiagramEdge';
 import { JoinPreview } from './components/JoinPreview';
 import { MermaidPanel } from './components/MermaidPanel';
 import { Icon } from './components/Icon';
@@ -33,6 +35,7 @@ import { SAMPLE } from './sample';
 import './App.css';
 
 const nodeTypes: NodeTypes = { diagram: DiagramNode };
+const edgeTypes: EdgeTypes = { diagram: DiagramEdge };
 
 /** A toolbar button whose tooltip announces its keyboard shortcut. */
 function ToolButton({
@@ -132,6 +135,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         .filter((e) => !hidden.has(e.source) && !hidden.has(e.target))
         .map((e) => ({
           id: e.id,
+          type: 'diagram',
           source: e.source,
           target: e.target,
           label: e.label,
@@ -257,6 +261,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         nodes={rfNodes}
         edges={rfEdges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onConnect={onConnect}
         onConnectStart={() => setConnecting(true)}

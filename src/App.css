@@ -425,6 +425,49 @@ body,
   }
 }
 
+/* ---- editable edge labels ---- */
+.mf-edge-label {
+  position: absolute;
+  pointer-events: all;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.mf-edge-text {
+  background: var(--mf-panel);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-border);
+  border-radius: 6px;
+  padding: 1px 7px;
+  cursor: text;
+}
+.mf-edge-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--mf-panel);
+  color: var(--mf-muted);
+  border: 1px solid var(--mf-border);
+  opacity: 0;
+  cursor: text;
+  transition: opacity 130ms ease;
+}
+.react-flow__edge:hover .mf-edge-add {
+  opacity: 1;
+}
+.mf-edge-input {
+  background: var(--mf-input);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-accent);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font: inherit;
+  width: 90px;
+}
+
 /* react-flow dark tweaks */
 .react-flow__attribution {
   display: none;
