@@ -8,6 +8,7 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
+  type EdgeChange,
   type EdgeTypes,
   type Node,
   type NodeChange,
@@ -67,6 +68,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const addNode = useDiagram((s) => s.addNode);
   const moveNode = useDiagram((s) => s.moveNode);
   const removeNode = useDiagram((s) => s.removeNode);
+  const removeEdge = useDiagram((s) => s.removeEdge);
   const connect = useDiagram((s) => s.connect);
   const isGroup = useDiagram((s) => s.isGroup);
   const hiddenNodeIds = useDiagram((s) => s.hiddenNodeIds);
@@ -75,6 +77,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const load = useDiagram((s) => s.load);
   const theme = useTheme();
   const [selected, setSelected] = useState<string[]>([]);
+  const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const onPickFile = useCallback(
@@ -161,6 +164,18 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     [moveNode],
   );
 
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    for (const c of changes) {
+      if (c.type === 'select') {
+        setSelectedEdges((prev) =>
+          c.selected
+            ? [...new Set([...prev, c.id])]
+            : prev.filter((id) => id !== c.id),
+        );
+      }
+    }
+  }, []);
+
   const onConnect = useCallback(
     (c: Connection) => {
       if (c.source && c.target) connect(c.source, c.target);
@@ -181,8 +196,10 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 
   const deleteSelected = useCallback(() => {
     selected.forEach((id) => removeNode(id));
+    selectedEdges.forEach((id) => removeEdge(id));
     setSelected([]);
-  }, [selected, removeNode]);
+    setSelectedEdges([]);
+  }, [selected, selectedEdges, removeNode, removeEdge]);
 
   useHotkeys(
     useMemo(
@@ -263,6 +280,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onConnectStart={() => setConnecting(true)}
         onConnectEnd={() => setConnecting(false)}

@@ -10,7 +10,7 @@ highest-leverage unchecked task, executes it, and checks it off here.
 ## Backlog — M8 Edge editing (next up)
 
 - [x] Inline-rename an edge label (double-click the edge).
-- [ ] Delete an edge (select + ⌫, matching node delete).
+- [x] Delete an edge (select + ⌫, matching node delete).
 - [ ] Carry edge labels through `toMermaid` / `fromMermaid` (parser already
       reads `|label|`).
 
