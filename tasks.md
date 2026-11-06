@@ -1,0 +1,39 @@
+# Tasks
+
+Working list for the autonomous loop. The loop picks the single
+highest-leverage unchecked task, executes it, and checks it off here.
+
+## In progress
+
+- [ ] _(none)_
+
+## Backlog — M7 Persistence (next up)
+
+- [ ] Autosave `{nodes, edges}` to `localStorage` on change (debounced).
+- [ ] Restore from `localStorage` on startup; fall back to the sample only when
+      nothing is saved.
+- [ ] Export the diagram as a downloadable `.merfolk.json` file.
+- [ ] Import a `.merfolk.json` file back onto the canvas.
+- [ ] "New / clear canvas" action (with the single undo line it deserves).
+
+## Backlog — M8 Edge editing
+
+- [ ] Inline-rename an edge label (double-click the edge).
+- [ ] Delete an edge (select + ⌫, matching node delete).
+- [ ] Carry edge labels through `toMermaid` / `fromMermaid` (parser already
+      reads `|label|`).
+
+## Backlog — M9 Offline fonts
+
+- [ ] Vendor Inter + JetBrains Mono woff2 into the build; drop the Google
+      Fonts `<link>`.
+
+## Done
+
+- [x] M0 Foundation — Vite/React/TS + React Flow + Zustand.
+- [x] M1 Foldable diagrams — groups, collapse, drill-down.
+- [x] M2 Mermaid interop — parser/emitter + live panel.
+- [x] M3 Dagre auto-layout — Tidy TB/LR, auto-tidy on import.
+- [x] M4 Motion — drag translations, hover, join previews.
+- [x] M5 Theming — dark/light, OS default, persisted.
+- [x] M6 UI polish — SVG icons, hotkeys, typography, segmented toolbar.
