@@ -17,6 +17,10 @@ own and leaves the build green.
 - **M6 — UI polish.** SVG icons, hotkeys, Inter/JetBrains typography, segmented
   toolbar.
 
+- **Shapes + icons.** 14 node shapes (all of Mermaid's classic brackets) and a
+  curated tech / brand icon set, exported as Mermaid `@{ icon }`; verified
+  against the real mermaid parser in `npm test`.
+
 ## Next
 
 - **M7 — Persistence.** Autosave the diagram to `localStorage`; restore on load.

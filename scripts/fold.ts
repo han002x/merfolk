@@ -1,8 +1,8 @@
 // Fold logic check: creases reroute edges onto folded cards, fold levels step
 // from the leaves inward, and sheets wrap their unfolded subtrees.
 // Run with: node --experimental-strip-types scripts/fold.ts
-import { FRAME_TITLE, SHEET_PAD, foldEdges, frameOrigin, groupPlan, hiddenIds, nextFoldLevel, nextUnfoldLevel, sheets } from '../src/fold.ts';
-import { fromMermaid, mergeDiagram, toMermaid } from '../src/mermaid/io.ts';
+import { SHEET_PAD, SHEET_TITLE, foldEdges, groupOrigin, groupPlan, hiddenIds, nextFoldLevel, nextUnfoldLevel, sheets } from '../src/fold.ts';
+import { fromMermaid, toMermaid } from '../src/mermaid/io.ts';
 import type { DiagramEdge, DiagramNode } from '../src/types.ts';
 
 const N = (id: string, parentId: string | null, collapsed = false, x = 0, y = 0): DiagramNode => ({
@@ -52,7 +52,8 @@ const edges = [E('1', 'A', 'x', 'calls'), E('2', 'A', 'y'), E('3', 'y', 'B', 'wr
   const sh = sheets(nodes, hiddenIds(nodes), (n) => n.position, () => ({ width: 100, height: 50 }));
   const r = sh[0]?.rect;
   check('one sheet per unfolded group', sh.length === 1, sh);
-  check('sheet wraps card and children with padding', r && r.x === 78 && r.y === 78 && r.width === 344 && r.height === 194, r);
+  // children span x 100..400, y 200..250; the group's own card plays no part
+  check('sheet wraps only the children, with padding and a title band', r && r.x === 100 - SHEET_PAD && r.y === 200 - SHEET_PAD - SHEET_TITLE && r.width === 300 + 2 * SHEET_PAD && r.height === 50 + 2 * SHEET_PAD + SHEET_TITLE, r);
   const none = sheets([{ ...nodes[0], collapsed: true }, nodes[1], nodes[2]], hiddenIds([{ ...nodes[0], collapsed: true }, nodes[1], nodes[2]]), (n) => n.position, () => ({ width: 100, height: 50 }));
   check('a folded group has no sheet', none.length === 0, none);
 }
@@ -84,27 +85,17 @@ const edges = [E('1', 'A', 'x', 'calls'), E('2', 'A', 'y'), E('3', 'y', 'B', 'wr
   check('unknown ids are ignored', groupPlan(t, ['A', 'nope']) === null);
 }
 {
-  // a frame (canvas-made group) has no card: its sheet wraps only its children
-  const F = { ...N('F', null, false, 999, 999), label: '', frame: true };
-  const nodes = [F, N('a', 'F', false, 100, 200), N('b', 'F', false, 300, 260)];
-  const size = () => ({ width: 100, height: 50 });
-  const [sh] = sheets(nodes, hiddenIds(nodes), (n) => n.position, size);
-  check('frame sheet ignores the frame\'s own position', sh && sh.rect.x === 100 - SHEET_PAD && sh.rect.width === 300 + 2 * SHEET_PAD, sh);
-  check('frame sheet leaves room for its title', sh && sh.rect.y === 200 - SHEET_PAD - FRAME_TITLE, sh);
-  const o = frameOrigin('F', nodes);
-  check('a frame sits at the top-left of its contents', o?.x === 100 && o.y === 200, o);
-  check('a frame with no contents has no origin', frameOrigin('a', nodes) === null);
+  // a group sits at the top-left of its contents, whatever its own position
+  const nodes = [{ ...N('F', null, false, 999, 999), label: '' }, N('a', 'F', false, 100, 200), N('b', 'F', false, 300, 260), N('H', 'F', false, -50, -50), N('c', 'H', false, 150, 180)];
+  const o = groupOrigin('F', nodes);
+  check('a group sits at the top-left of its contents, nested groups ignored', o?.x === 100 && o.y === 180, o);
+  check('a plain node has no group origin', groupOrigin('a', nodes) === null);
 
-  // Mermaid: an untitled frame survives a round trip as a frame
+  // Mermaid: an untitled group survives a round trip
   const mm = toMermaid({ nodes, edges: [] });
-  check('untitled frame exports a blank title', mm.includes('subgraph F [" "]'), mm);
+  check('untitled group exports a blank title', mm.includes('subgraph F [" "]'), mm);
   const back = fromMermaid(mm).nodes.find((n) => n.id === 'F');
-  check('blank subgraph imports as an untitled frame', back?.frame === true && back.label === '', back);
-  const titled = fromMermaid('flowchart TD\n  subgraph F ["Payments"]\n    a\n  end').nodes.find((n) => n.id === 'F');
-  check('a titled subgraph imports as a card group', !titled?.frame, titled);
-  const merged = mergeDiagram(fromMermaid('flowchart TD\n  subgraph F ["Payments"]\n    a\n  end'), { nodes, edges: [] });
-  const mf = merged.nodes.find((n) => n.id === 'F');
-  check('editing a frame\'s title in Mermaid keeps it a frame', mf?.frame === true && mf.label === 'Payments', mf);
+  check('blank subgraph title imports as an untitled group', back?.label === '', back);
 }
 
 if (failed) process.exit(1);

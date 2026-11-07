@@ -62,7 +62,7 @@ export const ANIMATIONS: {
   { kind: 'pulse', label: 'Pulse', glyph: '◎', appliesTo: 'node' },
   { kind: 'fade', label: 'Fade in', glyph: '◐', appliesTo: 'node' },
   { kind: 'draw', label: 'Draw on', glyph: '✍', appliesTo: 'node' },
-  { kind: 'flow', label: 'Flow', glyph: '⇶', appliesTo: 'edge' },
+  { kind: 'flow', label: 'Flow', glyph: '⇶', appliesTo: 'both' },
 ];
 
 /** Named cycle lengths (seconds) offered when an animation is active. */
@@ -112,6 +112,25 @@ export function dashArray(style: StrokeStyle, width: number): string | undefined
     default:
       return undefined;
   }
+}
+
+/**
+ * Dash pattern for a flowing stroke, plus its period (dash + gap). Flow follows
+ * the element's own stroke style; a solid stroke gets a default dash, since
+ * marching needs gaps to be seen. The keyframes shift by exactly one period,
+ * so the loop is seamless whatever the style or width.
+ */
+export function flowDash(
+  style: StrokeStyle,
+  width: number,
+): { array: string; period: number } {
+  const [dash, gap] =
+    style === 'dashed'
+      ? [width * 3, width * 2.5]
+      : style === 'dotted'
+        ? [width, width * 2]
+        : [width * 4, width * 3];
+  return { array: `${dash} ${gap}`, period: dash + gap };
 }
 
 /** CSS class that drives an element's motion preset (null => no animation). */

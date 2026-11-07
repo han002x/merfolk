@@ -1,8 +1,27 @@
 // Core data model for merfolk diagrams.
 // A graph is a flat list of nodes + edges. Any node can be a "group" that
-// owns children; collapsing a group hides its subtree (drill-down).
+// owns children; collapsing a group hides its subtree (drill-down). A group
+// has no card of its own until it is folded: unfolded, it is a titled sheet.
 
-export type NodeShape = 'rect' | 'round' | 'diamond' | 'circle';
+/**
+ * Node outlines. Every shape has a classic Mermaid bracket form (see
+ * src/mermaid/io.ts), so all of them render in any Mermaid version.
+ */
+export type NodeShape =
+  | 'rect'
+  | 'round'
+  | 'stadium'
+  | 'subroutine'
+  | 'cylinder'
+  | 'circle'
+  | 'dbl-circle'
+  | 'diamond'
+  | 'hexagon'
+  | 'lean-r'
+  | 'lean-l'
+  | 'trap-b'
+  | 'trap-t'
+  | 'flag';
 
 /** Stroke dash pattern for a node border or an edge line. */
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
@@ -55,14 +74,18 @@ export interface DiagramNode {
   parentId: string | null;
   /** collapsed groups hide their descendants */
   collapsed: boolean;
-  /** persisted canvas position (ignored for frames: see `frame`) */
+  /**
+   * persisted canvas position. Ignored for groups: an unfolded group is only a
+   * sheet titled with its `label`, and a folded one shows its card at the
+   * top-left of its contents
+   */
   position: { x: number; y: number };
   /**
-   * A frame group has no card of its own while unfolded: just the sheet around
-   * its children, titled with `label` (may be empty). Folded, it shows a card
-   * at the top-left of its contents. Groups made on the canvas are frames.
+   * full Iconify name (`lucide:database`, `simple-icons:github`). Set, the node
+   * is an icon tile and exports as Mermaid's `@{ icon: ... }` form; its shape
+   * then only picks the tile's corners (round => rounded, circle => circle)
    */
-  frame?: boolean;
+  icon?: string;
   /** optional per-node visual overrides */
   style?: ElementStyle;
 }

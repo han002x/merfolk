@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/sync.ts",
+    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/mermaid-compat.ts",
+    "icons": "node --experimental-strip-types scripts/icons.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,15 +16,21 @@
     "@fontsource/inter": "^5.2.6",
     "@fontsource/jetbrains-mono": "^5.2.6",
     "@xyflow/react": "^12.8.6",
+    "gif.js": "^0.2.0",
+    "html-to-image": "^1.11.13",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.151",
+    "@iconify-json/simple-icons": "^1.2.101",
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^29.1.1",
+    "mermaid": "^11.17.2",
     "oxlint": "^1.90.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6"

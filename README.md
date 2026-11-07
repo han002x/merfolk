@@ -26,8 +26,16 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   animated **join preview** while you drag a new edge — the hovered node pulses
   as the drop target and handles enlarge. All motion respects
   `prefers-reduced-motion`.
-- **Shapes** — rectangle, rounded, diamond, circle (mapped to Mermaid
-  `[]`, `()`, `{}`, `(())`). Double-click a node to rename.
+- **Shapes** — rectangle, rounded, diamond and circle on the toolbar; stadium,
+  subroutine, cylinder, double circle, hexagon, parallelograms, trapezoids and
+  flag in the **S** picker. Each maps to Mermaid's classic bracket syntax, so
+  every renderer (GitHub included) draws them. Double-click a node to rename.
+- **Icons** — the **S** picker also holds ~30 tech icons (Lucide) and ~40
+  brand / social logos (Simple Icons), tinted with the node's stroke colour.
+  They export as Mermaid's v11.3+ icon syntax,
+  `A@{ icon: "simple-icons:github", form: "square", label: "GitHub" }`; a
+  renderer that hasn't registered that Iconify pack shows a placeholder glyph
+  beside the label.
 - **Persistence** — the diagram autosaves to `localStorage` and restores on
   reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
   or clear the canvas, from the toolbar.
@@ -46,6 +54,7 @@ simple architecture, simple design, simple implementation, no filler text.
 | Key | Action |
 | --- | --- |
 | `R` / `O` / `D` / `C` | Add rectangle / rounded / diamond / circle |
+| `S` | Open the shape + icon picker (type to filter, `Enter` picks the first) |
 | `L` | Tidy top-down |
 | `⇧L` | Tidy left-right |
 | `T` | Toggle theme |
@@ -63,7 +72,8 @@ shows its key in the tooltip.
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # type-check + production bundle to dist/
-npm test         # mermaid round-trip + fold logic checks (node --experimental-strip-types)
+npm test         # mermaid round-trip, fold logic, and a check against the real mermaid parser
+npm run icons    # regenerate src/icons/catalog.ts from the curated list in scripts/icons.ts
 ```
 
 ## Architecture
@@ -87,11 +97,15 @@ npm test         # mermaid round-trip + fold logic checks (node --experimental-s
 
 ## Mermaid support (subset)
 
-Parses the common `flowchart` / `graph` subset: shaped node declarations,
-`-->` / `---` edges with optional `|labels|`, and `subgraph … end` blocks
-(which become collapsible group nodes). It round-trips everything merfolk
-itself produces; exotic Mermaid syntax (styling directives, class defs, etc.)
-is ignored rather than erroring.
+Parses the common `flowchart` / `graph` subset: node declarations in all 14
+classic bracket shapes (`[]` `()` `([])` `[[]]` `[()]` `(())` `((()))` `{}`
+`{{}}` `[//]` `[\\]` `[/\]` `[\/]` `>]`), v11 `@{ shape: … }` / `@{ icon: … }`
+metadata, `-->` / `---` edges with optional `|labels|`, and `subgraph … end`
+blocks (which become collapsible group nodes). v11 shapes merfolk doesn't draw
+yet import as rectangles. It round-trips everything merfolk itself produces,
+and `scripts/mermaid-compat.ts` feeds that output to the real `mermaid` parser
+to confirm it reads every shape, icon, edge and subgraph the same way.
+The shape table lives in `src/shapes.ts`.
 
 ## Fonts
 

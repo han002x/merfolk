@@ -591,6 +591,10 @@ body,
     0 0 0 2px var(--mf-accent),
     0 0 16px var(--mf-glow);
 }
+.mf-sheet.mf-linked .mf-sheet-paper {
+  border-color: var(--mf-accent);
+  box-shadow: 0 0 0 1px var(--mf-accent);
+}
 .mf-edge-label.mf-linked .mf-edge-text {
   border-color: var(--mf-accent);
   box-shadow: 0 0 0 1px var(--mf-accent);
@@ -1054,7 +1058,12 @@ body,
 .mf-sheet[data-depth='3'] .mf-sheet-paper {
   background-color: color-mix(in srgb, var(--mf-group) 90%, transparent);
 }
-/* a frame has no card: its title sits on the sheet, double-click to rename */
+.mf-sheet-handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* a group has no card while unfolded: its title sits on the sheet, double-click to rename */
 .mf-sheet-title,
 .mf-sheet-title-input {
   position: absolute;
@@ -1221,4 +1230,362 @@ body,
   .react-flow__node.mf-sheet-unfolding .mf-sheet {
     animation: none;
   }
+}
+
+/* ── Style motion presets ──────────────────────────────────────────────
+   All presets are opt-in per element (ElementStyle.animation) and run only
+   when the user has not asked for reduced motion. Cycle length comes from
+   `animation-duration`, set inline from the element's animationSpeed. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Pulse: a gentle breathing scale + glow, composing with any sloppiness
+     rotation already on the node via an accent ring. */
+  .mf-node.mf-anim-pulse {
+    animation-name: mf-anim-pulse;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @keyframes mf-anim-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 var(--mf-glow);
+    }
+    50% {
+      box-shadow: 0 0 12px 2px var(--mf-glow);
+    }
+  }
+
+  /* Fade in: the body breathes between full and half opacity. */
+  .mf-node.mf-anim-fade {
+    animation-name: mf-anim-fade;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+  @keyframes mf-anim-fade {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
+
+  /* Draw on: a sweep of light travels across the body, like an ink reveal. */
+  .mf-node.mf-anim-draw {
+    animation-name: mf-anim-draw;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    background-image: linear-gradient(
+      100deg,
+      transparent 40%,
+      var(--mf-glow) 50%,
+      transparent 60%
+    );
+    background-size: 250% 100%;
+    background-repeat: no-repeat;
+  }
+  @keyframes mf-anim-draw {
+    from {
+      background-position: 150% 0;
+    }
+    to {
+      background-position: -150% 0;
+    }
+  }
+
+  /* Flow: the outline becomes a dashed stroke that marches. It keeps the
+     element's own stroke color, width and style (dash pattern set inline), and
+     shifts by exactly one dash period per cycle so the loop is seamless. */
+  .react-flow__edge-path.mf-anim-flow,
+  .mf-node.mf-anim-flow .mf-outline path:not(.mf-outline-detail),
+  .mf-node.mf-anim-flow .mf-flow-ring rect {
+    animation-name: mf-anim-flow;
+    animation-duration: var(--mf-anim-dur, 1.6s);
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+  @keyframes mf-anim-flow {
+    to {
+      stroke-dashoffset: calc(-1 * var(--mf-flow-period, 28));
+    }
+  }
+}
+
+/* panel: let the animation row wrap when both node + edge presets show */
+.mf-seg.mf-seg-wrap {
+  flex-wrap: wrap;
+}
+.mf-seg.mf-anim-speed {
+  margin-top: 6px;
+}
+
+/* ── Outline shapes ────────────────────────────────────────────────────
+   Shapes CSS borders can't draw (cylinder, hexagon, parallelograms, ...) put
+   an SVG path behind the label; the node box itself goes invisible, and its
+   states (hover, selected, linked, join target) recolor the path instead. */
+.mf-node.is-outline {
+  position: relative;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 2px 6px var(--mf-shadow));
+}
+.mf-node.is-outline > .mf-node-body {
+  position: relative;
+}
+.mf-outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.mf-outline path {
+  fill: var(--mf-node);
+  stroke: var(--mf-border);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  transition:
+    stroke 160ms ease,
+    fill 160ms ease;
+}
+.mf-outline path.mf-outline-detail {
+  fill: none;
+}
+.mf-node.is-outline:hover,
+.mf-node.is-outline.selected,
+.mf-node.is-outline.mf-linked,
+.mf-node.is-outline.join-target,
+.mf-node.is-outline.is-folded,
+.mf-node.is-outline.is-folded:hover {
+  border-color: transparent;
+  box-shadow: none;
+}
+.mf-node.is-outline.join-target {
+  animation: none;
+}
+.mf-node.is-outline:hover .mf-outline path,
+.mf-node.is-outline.mf-linked .mf-outline path {
+  stroke: var(--mf-accent);
+}
+.mf-node.is-outline.selected .mf-outline path,
+.mf-node.is-outline.join-target .mf-outline path {
+  stroke: var(--mf-accent);
+  stroke-width: 2;
+}
+.mf-node.is-outline.selected,
+.mf-node.is-outline.join-target,
+.mf-node.is-outline.mf-linked {
+  filter: drop-shadow(0 0 1.5px var(--mf-accent)) drop-shadow(0 0 8px var(--mf-glow));
+}
+.mf-node.is-outline.is-group .mf-outline path {
+  fill: var(--mf-group);
+}
+/* room for slanted sides and the cylinder's lid */
+.mf-node.mf-shape-hexagon,
+.mf-node.mf-shape-lean-r,
+.mf-node.mf-shape-lean-l,
+.mf-node.mf-shape-trap-b,
+.mf-node.mf-shape-trap-t,
+.mf-node.mf-shape-flag {
+  padding-inline: 26px;
+}
+.mf-node.mf-shape-subroutine {
+  padding-inline: 22px;
+}
+.mf-node.mf-shape-cylinder {
+  min-height: 60px;
+  padding-top: 16px;
+}
+
+/* outline presets: the glow follows the path, "draw on" traces it, "flow"
+   marches its dashes */
+@media (prefers-reduced-motion: no-preference) {
+  .mf-node.is-outline.mf-anim-pulse {
+    animation-name: mf-outline-pulse;
+  }
+  .mf-node.is-outline.mf-anim-draw {
+    animation-name: none;
+    background-image: none;
+  }
+  .mf-node.is-outline.mf-anim-draw .mf-outline path:not(.mf-outline-detail) {
+    stroke-dasharray: 100;
+    animation: mf-outline-draw var(--mf-anim-dur, 1.6s) ease-in-out infinite alternate;
+  }
+  .mf-node.is-outline.mf-anim-flow::after {
+    content: none;
+  }
+  .mf-node.is-outline.mf-anim-flow .mf-outline path:not(.mf-outline-detail) {
+    stroke: var(--mf-flow-ink, var(--mf-accent));
+    stroke-dasharray: 3 3;
+    animation: mf-outline-flow var(--mf-anim-dur, 1.6s) linear infinite;
+  }
+}
+@keyframes mf-outline-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 var(--mf-glow));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px var(--mf-glow));
+  }
+}
+@keyframes mf-outline-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes mf-outline-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* ── Icon tiles ────────────────────────────────────────────────────────
+   A node with an icon: the artwork over its label, tinted with the stroke. */
+.mf-node.is-icon {
+  flex-direction: column;
+  gap: 6px;
+  min-width: 96px;
+  min-height: 84px;
+  padding: 12px 12px 10px;
+}
+.mf-catalog-icon {
+  display: block;
+  flex: none;
+}
+
+/* ── Shape + icon picker ─────────────────────────────────────────────── */
+.mf-picker {
+  background: var(--mf-panel);
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: 296px;
+  gap: 8px;
+  padding: 8px;
+}
+.mf-picker-filter {
+  width: 100%;
+  padding: 6px 9px;
+  background: var(--mf-input);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-border);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+.mf-picker-filter:focus {
+  border-color: var(--mf-accent);
+}
+.mf-picker-scroll {
+  /* everything shows at once on normal screens; on short ones it still
+     scrolls, just without a scrollbar */
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mf-picker-scroll::-webkit-scrollbar {
+  display: none;
+}
+.mf-picker-title {
+  margin: 0 2px 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--mf-muted);
+}
+.mf-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+.mf-picker-item {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 0;
+  background: transparent;
+  color: var(--mf-text);
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.mf-picker-item:hover,
+.mf-picker-item:focus-visible {
+  background: var(--mf-node);
+  color: var(--mf-accent);
+  border-color: var(--mf-border);
+  outline: none;
+}
+
+/* placement previews for outline shapes and icon tiles */
+.mf-place-ghost.is-outline {
+  background: none;
+  border: none;
+  box-shadow: none;
+  filter: drop-shadow(0 0 10px var(--mf-glow));
+}
+.mf-place-ghost .mf-outline path {
+  fill: color-mix(in srgb, var(--mf-accent) 18%, transparent);
+  stroke: var(--mf-accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+.mf-place-ghost.mf-place-cylinder {
+  height: 60px;
+  margin-top: -30px;
+}
+.mf-place-ghost.mf-place-dbl-circle {
+  width: 90px;
+  height: 90px;
+  margin-left: -45px;
+  margin-top: -45px;
+}
+.mf-place-ghost.mf-place-stadium {
+  border-radius: 999px;
+}
+.mf-place-ghost.mf-place-icon {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 84px;
+  margin-left: -48px;
+  margin-top: -42px;
+  border-radius: 12px;
+  color: var(--mf-accent);
+}
+
+/* Flow ring on border-drawn nodes: an SVG rect centred on the CSS border,
+   standing in for it while the flow animation runs. */
+.mf-node.mf-anim-flow:not(.is-outline) {
+  position: relative;
+}
+.mf-flow-ring {
+  position: absolute;
+  top: calc(var(--mf-flow-w, 1px) / -2);
+  left: calc(var(--mf-flow-w, 1px) / -2);
+  width: calc(100% + var(--mf-flow-w, 1px));
+  height: calc(100% + var(--mf-flow-w, 1px));
+  overflow: visible;
+  pointer-events: none;
+}
+.mf-flow-ring rect {
+  fill: none;
+  stroke: var(--mf-flow-ink, var(--mf-border));
+  stroke-width: var(--mf-flow-w, 1px);
+  transition: stroke 160ms ease;
+}
+.mf-node.mf-anim-flow:not(.has-stroke):hover .mf-flow-ring rect,
+.mf-node.mf-anim-flow:not(.has-stroke).selected .mf-flow-ring rect,
+.mf-node.mf-anim-flow:not(.has-stroke).mf-linked .mf-flow-ring rect,
+.mf-node.mf-anim-flow:not(.has-stroke).join-target .mf-flow-ring rect {
+  stroke: var(--mf-accent);
 }

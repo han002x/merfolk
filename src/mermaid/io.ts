@@ -1,31 +1,44 @@
 // Mermaid flowchart <-> merfolk Diagram interop.
 //
 // We support the common `flowchart`/`graph` subset:
-//   - node declarations with shapes:  A[Rect]  B(Round)  C{Diamond}  D((Circle))
+//   - node declarations in every classic bracket shape (see src/shapes.ts):
+//       A[Rect]  B(Round)  C([Stadium])  D[[Sub]]  E[(Database)]  F((Circle))
+//       G(((Double)))  H{Diamond}  I{{Hexagon}}  J[/Lean/]  K[\Lean\]
+//       L[/Trap\]  M[\Trap/]  N>Flag]
+//   - v11 shape/icon metadata:  A@{ shape: cyl, label: "DB" }
+//                              B@{ icon: "simple-icons:github", form: "square", label: "GitHub" }
 //   - edges:  A --> B   A -->|label| B   A --- B
 //   - subgraphs:  subgraph Title ... end   (become collapsible group nodes)
 //
 // This is intentionally a pragmatic parser, not a full mermaid grammar. It
 // round-trips what merfolk itself produces and handles hand-written basics.
+// Everything merfolk emits is checked against the real mermaid parser by
+// scripts/mermaid-compat.ts.
 
 import type { Diagram, DiagramEdge, DiagramNode, NodeShape } from '../types';
+import { SHAPES, SHAPE_ALIAS, iconForm, shapeDef, shapeForForm } from '../shapes.ts';
 
 interface ParsedNode {
   id: string;
   label: string;
   shape: NodeShape;
   parentId: string | null;
-  /** a subgraph with a blank title */
-  frame?: boolean;
+  icon?: string;
 }
 
-const SHAPE_PATTERNS: Array<{ re: RegExp; shape: NodeShape }> = [
-  // order matters: circle (( )) before round ( )
-  { re: /^([A-Za-z0-9_]+)\(\((.+?)\)\)$/, shape: 'circle' },
-  { re: /^([A-Za-z0-9_]+)\{(.+?)\}$/, shape: 'diamond' },
-  { re: /^([A-Za-z0-9_]+)\((.+?)\)$/, shape: 'round' },
-  { re: /^([A-Za-z0-9_]+)\[(.+?)\]$/, shape: 'rect' },
-];
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+// longest opening delimiter first, so `(((` wins over `((` and `[(` over `[`
+const SHAPE_PATTERNS: Array<{ re: RegExp; shape: NodeShape }> = [...SHAPES]
+  .sort((a, b) => b.open.length - a.open.length)
+  .map(({ open, close, shape }) => ({
+    re: new RegExp(`^([A-Za-z0-9_]+)${escapeRe(open)}(.+?)${escapeRe(close)}$`),
+    shape,
+  }));
+
+/** `id@{ key: value, ... }` (Mermaid v11 shape / icon metadata) */
+const META_RE = /^([A-Za-z0-9_]+)\s*@\{(.*)\}$/;
+const META_PAIR_RE = /([A-Za-z]+)\s*:\s*("(?:[^"\\]|\\.)*"|[^,]*)/g;
 
 function stripQuotes(s: string): string {
   const t = s.trim();
@@ -33,15 +46,31 @@ function stripQuotes(s: string): string {
   return t;
 }
 
+function parseMeta(id: string, body: string, parentId: string | null): ParsedNode {
+  const meta: Record<string, string> = {};
+  for (const m of body.matchAll(META_PAIR_RE)) meta[m[1]] = stripQuotes(m[2]);
+  const label = meta.label ?? id;
+  if (meta.icon) {
+    return { id, label, shape: shapeForForm(meta.form), parentId, icon: meta.icon };
+  }
+  // shapes we don't draw yet still import, as rectangles
+  const shape = SHAPE_ALIAS.get((meta.shape ?? 'rect').trim()) ?? 'rect';
+  return { id, label, shape, parentId };
+}
+
 function parseNodeToken(
   token: string,
   parentId: string | null,
 ): ParsedNode | null {
   const t = token.trim();
+  const meta = t.match(META_RE);
+  if (meta) return parseMeta(meta[1], meta[2], parentId);
   for (const { re, shape } of SHAPE_PATTERNS) {
     const m = t.match(re);
     if (m) {
-      return { id: m[1], label: stripQuotes(m[2]), shape, parentId };
+      // a blank `" "` is how an unlabelled node is written (see shapeWrap)
+      const label = stripQuotes(m[2]);
+      return { id: m[1], label: label.trim() === '' ? '' : label, shape, parentId };
     }
   }
   // bare id reference (e.g. just `A`)
@@ -93,9 +122,10 @@ function parseCore(src: string): CoreResult {
       return;
     }
     // enrich: prefer a real shape/label over a bare reference
-    if (existing.label === existing.id && parsed.label !== parsed.id) {
+    if (existing.label === existing.id && (parsed.label !== parsed.id || parsed.icon)) {
       existing.label = parsed.label;
       existing.shape = parsed.shape;
+      if (parsed.icon) existing.icon = parsed.icon;
     }
     if (existing.parentId == null && parsed.parentId != null) {
       existing.parentId = parsed.parentId;
@@ -121,9 +151,8 @@ function parseCore(src: string): CoreResult {
       const parentId = subgraphStack.length
         ? subgraphStack[subgraphStack.length - 1]
         : null;
-      // a blank title marks a frame (a group with no card of its own)
-      const frame = label.trim() === '';
-      ensureNode({ id, label: frame ? '' : label, shape: 'rect', parentId, ...(frame && { frame }) });
+      // a blank title (`[" "]`) is an untitled group
+      ensureNode({ id, label: label.trim() === '' ? '' : label, shape: 'rect', parentId });
       subgraphStack.push(id);
       continue;
     }
@@ -186,7 +215,7 @@ function parseCore(src: string): CoreResult {
     parentId: n.parentId,
     collapsed: false,
     position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
-    ...(n.frame && { frame: true }),
+    ...(n.icon && { icon: n.icon }),
   }));
 
   return { diagram: { nodes, edges }, issues, meaningfulLines };
@@ -243,8 +272,6 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
       position: prev.position,
       collapsed: prev.collapsed,
       style: prev.style,
-      // a titled frame can't be told apart in text, so keep what it was
-      ...((prev.frame || p.frame) && { frame: true }),
     };
   });
 
@@ -262,16 +289,12 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
 
 function shapeWrap(node: DiagramNode): string {
   const l = node.label;
-  switch (node.shape) {
-    case 'round':
-      return `${node.id}("${l}")`;
-    case 'diamond':
-      return `${node.id}{"${l}"}`;
-    case 'circle':
-      return `${node.id}(("${l}"))`;
-    default:
-      return `${node.id}["${l}"]`;
+  if (node.icon) {
+    return `${node.id}@{ icon: "${node.icon}", form: "${iconForm(node.shape)}", label: "${l}" }`;
   }
+  const { open, close } = shapeDef(node.shape);
+  // mermaid rejects an empty `""` in bracket shapes, so a blank label is `" "`
+  return `${node.id}${open}"${l || ' '}"${close}`;
 }
 
 /** A ref back to the diagram element a given source line represents. */
@@ -314,7 +337,7 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
       if (groupIds.has(n.id)) {
         // the subgraph opener line represents the group node
         lineRefs.set(out.length, { kind: 'node', id: n.id });
-        // an untitled frame still needs a (blank) title to stay valid Mermaid
+        // an untitled group still needs a (blank) title to stay valid Mermaid
         out.push(`${indent(depth)}subgraph ${n.id} ["${n.label || ' '}"]`);
         emit(n.id, depth + 1);
         out.push(`${indent(depth)}end`);

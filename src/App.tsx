@@ -27,9 +27,9 @@ import {
   childrenOf,
   descendants,
   foldEdges,
-  frameOrigin,
+  groupOrigin,
   groupPlan,
-  isOpenFrame,
+  isOpenGroup,
   nextFoldLevel,
   nextUnfoldLevel,
   sheets,
@@ -41,6 +41,8 @@ import { JoinPreview } from './components/JoinPreview';
 import { MermaidPanel } from './components/MermaidPanel';
 import { StylePanel } from './components/StylePanel';
 import { Icon } from './components/Icon';
+import { ShapePicker, type Placement } from './components/ShapePicker';
+import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
 import { toggleTheme, useTheme } from './theme';
 import { useHotkeys } from './useHotkeys';
 import {
@@ -50,8 +52,10 @@ import {
   importFile,
   clearSaved,
 } from './persist';
+import { exportGif } from './gif';
 import type { DiagramNode as DNode, NodeShape } from './types';
 import { SAMPLE } from './sample';
+import { hasOutline, shapeDef } from './shapes';
 import './App.css';
 
 const GHOST_ID = '__mf_ghost__';
@@ -70,6 +74,12 @@ const sizeKeySelector = (s: { nodeLookup: Map<string, { type?: string; measured:
 const edgeTypes: EdgeTypes = { diagram: DiagramEdge };
 
 /** A toolbar button whose tooltip announces its keyboard shortcut. */
+/** half the rendered size of a freshly placed node (see `.mf-place-ghost`) */
+function placeHalf({ shape, icon }: Placement): { x: number; y: number } {
+  if (icon) return shape === 'circle' ? { x: 45, y: 45 } : { x: 48, y: 42 };
+  return shapeDef(shape).square ? { x: 45, y: 45 } : { x: 60, y: 24 };
+}
+
 function ToolButton({
   label,
   hotkey,
@@ -124,12 +134,16 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const hand = tool === 'hand';
 
   /** shape awaiting placement, and the live cursor position for its preview */
-  const [pending, setPending] = useState<NodeShape | null>(null);
+  const [pending, setPending] = useState<Placement | null>(null);
+  /** the shape + icon library popover */
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
 
   /** the overflow (3-dot) menu: open state and its anchor for click-outside */
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  /** true while a GIF is being captured + encoded (disables re-entry) */
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -180,11 +194,33 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     [autoLayout, fitView],
   );
 
+  // Export an animated GIF of the whole diagram: frame it, drop the live
+  // selection so no outline bleeds into the capture, then record the viewport.
+  const saveGif = useCallback(async () => {
+    if (exporting) return;
+    const el = document.querySelector<HTMLElement>('.react-flow');
+    if (!el) return;
+    setExporting(true);
+    setSelection([], []);
+    fitView({ padding: 0.2, duration: 0 });
+    // wait a frame for the fit + deselect to paint before capturing
+    await new Promise((r) => window.requestAnimationFrame(() => r(null)));
+    try {
+      const { nodes: ns, edges: es } = useDiagram.getState();
+      await exportGif(el, { nodes: ns, edges: es });
+    } catch {
+      // capture/encoding is best-effort; never crash the canvas
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, fitView, setSelection]);
+
   const hidden = useMemo(() => hiddenNodeIds(), [hiddenNodeIds, nodes]);
-  // not drawn as a node: folded away, or an unfolded frame (just a sheet)
+  // not drawn as a node: folded away, or an unfolded group (just a sheet)
   const offscreen = useMemo(() => {
+    const kids = childrenOf(nodes);
     const out = new Set(hidden);
-    for (const n of nodes) if (isOpenFrame(n)) out.add(n.id);
+    for (const n of nodes) if (isOpenGroup(n, kids)) out.add(n.id);
     return out;
   }, [nodes, hidden]);
 
@@ -210,20 +246,20 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   }, [sizeKey]);
   const sizeOf = useMemo(() => {
     const measured = new Map(sizeCache.current);
-    return (n: DNode) => measured.get(n.id) ?? sizeFor(n.shape);
+    return (n: DNode) => measured.get(n.id) ?? sizeFor(n.shape, n.icon);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sizesVersion]);
 
   const positionOf = useMemo(() => {
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const kids = childrenOf(nodes);
-    // a frame's card sits at the top-left of its contents
-    const framePos = new Map<string, { x: number; y: number }>();
+    // a group's card (shown once folded) sits at the top-left of its contents
+    const groupPos = new Map<string, { x: number; y: number }>();
     for (const n of nodes) {
-      const o = n.frame ? frameOrigin(n.id, nodes, kids) : null;
-      if (o) framePos.set(n.id, o);
+      const o = kids.has(n.id) ? groupOrigin(n.id, nodes, kids) : null;
+      if (o) groupPos.set(n.id, o);
     }
-    const base = (n: DNode) => framePos.get(n.id) ?? n.position;
+    const base = (n: DNode) => groupPos.get(n.id) ?? n.position;
     return (n: DNode) => {
       const into = foldPhase && foldPhase !== 'unfolding' ? foldAnchor.get(n.id) : undefined;
       const card = into ? byId.get(into) : undefined;
@@ -254,8 +290,6 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         id: n.id,
         selected: sel.has(n.id),
         type: 'diagram',
-        // a frame's card exists only while folded, so nothing may attach to it
-        connectable: n.frame ? false : undefined,
         position: positionOf(n),
         measured: sizeCache.current.get(n.id),
         className: foldAnchor.has(n.id)
@@ -266,11 +300,11 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         data: {
           label: n.label,
           shape: n.shape,
+          icon: n.icon,
           isGroup: isGroup(n.id),
           collapsed: n.collapsed,
           childCount: descendants(n.id, kids).length,
           style: n.style,
-          frame: n.frame === true,
         },
       }));
   }, [nodes, offscreen, isGroup, positionOf, foldPhase, foldAnchor, selected]);
@@ -297,8 +331,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         width: sh.rect.width,
         height: sh.rect.height,
         depth: sh.depth,
-        // a frame has no card, so its sheet carries the (editable) title
-        frame: byId.get(sh.groupId)?.frame === true,
+        // a group has no card while unfolded, so its sheet carries the title
         title: byId.get(sh.groupId)?.label ?? '',
       },
     }));
@@ -393,6 +426,22 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const rfEdges: Edge[] = useMemo(() => {
     const selEdge = new Set(selectedEdges);
     const { direct, folded } = foldEdges(nodes, edges, hidden);
+    // An edge on an unfolded group lands on its sheet, as in Mermaid. One
+    // between a group and its own contents has no sensible path, so it waits
+    // until the group folds (and then folds away inside it).
+    const kids = childrenOf(nodes);
+    const inside = new Map<string, Set<string>>();
+    const within = (g: string, id: string) => {
+      if (!inside.has(g)) inside.set(g, new Set(descendants(g, kids)));
+      return inside.get(g)!.has(id);
+    };
+    const endOf = (id: string) => (offscreen.has(id) ? SHEET_PREFIX + id : id);
+    const onScreen = (e: { source: string; target: string }) => {
+      const s = offscreen.has(e.source);
+      const t = offscreen.has(e.target);
+      if ((s && within(e.source, e.target)) || (t && within(e.target, e.source))) return null;
+      return { source: endOf(e.source), target: endOf(e.target) };
+    };
     // while previewing an insertion that splits A → B, draw A → ghost → B as
     // dashed preview legs in place of the edge it would replace
     const split = ghostNode ? splitEdgeFor(edges, insertion) : undefined;
@@ -404,7 +453,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         ].map((leg, i) => ({
           id: `__mf_ghost_edge_${i}__`,
           type: 'diagram',
-          ...leg,
+          source: endOf(leg.source),
+          target: endOf(leg.target),
           className: 'mf-ghost-edge',
           selectable: false,
           focusable: false,
@@ -416,8 +466,10 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
       ...previewLegs,
       // the split edge stays mounted (faded) so its label and insert button
       // keep the pointer, otherwise the preview would end the hover it came from
-      // an edge on an unfolded frame has no card to land on until it folds
-      ...direct.filter((e) => !offscreen.has(e.source) && !offscreen.has(e.target)).map((e) => ({
+      ...direct.flatMap((e) => {
+        const ends = onScreen(e);
+        return ends ? [{ ...e, ...ends }] : [];
+      }).map((e) => ({
         id: e.id,
         className: e.id === splitting?.id ? 'mf-edge-splitting' : undefined,
         type: 'diagram',
@@ -493,8 +545,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 
   // Arm a shape for placement: the next left-click on the canvas drops it at
   // the cursor. A preview ghost follows the pointer until then.
-  const arm = useCallback((shape: NodeShape) => {
-    setPending(shape);
+  const arm = useCallback((shape: NodeShape, icon?: string) => {
+    setPending(icon ? { shape, icon } : { shape });
     setCursor(null);
   }, []);
 
@@ -516,7 +568,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     (e: React.MouseEvent) => {
       if (!pending) return;
       const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      addNode(pending, { x: flow.x - 60, y: flow.y - 24 });
+      const half = placeHalf(pending);
+      addNode(pending.shape, { x: flow.x - half.x, y: flow.y - half.y }, pending.icon);
       cancelPending();
     },
     [pending, screenToFlowPosition, addNode, cancelPending],
@@ -579,6 +632,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'o', run: () => arm('round') },
         { key: 'd', run: () => arm('diamond') },
         { key: 'c', run: () => arm('circle') },
+        { key: 's', run: () => setPickerOpen((v) => !v) },
         { key: 'l', run: () => tidy('TB') },
         { key: 'l', shift: true, run: () => tidy('LR') },
         { key: 't', run: () => toggleTheme() },
@@ -624,6 +678,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           <ToolButton label="Circle" hotkey="C" onClick={() => arm('circle')}>
             <Icon name="circle" />
           </ToolButton>
+          <ShapePicker open={pickerOpen} onOpenChange={setPickerOpen} onPick={(p) => arm(p.shape, p.icon)} />
         </div>
         <span className="mf-sep" />
         <div className="mf-group-btns">
@@ -660,6 +715,18 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
               >
                 <Icon name="export" />
                 <span>Export file</span>
+              </button>
+              <button
+                className="mf-menu-item"
+                role="menuitem"
+                disabled={exporting}
+                onClick={() => {
+                  setMenuOpen(false);
+                  saveGif();
+                }}
+              >
+                <Icon name="film" />
+                <span>{exporting ? 'Exporting GIF…' : 'Export GIF'}</span>
               </button>
               <button
                 className="mf-menu-item"
@@ -762,9 +829,19 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         >
           {cursor && (
             <div
-              className={`mf-place-ghost mf-place-${pending}`}
+              className={[
+                'mf-place-ghost',
+                `mf-place-${pending.icon ? 'icon' : pending.shape}`,
+                !pending.icon && hasOutline(pending.shape) ? 'is-outline' : '',
+              ].join(' ')}
               style={{ left: cursor.x, top: cursor.y }}
-            />
+            >
+              {pending.icon ? (
+                <CatalogIcon id={pending.icon} />
+              ) : (
+                <ShapeOutline shape={pending.shape} />
+              )}
+            </div>
           )}
         </div>
       )}

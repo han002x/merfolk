@@ -15,14 +15,25 @@ export type Direction = 'TB' | 'LR';
 export const GHOST_SIZE = { width: 120, height: 48 };
 
 // Dagre needs width/height to space nodes without overlap.
-export function sizeFor(shape: NodeShape): { width: number; height: number } {
+export function sizeFor(shape: NodeShape, icon?: string): { width: number; height: number } {
+  if (icon) return shape === 'circle' ? { width: 96, height: 96 } : { width: 96, height: 84 };
   switch (shape) {
     case 'circle':
+    case 'dbl-circle':
       return { width: 96, height: 96 };
     case 'diamond':
       return { width: 110, height: 110 };
     case 'round':
       return { width: 140, height: 52 };
+    case 'cylinder':
+      return { width: 150, height: 64 };
+    case 'hexagon':
+    case 'lean-r':
+    case 'lean-l':
+    case 'trap-b':
+    case 'trap-t':
+    case 'flag':
+      return { width: 170, height: 52 };
     default:
       return { width: 150, height: 52 };
   }
@@ -50,15 +61,14 @@ function run(
   compound: boolean,
 ): Record<string, { x: number; y: number }> {
   const visible = new Set(nodes.map((n) => n.id));
-  // Each unfolded group becomes a cluster holding its card and its visible
-  // children, so the paper sheet drawn around them never overlaps others.
-  const open = compound
-    ? new Set(
-        nodes
-          .filter((n) => !n.collapsed && nodes.some((c) => c.parentId === n.id && visible.has(c.id)))
-          .map((n) => n.id),
-      )
-    : new Set<string>();
+  // Each unfolded group becomes a cluster holding its visible children, so the
+  // paper sheet drawn around them never overlaps others.
+  const unfolded = new Set(
+    nodes
+      .filter((n) => !n.collapsed && nodes.some((c) => c.parentId === n.id && visible.has(c.id)))
+      .map((n) => n.id),
+  );
+  const open = compound ? unfolded : new Set<string>();
 
   const g = new Dagre.graphlib.Graph({ compound: open.size > 0 });
   g.setGraph({
@@ -71,13 +81,11 @@ function run(
   });
   g.setDefaultEdgeLabel(() => ({}));
 
-  // an unfolded frame has no card, only its sheet (cluster)
-  const cardless = (n: DiagramNode) => n.frame === true && !n.collapsed;
-  for (const n of nodes) if (!cardless(n)) g.setNode(n.id, sizeFor(n.shape));
+  // an unfolded group has no card, only its sheet (cluster)
+  for (const n of nodes) if (!unfolded.has(n.id)) g.setNode(n.id, sizeFor(n.shape, n.icon));
   for (const id of open) g.setNode(sheetId(id), {});
   for (const n of nodes) {
     if (open.has(n.id)) {
-      if (!cardless(n)) g.setParent(n.id, sheetId(n.id));
       if (n.parentId && open.has(n.parentId)) g.setParent(sheetId(n.id), sheetId(n.parentId));
     } else if (n.parentId && open.has(n.parentId)) {
       g.setParent(n.id, sheetId(n.parentId));
@@ -85,7 +93,7 @@ function run(
   }
 
   for (const e of edges) {
-    if (g.hasNode(e.source) && g.hasNode(e.target) && visible.has(e.source) && visible.has(e.target)) {
+    if (g.hasNode(e.source) && g.hasNode(e.target)) {
       g.setEdge(e.source, e.target);
     }
   }
@@ -97,7 +105,7 @@ function run(
     const p = g.node(n.id);
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
     // dagre gives node centers; React Flow positions are top-left
-    const { width, height } = sizeFor(n.shape);
+    const { width, height } = sizeFor(n.shape, n.icon);
     positions[n.id] = { x: p.x - width / 2, y: p.y - height / 2 };
   }
   return positions;

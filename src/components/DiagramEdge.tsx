@@ -8,7 +8,7 @@ import {
 import { useDiagram } from '../store';
 import { Icon } from './Icon';
 import type { ElementStyle } from '../types';
-import { STYLE_DEFAULTS, animationClass, dashArray, fontFamilyCss } from '../style';
+import { STYLE_DEFAULTS, animationClass, dashArray, flowDash, fontFamilyCss } from '../style';
 
 const EDGE_STYLE_BASE: React.CSSProperties = {
   transition: 'stroke 160ms ease, stroke-width 160ms ease',
@@ -119,8 +119,9 @@ export function DiagramEdge({
   // motion reads even on a solid edge) and drive the cycle from the speed
   const flowing = !inert && st?.animation === 'flow';
   if (flowing) {
-    if (!ownStyle.strokeDasharray)
-      ownStyle.strokeDasharray = `${strokeWidth * 4} ${strokeWidth * 3}`;
+    const fd = flowDash(st?.strokeStyle ?? STYLE_DEFAULTS.strokeStyle, strokeWidth);
+    ownStyle.strokeDasharray = fd.array;
+    (ownStyle as Record<string, string | number>)['--mf-flow-period'] = fd.period;
     ownStyle.animationDuration = `${st?.animationSpeed ?? STYLE_DEFAULTS.animationSpeed}s`;
   }
   const edgeAnimCls = flowing ? animationClass('flow') : null;

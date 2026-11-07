@@ -3,44 +3,21 @@ import { Handle, Position, useConnection, type NodeProps } from '@xyflow/react';
 import type { ElementStyle, NodeShape } from '../types';
 import { useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
-import { STYLE_DEFAULTS, animationClass, fontFamilyCss } from '../style';
+import { STYLE_DEFAULTS, animationClass, flowDash, fontFamilyCss } from '../style';
+import { CatalogIcon, ShapeOutline } from './ShapeOutline';
+import { hasOutline, iconTileCss, shapeCss } from '../shapes';
 
 export interface NodeData {
   label: string;
   shape: NodeShape;
+  /** Iconify id: the node renders as an icon tile */
+  icon?: string;
   isGroup: boolean;
   collapsed: boolean;
   /** how many nodes are folded inside this card */
   childCount: number;
   style?: ElementStyle;
-  /** a frame group's card (shown only while folded); may be untitled */
-  frame?: boolean;
   [key: string]: unknown;
-}
-
-function shapeStyle(shape: NodeShape, rounded: boolean): React.CSSProperties {
-  switch (shape) {
-    case 'round':
-      return { borderRadius: 24 };
-    case 'circle':
-      return {
-        borderRadius: '50%',
-        width: 90,
-        height: 90,
-        minWidth: 90,
-        minHeight: 90,
-      };
-    case 'diamond':
-      return {
-        transform: 'rotate(45deg)',
-        width: 90,
-        height: 90,
-        minWidth: 90,
-        minHeight: 90,
-      };
-    default:
-      return { borderRadius: rounded ? 12 : 0 };
-  }
 }
 
 function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
@@ -67,20 +44,29 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
     setEditing(false);
   };
 
-  const diamond = d.shape === 'diamond';
+  const icon = d.icon;
+  const diamond = !icon && d.shape === 'diamond';
+  // shapes CSS can't draw get an SVG outline; the div itself goes invisible
+  const outline = !icon && hasOutline(d.shape);
 
   const st = d.style;
   const sloppiness = st?.sloppiness ?? STYLE_DEFAULTS.sloppiness;
   // Derive concrete CSS from the optional style overrides. Unset fields fall
   // back to the theme-driven CSS variables so untouched nodes look unchanged.
-  const styleCss: React.CSSProperties = {
-    ...shapeStyle(d.shape, (st?.edges ?? STYLE_DEFAULTS.edges) === 'round'),
-  };
-  if (st?.stroke) styleCss.borderColor = st.stroke;
-  if (st?.background) styleCss.background = st.background;
-  if (st?.strokeWidth != null) styleCss.borderWidth = st.strokeWidth;
-  if (st?.strokeStyle && st.strokeStyle !== 'solid')
-    styleCss.borderStyle = st.strokeStyle;
+  const rounded = (st?.edges ?? STYLE_DEFAULTS.edges) === 'round';
+  const styleCss: React.CSSProperties = icon ? iconTileCss(d.shape, rounded) : shapeCss(d.shape, rounded);
+  // the corner radius the flow ring follows (before sloppiness skews it)
+  const baseRadius = styleCss.borderRadius;
+  // an outline shape takes stroke/fill/dash on its SVG path instead
+  if (!outline) {
+    if (st?.stroke) styleCss.borderColor = st.stroke;
+    if (st?.background) styleCss.background = st.background;
+    if (st?.strokeWidth != null) styleCss.borderWidth = st.strokeWidth;
+    if (st?.strokeStyle && st.strokeStyle !== 'solid')
+      styleCss.borderStyle = st.strokeStyle;
+  }
+  // icons take the stroke color, like the text and the outline
+  if (icon && st?.stroke) styleCss.color = st.stroke;
   if (st?.opacity != null) styleCss.opacity = st.opacity;
   if (st?.fontFamily) styleCss.fontFamily = fontFamilyCss(st.fontFamily);
   if (st?.fontSize != null) styleCss.fontSize = st.fontSize;
@@ -98,12 +84,30 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
   // motion preset: a CSS class drives the keyframes, its cycle length comes
   // from the per-element speed (falls back to the theme default)
   const animCls = animationClass(st?.animation);
+  // flow redraws the outline as a marching stroke that inherits the node's
+  // own stroke color, width and style (see flowDash)
+  const flowing = st?.animation === 'flow';
+  const strokeW = st?.strokeWidth ?? STYLE_DEFAULTS.strokeWidth;
+  const fd = flowDash(st?.strokeStyle ?? STYLE_DEFAULTS.strokeStyle, strokeW);
   if (animCls) {
-    styleCss.animationDuration = `${st?.animationSpeed ?? STYLE_DEFAULTS.animationSpeed}s`;
+    const dur = `${st?.animationSpeed ?? STYLE_DEFAULTS.animationSpeed}s`;
+    styleCss.animationDuration = dur;
+    (styleCss as Record<string, string | number>)['--mf-anim-dur'] = dur;
+    if (flowing) {
+      const vars = styleCss as Record<string, string | number>;
+      vars['--mf-flow-period'] = fd.period;
+      vars['--mf-flow-w'] = `${strokeW}px`;
+      if (st?.stroke) vars['--mf-flow-ink'] = st.stroke;
+      // the ring replaces the CSS border, which would otherwise show through
+      if (!outline) styleCss.borderColor = 'transparent';
+    }
   }
 
   const cls = [
     'mf-node',
+    `mf-shape-${d.shape}`,
+    outline ? 'is-outline' : '',
+    icon ? 'is-icon' : '',
     d.isGroup ? 'is-group' : '',
     d.isGroup && d.collapsed ? 'is-folded' : '',
     selected ? 'selected' : '',
@@ -112,6 +116,7 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
     isConnectionTarget ? 'join-target' : '',
     highlighted ? 'mf-linked' : '',
     animCls ?? '',
+    st?.stroke ? 'has-stroke' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -128,6 +133,18 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
       }}
     >
       <Handle type="target" position={Position.Top} />
+      {outline && <ShapeOutline shape={d.shape} style={st} flowDash={flowing ? fd.array : undefined} />}
+      {flowing && !outline && (
+        <svg className="mf-flow-ring" aria-hidden="true">
+          <rect
+            width="100%"
+            height="100%"
+            rx={typeof baseRadius === 'number' ? baseRadius + strokeW / 2 : (baseRadius ?? 0)}
+            strokeDasharray={fd.array}
+          />
+        </svg>
+      )}
+      {icon && <CatalogIcon id={icon} />}
       <div className="mf-node-body" style={diamond ? { transform: 'rotate(-45deg)' } : undefined}>
         {editing ? (
           <input
@@ -142,8 +159,8 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
             }}
           />
         ) : (
-          <span className={`mf-node-label ${d.frame && !d.label ? 'is-empty' : ''}`}>
-            {d.frame && !d.label ? 'Untitled' : d.label}
+          <span className={`mf-node-label ${d.isGroup && !d.label ? 'is-empty' : ''}`}>
+            {d.isGroup && !d.label ? 'Untitled' : d.label}
           </span>
         )}
         {d.isGroup && d.collapsed && (

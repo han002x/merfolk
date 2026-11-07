@@ -32,3 +32,5 @@ highest-leverage unchecked task, executes it, and checks it off here.
       export/import; clear canvas.
 - [x] M8 Edge editing — inline labels, delete, mermaid label round-trip.
 - [x] M9 Offline fonts — self-hosted Inter + JetBrains Mono via @fontsource.
+- [x] Shapes + icons — 14 Mermaid-classic shapes, ~70 tech/brand icons
+      (Lucide + Simple Icons) in an S picker; checked against real mermaid.

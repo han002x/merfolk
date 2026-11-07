@@ -1,5 +1,5 @@
 import { memo, useState } from 'react';
-import type { NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { useFoldMotion } from '../foldMotion';
 import { useDiagram } from '../store';
 
@@ -8,21 +8,24 @@ export interface SheetData {
   width: number;
   height: number;
   depth: number;
-  /** a frame group has no card, so its sheet shows the group's title */
-  frame?: boolean;
+  /** an unfolded group has no card, so its sheet shows the group's title */
   title?: string;
   [key: string]: unknown;
 }
 
 /**
- * The paper an unfolded group's subtree sits on. Purely visual (the canvas
- * pans straight through it) except for the dog-eared corner, which folds the
- * sheet back into its group card, and a frame's title, which renames it.
+ * The paper an unfolded group's subtree sits on, standing in for the group:
+ * it carries the group's title (double-click to rename) and the edges that
+ * point at the group. Otherwise purely visual (the canvas pans straight
+ * through it), apart from the dog-eared corner that folds it into a card.
  */
 function SheetNodeInner({ data }: NodeProps) {
   const d = data as SheetData;
   const toggle = useFoldMotion((s) => s.toggle);
   const updateLabel = useDiagram((s) => s.updateLabel);
+  const setHighlight = useDiagram((s) => s.setHighlight);
+  // the group's `subgraph` line is hovered in the Mermaid editor
+  const linked = useDiagram((s) => s.highlight?.kind === 'node' && s.highlight.id === d.groupId);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -34,13 +37,15 @@ function SheetNodeInner({ data }: NodeProps) {
 
   return (
     <div
-      className="mf-sheet"
+      className={linked ? 'mf-sheet mf-linked' : 'mf-sheet'}
       data-depth={Math.min(d.depth, 3)}
       style={{ width: d.width, height: d.height }}
     >
       <div className="mf-sheet-paper" />
-      {d.frame &&
-        (editing ? (
+      {/* edges into the group land on the sheet; it never starts a connection */}
+      <Handle type="target" position={Position.Top} isConnectable={false} className="mf-sheet-handle" />
+      <Handle type="source" position={Position.Bottom} isConnectable={false} className="mf-sheet-handle" />
+      {editing ? (
           <input
             autoFocus
             className="mf-sheet-title-input nodrag nopan"
@@ -57,6 +62,8 @@ function SheetNodeInner({ data }: NodeProps) {
           <span
             className={`mf-sheet-title nodrag nopan ${d.title ? '' : 'is-empty'}`}
             title="Double-click to rename"
+            onPointerEnter={() => setHighlight({ kind: 'node', id: d.groupId })}
+            onPointerLeave={() => setHighlight(null)}
             onDoubleClick={(e) => {
               e.stopPropagation();
               setDraft(d.title ?? '');
@@ -65,7 +72,7 @@ function SheetNodeInner({ data }: NodeProps) {
           >
             {d.title || 'Untitled'}
           </span>
-        ))}
+        )}
       <button
         className="mf-dogear nodrag nopan"
         aria-label="Fold"

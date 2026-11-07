@@ -2,36 +2,16 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import type { NodeShape } from '../types';
 import { GHOST_SIZE } from '../layout';
+import { shapeCss } from '../shapes';
 
 export interface GhostData {
   shape: NodeShape;
   [key: string]: unknown;
 }
 
-function shapeStyle(shape: NodeShape): React.CSSProperties {
-  switch (shape) {
-    case 'round':
-      return { borderRadius: 24 };
-    case 'circle':
-      return {
-        borderRadius: '50%',
-        width: 90,
-        height: 90,
-        minWidth: 90,
-        minHeight: 90,
-      };
-    case 'diamond':
-      return {
-        transform: 'rotate(45deg)',
-        width: 90,
-        height: 90,
-        minWidth: 90,
-        minHeight: 90,
-      };
-    default:
-      return { borderRadius: 6, ...GHOST_SIZE };
-  }
-}
+// the default rect matches GHOST_SIZE exactly, so the canvas can centre it
+const ghostCss = (shape: NodeShape): React.CSSProperties =>
+  shape === 'rect' ? { borderRadius: 6, ...GHOST_SIZE } : shapeCss(shape, true);
 
 /**
  * A non-interactive placeholder rendered on the canvas while the user hovers an
@@ -42,7 +22,7 @@ function GhostNodeInner({ data }: NodeProps) {
   const d = data as GhostData;
   // invisible, inert handles so preview edges (A → ghost → B) can attach
   return (
-    <div className="mf-node mf-ghost" style={shapeStyle(d.shape)}>
+    <div className="mf-node mf-ghost" style={ghostCss(d.shape)}>
       <Handle type="target" position={Position.Top} isConnectable={false} />
       <Handle type="source" position={Position.Bottom} isConnectable={false} />
     </div>

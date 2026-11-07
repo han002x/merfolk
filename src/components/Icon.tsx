@@ -17,11 +17,13 @@ type IconName =
   | 'plus'
   | 'export'
   | 'import'
+  | 'film'
   | 'trash'
   | 'fold'
   | 'group'
   | 'unfold'
-  | 'more';
+  | 'more'
+  | 'shapes';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   rect: <rect x="3" y="6" width="18" height="12" rx="2" />,
@@ -64,6 +66,14 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M5 19h14" />
     </>
   ),
+  // a film strip: the frame with sprocket holes down the sides
+  film: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M7 4v16M17 4v16" />
+      <path d="M3 9h4M3 15h4M17 9h4M17 15h4" />
+    </>
+  ),
   // two cards gathered inside a dashed frame
   group: (
     <>
@@ -104,6 +114,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M4 7h16" />
       <path d="M9 7V5h6v2" />
       <path d="M6 7l1 13h10l1-13" />
+    </>
+  ),
+  // a square, a circle and a triangle: the shape + icon library
+  shapes: (
+    <>
+      <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" />
+      <circle cx="17" cy="7" r="3.5" />
+      <path d="M7 13.5l3.8 6.5H3.2z" />
+      <rect x="13.5" y="13.5" width="7" height="7" rx="3.5" />
     </>
   ),
   // vertical three-dot kebab menu

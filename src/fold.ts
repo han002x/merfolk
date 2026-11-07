@@ -38,10 +38,10 @@ export function descendants(
 }
 
 /**
- * Where a frame group sits: the top-left of everything inside it. Frames have
- * no card while unfolded, so their own stored position is never used.
+ * Where a group sits: the top-left of everything inside it. A group has no
+ * card while unfolded, so its own stored position is never used.
  */
-export function frameOrigin(
+export function groupOrigin(
   id: string,
   nodes: DiagramNode[],
   kids: Map<string | null, DiagramNode[]> = childrenOf(nodes),
@@ -51,15 +51,16 @@ export function frameOrigin(
   let y = Infinity;
   for (const d of descendants(id, kids)) {
     const n = byId.get(d);
-    if (!n || n.frame) continue; // a nested frame's own position is meaningless
+    if (!n || kids.has(d)) continue; // a nested group's own position is meaningless
     x = Math.min(x, n.position.x);
     y = Math.min(y, n.position.y);
   }
   return Number.isFinite(x) ? { x, y } : null;
 }
 
-/** An unfolded frame: a group drawn as a bare sheet, with no card on screen. */
-export const isOpenFrame = (n: DiagramNode) => n.frame === true && !n.collapsed;
+/** An unfolded group: drawn as a titled sheet, with no card on screen. */
+export const isOpenGroup = (n: DiagramNode, kids: Map<string | null, DiagramNode[]>) =>
+  !n.collapsed && kids.has(n.id);
 
 /** Ids hidden because some ancestor is folded. */
 export function hiddenIds(nodes: DiagramNode[]): Set<string> {
@@ -176,13 +177,13 @@ export interface Sheet {
 }
 
 export const SHEET_PAD = 22;
-/** extra room above a frame's contents for its title */
-export const FRAME_TITLE = 22;
+/** extra room above a sheet's contents for its group's title */
+export const SHEET_TITLE = 22;
 
 /**
- * One paper sheet per unfolded, on-screen group, sized to wrap the group card,
- * its visible children and any nested sheets. Ordered outermost first so
- * nested sheets stack on top.
+ * One paper sheet per unfolded, on-screen group, sized to wrap its visible
+ * children and any nested sheets, with a band on top for the group's title.
+ * Ordered outermost first so nested sheets stack on top.
  */
 export function sheets(
   nodes: DiagramNode[],
@@ -194,25 +195,15 @@ export function sheets(
   const out: Sheet[] = [];
   const rectOf = (n: DiagramNode): Rect => ({ ...positionOf(n), ...sizeOf(n) });
 
-  const build = (g: DiagramNode, depth: number): Rect | null => {
+  const build = (g: DiagramNode, depth: number): Rect => {
     const children = (kids.get(g.id) ?? []).filter((c) => !hidden.has(c.id));
-    const open = !g.collapsed && !hidden.has(g.id) && children.length > 0;
-    // an open frame has no card: its sheet wraps the children alone
-    const own = open && g.frame ? null : rectOf(g);
-    if (!open) return own;
+    if (g.collapsed || hidden.has(g.id) || children.length === 0) return rectOf(g);
+    // an open group has no card: its sheet wraps its children, plus a title band
     const index = out.length;
-    out.push({ groupId: g.id, rect: own!, depth }); // placeholder, filled below
-    let box = own;
-    for (const c of children) {
-      const r = build(c, depth + 1);
-      if (r) box = box ? union(box, r) : r;
-    }
-    if (!box) {
-      out.splice(index, 1);
-      return null;
-    }
-    let rect = pad(box, SHEET_PAD);
-    if (g.frame) rect = { ...rect, y: rect.y - FRAME_TITLE, height: rect.height + FRAME_TITLE };
+    out.push({ groupId: g.id, rect: rectOf(g), depth }); // placeholder, keeps outer sheets first
+    const box = children.map((c) => build(c, depth + 1)).reduce(union);
+    const padded = pad(box, SHEET_PAD);
+    const rect = { ...padded, y: padded.y - SHEET_TITLE, height: padded.height + SHEET_TITLE };
     out[index] = { groupId: g.id, rect, depth };
     return rect;
   };

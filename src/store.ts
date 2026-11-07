@@ -11,7 +11,7 @@ import { layout, type Direction } from './layout';
 import {
   childrenOf,
   descendants,
-  frameOrigin,
+  groupOrigin,
   groupPlan,
   hiddenIds as computeHidden,
 } from './fold';
@@ -21,7 +21,7 @@ const nextId = (prefix: string) => `${prefix}${Date.now().toString(36)}${idSeq++
 
 /**
  * Whether two diagrams are equivalent for live-sync purposes: same nodes
- * (id, label, shape, parentId, position) and same edges (source, target,
+ * (id, label, shape, icon, parentId, position) and same edges (source, target,
  * label), in the same order. Lets `syncMermaid` skip no-op edits so moving the
  * caret or re-typing identical text neither re-renders nor grows undo history.
  */
@@ -34,6 +34,7 @@ function unchanged(a: Diagram, b: Diagram): boolean {
       x.id !== y.id ||
       x.label !== y.label ||
       x.shape !== y.shape ||
+      x.icon !== y.icon ||
       x.parentId !== y.parentId ||
       x.position.x !== y.position.x ||
       x.position.y !== y.position.y
@@ -144,7 +145,7 @@ interface State {
   setSelection: (nodeIds: string[], edgeIds: string[]) => void;
 
   // mutations
-  addNode: (shape: NodeShape, position: { x: number; y: number }) => string;
+  addNode: (shape: NodeShape, position: { x: number; y: number }, icon?: string) => string;
   updateLabel: (id: string, label: string) => void;
   updateNodeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
   updateEdgeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
@@ -157,7 +158,7 @@ interface State {
   /** fold (true) or unfold (false) several groups as one undo step */
   setCollapsed: (ids: string[], collapsed: boolean) => void;
   nestInto: (childId: string, groupId: string | null) => void;
-  /** wrap the given nodes in a new untitled frame group (no card of its own),
+  /** wrap the given nodes in a new untitled group (a sheet, no card of its own),
    *  or move them into the one group already among them; returns its id */
   groupNodes: (ids: string[]) => string | null;
   autoLayout: (direction?: Direction) => void;
@@ -333,7 +334,7 @@ export const useDiagram = create<State>((set, get) => {
       return { selectedNodeIds: nodeIds, selectedEdgeIds: edgeIds };
     }),
 
-  addNode: (shape, position) => {
+  addNode: (shape, position, icon) => {
     const id = nextId('n');
     const node: DiagramNode = {
       id,
@@ -342,6 +343,7 @@ export const useDiagram = create<State>((set, get) => {
       parentId: null,
       collapsed: false,
       position,
+      ...(icon && { icon }),
     };
     set((s) => ({ ...snapshot(), nodes: [...s.nodes, node] }));
     return id;
@@ -386,11 +388,10 @@ export const useDiagram = create<State>((set, get) => {
       const coalesce = lastMoveId === id && s.history.length > 0;
       const hist = coalesce ? null : snapshot();
       lastMoveId = id;
-      const frame = s.nodes.find((n) => n.id === id && n.frame);
-      if (frame) {
-        // a frame's card sits on its contents: dragging it carries them along
-        const kids = childrenOf(s.nodes);
-        const from = frameOrigin(id, s.nodes, kids);
+      const kids = childrenOf(s.nodes);
+      if (kids.has(id)) {
+        // a group's card sits on its contents: dragging it carries them along
+        const from = groupOrigin(id, s.nodes, kids);
         if (!from) return s;
         const dx = position.x - from.x;
         const dy = position.y - from.y;
@@ -505,21 +506,19 @@ export const useDiagram = create<State>((set, get) => {
     }
     const id = nextId('g');
     const nodesAfter = get().nodes.map((n) => (members.has(n.id) ? { ...n, parentId: id } : n));
-    // a frame: no card while unfolded, its position follows its contents
     const group: DiagramNode = {
       id,
       label: '',
       shape: 'rect',
       parentId: plan.parentId,
       collapsed: false,
-      // only a fallback: a frame's position is always derived from its contents
-      position: frameOrigin(id, nodesAfter) ?? { x: 0, y: 0 },
-      frame: true,
+      // unused: a group's position is always derived from its contents
+      position: groupOrigin(id, nodesAfter) ?? { x: 0, y: 0 },
     };
     set(() => ({
       ...snapshot(),
       nodes: [...nodesAfter, group],
-      // the frame has nothing on screen to select: keep its members selected
+      // the new group has nothing on screen to select: keep its members selected
       selectedNodeIds: plan.members,
       selectedEdgeIds: [],
     }));
