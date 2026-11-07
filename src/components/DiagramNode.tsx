@@ -95,7 +95,7 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
     (styleCss as Record<string, string | number>)['--mf-anim-dur'] = dur;
     if (flowing) {
       const vars = styleCss as Record<string, string | number>;
-      vars['--mf-flow-period'] = fd.period;
+      vars['--mf-flow-period'] = `${fd.period}px`;
       vars['--mf-flow-w'] = `${strokeW}px`;
       if (st?.stroke) vars['--mf-flow-ink'] = st.stroke;
       // the ring replaces the CSS border, which would otherwise show through

@@ -19,6 +19,14 @@ import {
 let idSeq = 0;
 const nextId = (prefix: string) => `${prefix}${Date.now().toString(36)}${idSeq++}`;
 
+function nextNodeId(nodes: DiagramNode[]): string {
+  let id: string;
+  do {
+    id = `node${Math.floor(Math.random() * 36 ** 5).toString(36).padStart(5, '0')}`;
+  } while (nodes.some((node) => node.id === id));
+  return id;
+}
+
 /**
  * Whether two diagrams are equivalent for live-sync purposes: same nodes
  * (id, label, shape, icon, parentId, position) and same edges (source, target,
@@ -282,7 +290,7 @@ export const useDiagram = create<State>((set, get) => {
     const { insertion, ghostAt, nodes, edges } = get();
     if (!insertion || !ghostAt) return null;
     const { parentId, beforeNodeId } = insertion;
-    const id = nextId('n');
+    const id = nextNodeId(get().nodes);
     const node: DiagramNode = {
       id,
       label: '',
@@ -335,7 +343,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   addNode: (shape, position, icon) => {
-    const id = nextId('n');
+    const id = nextNodeId(get().nodes);
     const node: DiagramNode = {
       id,
       label: '',
@@ -504,7 +512,7 @@ export const useDiagram = create<State>((set, get) => {
       }));
       return into;
     }
-    const id = nextId('g');
+    const id = nextNodeId(get().nodes);
     const nodesAfter = get().nodes.map((n) => (members.has(n.id) ? { ...n, parentId: id } : n));
     const group: DiagramNode = {
       id,

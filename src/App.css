@@ -1085,7 +1085,7 @@ body,
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  cursor: text;
+  cursor: grab;
 }
 .mf-sheet-title:hover {
   background: color-mix(in srgb, var(--mf-text) 7%, transparent);
@@ -1305,8 +1305,11 @@ body,
     animation-iteration-count: infinite;
   }
   @keyframes mf-anim-flow {
+    from {
+      stroke-dashoffset: 0px;
+    }
     to {
-      stroke-dashoffset: calc(-1 * var(--mf-flow-period, 28));
+      stroke-dashoffset: calc(-1 * var(--mf-flow-period, 28px));
     }
   }
 }
@@ -1399,8 +1402,8 @@ body,
   padding-top: 16px;
 }
 
-/* outline presets: the glow follows the path, "draw on" traces it, "flow"
-   marches its dashes */
+/* outline presets: the glow follows the path, "draw on" traces it. ("flow"
+   is shared with every other node: see the Flow rules above.) */
 @media (prefers-reduced-motion: no-preference) {
   .mf-node.is-outline.mf-anim-pulse {
     animation-name: mf-outline-pulse;
@@ -1412,14 +1415,6 @@ body,
   .mf-node.is-outline.mf-anim-draw .mf-outline path:not(.mf-outline-detail) {
     stroke-dasharray: 100;
     animation: mf-outline-draw var(--mf-anim-dur, 1.6s) ease-in-out infinite alternate;
-  }
-  .mf-node.is-outline.mf-anim-flow::after {
-    content: none;
-  }
-  .mf-node.is-outline.mf-anim-flow .mf-outline path:not(.mf-outline-detail) {
-    stroke: var(--mf-flow-ink, var(--mf-accent));
-    stroke-dasharray: 3 3;
-    animation: mf-outline-flow var(--mf-anim-dur, 1.6s) linear infinite;
   }
 }
 @keyframes mf-outline-pulse {
@@ -1437,11 +1432,6 @@ body,
   }
   to {
     stroke-dashoffset: 0;
-  }
-}
-@keyframes mf-outline-flow {
-  to {
-    stroke-dashoffset: -12;
   }
 }
 
@@ -1589,3 +1579,87 @@ body,
 .mf-node.mf-anim-flow:not(.has-stroke).join-target .mf-flow-ring rect {
   stroke: var(--mf-accent);
 }
+
+.mf-panel-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.mf-panel-body[hidden] { display: none; }
+.mf-panel-tabs { display: flex; gap: 4px; }
+.mf-panel-tabs [role='tab'] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--mf-muted);
+  padding: 6px 10px;
+}
+.mf-panel-tabs [aria-selected='true'] {
+  color: var(--mf-text);
+  background: var(--mf-input);
+  border-color: var(--mf-border);
+}
+.mf-tree { flex: 1; overflow: auto; min-height: 0; }
+.mf-tree-list { list-style: none; margin: 0; padding: 0; }
+.mf-tree-list .mf-tree-list {
+  padding-left: 16px;
+  margin-left: 9px;
+  border-left: 1px solid var(--mf-border);
+}
+.mf-tree-row {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  gap: 4px;
+  border-radius: 6px;
+  padding-right: 6px;
+}
+.mf-tree-row:hover, .mf-tree-row.active {
+  background: color-mix(in srgb, var(--mf-accent) 12%, transparent);
+}
+.mf-tree-row.selected {
+  background: color-mix(in srgb, var(--mf-accent) 20%, transparent);
+  box-shadow: inset 2px 0 var(--mf-accent);
+}
+.mf-panel .mf-tree-toggle, .mf-panel .mf-tree-select {
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+  height: 26px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--mf-muted);
+  border-radius: 4px;
+}
+.mf-tree-spacer { flex: 0 0 20px; }
+.mf-tree-chevron { font-size: 20px; line-height: 1; }
+.mf-tree-chevron.expanded { transform: rotate(90deg); }
+.mf-tree-name { flex: 1; min-width: 60px; cursor: pointer; }
+.mf-tree-label {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  line-height: 30px;
+}
+.mf-tree-id { color: var(--mf-muted); font: 10px var(--mf-mono); }
+.mf-tree-edit {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--mf-input);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-accent);
+  border-radius: 4px;
+  padding: 4px;
+  font: 13px var(--mf-sans);
+}
+.mf-tree-heading {
+  margin: 20px 6px 8px;
+  color: var(--mf-muted);
+  font-size: 11px;
+  font-weight: 500;
+}
+.mf-tree-empty { color: var(--mf-muted); font-size: 13px; padding: 10px; }

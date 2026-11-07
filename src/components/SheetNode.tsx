@@ -16,8 +16,8 @@ export interface SheetData {
 /**
  * The paper an unfolded group's subtree sits on, standing in for the group:
  * it carries the group's title (double-click to rename) and the edges that
- * point at the group. Otherwise purely visual (the canvas pans straight
- * through it), apart from the dog-eared corner that folds it into a card.
+ * point at the group. Dragging the sheet moves the group, and the dog-eared
+ * corner folds it into a card.
  */
 function SheetNodeInner({ data }: NodeProps) {
   const d = data as SheetData;
@@ -60,8 +60,8 @@ function SheetNodeInner({ data }: NodeProps) {
           />
         ) : (
           <span
-            className={`mf-sheet-title nodrag nopan ${d.title ? '' : 'is-empty'}`}
-            title="Double-click to rename"
+            className={`mf-sheet-title ${d.title ? '' : 'is-empty'}`}
+            title="Drag to move · Double-click to rename"
             onPointerEnter={() => setHighlight({ kind: 'node', id: d.groupId })}
             onPointerLeave={() => setHighlight(null)}
             onDoubleClick={(e) => {

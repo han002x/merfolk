@@ -321,7 +321,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
       width: sh.rect.width,
       height: sh.rect.height,
       zIndex: -10 + sh.depth,
-      draggable: false,
+      draggable: true,
       selectable: false,
       focusable: false,
       deletable: false,
@@ -341,9 +341,9 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   // delete never removes something the user can no longer see
   useEffect(() => {
     const { selectedNodeIds, selectedEdgeIds } = useDiagram.getState();
-    const kept = selectedNodeIds.filter((id) => !offscreen.has(id));
+    const kept = selectedNodeIds.filter((id) => !hidden.has(id));
     if (kept.length !== selectedNodeIds.length) setSelection(kept, selectedEdgeIds);
-  }, [offscreen, setSelection]);
+  }, [hidden, setSelection]);
 
   // A non-interactive ghost node mirrors the Mermaid editor's insertion gap.
   // It sits midway between the nodes declared just above and just below the
@@ -498,8 +498,22 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     (changes: NodeChange[]) => {
       let nextSel: string[] | null = null;
       for (const c of changes) {
-        // ignore synthetic changes for the ghost preview and paper sheets
-        if ('id' in c && (c.id === GHOST_ID || c.id.startsWith(SHEET_PREFIX))) continue;
+        if ('id' in c && c.id === GHOST_ID) continue;
+        if ('id' in c && c.id.startsWith(SHEET_PREFIX)) {
+          if (c.type === 'position' && c.position) {
+            const sheet = sheetNodes.find((n) => n.id === c.id);
+            const current = useDiagram.getState().nodes;
+            const groupId = c.id.slice(SHEET_PREFIX.length);
+            const origin = groupOrigin(groupId, current, childrenOf(current));
+            if (sheet && origin) {
+              moveNode(groupId, {
+                x: origin.x + c.position.x - sheet.position.x,
+                y: origin.y + c.position.y - sheet.position.y,
+              });
+            }
+          }
+          continue;
+        }
         if (c.type === 'position' && c.position) {
           moveNode(c.id, c.position);
         } else if (c.type === 'select') {
@@ -513,7 +527,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         setSelection(nextSel, useDiagram.getState().selectedEdgeIds);
       }
     },
-    [moveNode, setSelection],
+    [moveNode, setSelection, sheetNodes],
   );
 
   const onEdgesChange = useCallback(

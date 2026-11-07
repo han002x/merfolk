@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDiagram } from '../store';
 import { toMermaidWithMap } from '../mermaid/io';
 import { Icon } from './Icon';
+import { TreePanel } from './TreePanel';
+
+const views: ('mermaid' | 'tree')[] = ['mermaid', 'tree'];
 
 export function MermaidPanel({ onClose }: { onClose: () => void }) {
   const autoLayout = useDiagram((s) => s.autoLayout);
@@ -14,6 +17,7 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
 
+  const [tab, setTab] = useState<'mermaid' | 'tree'>('mermaid');
   const [text, setText] = useState('');
   // line map is only valid while the textarea matches the live diagram; while
   // a parse error stands we null the mapping so stale highlights don't point at
@@ -55,7 +59,10 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
   }, [nodes, edges, edited]);
 
   // never leave a preview caret/ghost behind when the panel closes
-  useEffect(() => () => setInsertion(null), [setInsertion]);
+  useEffect(() => () => {
+    setInsertion(null);
+    setHighlight(null);
+  }, [setInsertion, setHighlight]);
 
   // reverse index: element -> line number, for highlighting the editor from canvas
   const refToLine = useMemo(() => {
@@ -304,7 +311,33 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
   return (
     <aside className="mf-panel">
       <div className="mf-panel-head">
-        <span className="mf-panel-title">Mermaid</span>
+        <div className="mf-panel-tabs" role="tablist" aria-label="Diagram views">
+          {views.map((view) => (
+            <button key={view} id={`mf-tab-${view}`} role="tab"
+              aria-selected={tab === view} aria-controls={`mf-view-${view}`}
+              tabIndex={tab === view ? 0 : -1}
+              onKeyDown={(event) => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                const next = event.key === 'Home' ? 'mermaid' : event.key === 'End' ? 'tree' : view === 'mermaid' ? 'tree' : 'mermaid';
+                document.getElementById(`mf-tab-${next}`)?.click();
+                document.getElementById(`mf-tab-${next}`)?.focus();
+              }}
+              onClick={() => {
+                if (syncTimer.current) {
+                  window.clearTimeout(syncTimer.current);
+                  syncTimer.current = null;
+                  runSync(text);
+                }
+                clearHover();
+                setHighlight(null);
+                setInsertion(null);
+                setTab(view);
+              }}>
+              {view === 'mermaid' ? 'Mermaid' : 'Tree'}
+            </button>
+          ))}
+        </div>
         <button
           className="mf-tool"
           aria-label="Close panel"
@@ -315,53 +348,61 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      <div className="mf-mermaid-wrap">
-        {/* highlight + hover overlay, scroll-synced behind/over the textarea */}
-        <div className="mf-mermaid-overlay" ref={scrollRef} aria-hidden>
-          {lines.map((line, i) => (
-            <div
-              key={i}
-              className={`mf-mline${i === activeLine ? ' active' : ''}${
-                selectedLines.has(i) ? ' selected' : ''
-              }${i === gapLine ? ' insert-before' : ''}`}
-            >
-              {line === '' ? '\u200b' : line}
-            </div>
-          ))}
-          {/* caret below the last line when inserting at the very end */}
-          {gapLine === lines.length && (
-            <div className="mf-mline insert-before" aria-hidden>
-              {'\u200b'}
-            </div>
-          )}
-        </div>
-        <textarea
-          ref={textareaRef}
-          className="mf-mermaid-text"
-          value={text}
-          spellCheck={false}
-          onScroll={syncScroll}
-          onMouseMove={hoverFromMouse}
-          onMouseLeave={clearHover}
-          onMouseDown={insertAtGap}
-          style={gapLine !== null ? { cursor: 'copy' } : undefined}
-          title={gapLine !== null ? 'Click to insert a node here' : undefined}
-          onChange={(e) => {
-            setText(e.target.value);
-            setEdited(true);
-            cancelDwell();
-            showGap(null);
-            scheduleSync(e.target.value);
-          }}
-        />
+      <div className="mf-panel-body" role="tabpanel" id="mf-view-tree"
+        aria-labelledby="mf-tab-tree" hidden={tab !== 'tree'}>
+        <TreePanel />
       </div>
+      <div className="mf-panel-body" role="tabpanel" id="mf-view-mermaid"
+        aria-labelledby="mf-tab-mermaid" hidden={tab !== 'mermaid'}>
+        <div className="mf-mermaid-wrap">
+          {/* highlight + hover overlay, scroll-synced behind/over the textarea */}
+          <div className="mf-mermaid-overlay" ref={scrollRef} aria-hidden>
+            {lines.map((line, i) => (
+              <div
+                key={i}
+                className={`mf-mline${i === activeLine ? ' active' : ''}${
+                  selectedLines.has(i) ? ' selected' : ''
+                }${i === gapLine ? ' insert-before' : ''}`}
+              >
+                {line === '' ? '\u200b' : line}
+              </div>
+            ))}
+            {/* caret below the last line when inserting at the very end */}
+            {gapLine === lines.length && (
+              <div className="mf-mline insert-before" aria-hidden>
+                {'\u200b'}
+              </div>
+            )}
+          </div>
+          <textarea
+            ref={textareaRef}
+            className="mf-mermaid-text"
+            value={text}
+            spellCheck={false}
+            aria-label="Mermaid source"
+            onScroll={syncScroll}
+            onMouseMove={hoverFromMouse}
+            onMouseLeave={clearHover}
+            onMouseDown={insertAtGap}
+            style={gapLine !== null ? { cursor: 'copy' } : undefined}
+            title={gapLine !== null ? 'Click to insert a node here' : undefined}
+            onChange={(e) => {
+              setText(e.target.value);
+              setEdited(true);
+              cancelDwell();
+              showGap(null);
+              scheduleSync(e.target.value);
+            }}
+          />
+        </div>
 
-      {err && <div className="mf-err">{err}</div>}
-      <div className="mf-panel-actions">
-        <button className="mf-primary" onClick={tidy}>
-          Tidy
-        </button>
-        <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+        {err && <div className="mf-err">{err}</div>}
+        <div className="mf-panel-actions">
+          <button className="mf-primary" onClick={tidy}>
+            Tidy
+          </button>
+          <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+        </div>
       </div>
     </aside>
   );

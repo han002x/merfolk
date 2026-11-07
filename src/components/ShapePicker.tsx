@@ -30,8 +30,12 @@ const SECTIONS: { title: string; items: Item[] }[] = [
       glyph: <ShapeGlyph shape={d.shape} />,
     })),
   },
-  ...(['tech', 'brand'] as const).map((group) => ({
-    title: group === 'tech' ? 'Tech' : 'Brands',
+  ...([
+    ['tech', 'Tech'],
+    ['ai', 'AI'],
+    ['brand', 'Brands'],
+  ] as const).map(([group, title]) => ({
+    title,
     items: ICONS.filter((i) => i.group === group).map((i) => ({
       key: i.id,
       name: i.name,

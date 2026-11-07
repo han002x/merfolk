@@ -15,9 +15,11 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   a folded card crease onto the card (dashed, merged as `×n`) so folding never
   loses connections. `[` / `]` fold or unfold the whole diagram one level at a
   time. Nesting is arbitrary depth.
-- **Mermaid interop** — the side panel stays in sync with the canvas as Mermaid
-  `flowchart` text. Edit the text and **Import → canvas** to parse it back, or
-  **Copy** to paste into any Mermaid renderer (GitHub, docs, etc.).
+- **Mermaid interop** — the right panel has **Mermaid** and **Tree** tabs.
+  Mermaid edits sync live with the canvas. The tree follows subgraph nesting,
+  with expandable groups and a connection list. Select nodes or connections in
+  the tree, or double-click their labels to rename them; changes update the
+  canvas and Mermaid source. **Copy** exports the source for other renderers.
 - **Auto-layout (dagre)** — **Tidy ↓** / **Tidy →** re-flow the diagram top-down
   or left-right. Only visible nodes are laid out, so collapsing a group re-flows
   the rest. Mermaid imports are tidied automatically.
@@ -30,8 +32,10 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   subroutine, cylinder, double circle, hexagon, parallelograms, trapezoids and
   flag in the **S** picker. Each maps to Mermaid's classic bracket syntax, so
   every renderer (GitHub included) draws them. Double-click a node to rename.
-- **Icons** — the **S** picker also holds ~30 tech icons (Lucide) and ~40
-  brand / social logos (Simple Icons), tinted with the node's stroke colour.
+- **Icons** — the **S** picker also holds ~30 tech icons (Lucide), ~30 AI
+  icons (OpenAI, Claude, Gemini, DeepSeek, Mistral, Hugging Face, Ollama, …)
+  and ~40 brand / social logos (Simple Icons), tinted with the node's stroke
+  colour.
   They export as Mermaid's v11.3+ icon syntax,
   `A@{ icon: "simple-icons:github", form: "square", label: "GitHub" }`; a
   renderer that hasn't registered that Iconify pack shows a placeholder glyph

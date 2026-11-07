@@ -121,7 +121,7 @@ export function DiagramEdge({
   if (flowing) {
     const fd = flowDash(st?.strokeStyle ?? STYLE_DEFAULTS.strokeStyle, strokeWidth);
     ownStyle.strokeDasharray = fd.array;
-    (ownStyle as Record<string, string | number>)['--mf-flow-period'] = fd.period;
+    (ownStyle as Record<string, string | number>)['--mf-flow-period'] = `${fd.period}px`;
     ownStyle.animationDuration = `${st?.animationSpeed ?? STYLE_DEFAULTS.animationSpeed}s`;
   }
   const edgeAnimCls = flowing ? animationClass('flow') : null;
