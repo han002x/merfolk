@@ -12,6 +12,9 @@ import {
 import { STYLE_DEFAULTS } from '../src/style.ts';
 import type { Diagram, DiagramEdge, DiagramNode } from '../src/types.ts';
 import type { AnimationKind } from '../src/types.ts';
+import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
+import { prepareSvgStyles } from '../src/gifCapture.ts';
 
 const N = (
   id: string,
@@ -89,5 +92,37 @@ check('zero width is safe', fitScale(0, 900) === 1);
 check('defaults are size-conscious', GIF_DEFAULTS.maxWidth === 900 && GIF_DEFAULTS.fps === 12);
 check('filename', gifFileName() === 'diagram.gif');
 
+// A standalone SVG clone must retain the stylesheet's node fills and edge ink.
+const dom = new JSDOM(`<!doctype html><style>
+  .fill { fill: #ffffff; stroke: none; }
+  .edge { fill: none; stroke: #3a352e; stroke-width: 2px; stroke-dasharray: 5 5; }
+</style><div id="diagram"><svg>
+  <g><path class="fill" d="M0 0h20v20H0z" /></g>
+  <path class="edge" style="opacity: 0.7" d="M0 0L20 20" />
+</svg></div>`);
+const element = dom.window.document.getElementById('diagram');
+assert.ok(element);
+Object.assign(globalThis, { getComputedStyle: dom.window.getComputedStyle.bind(dom.window) });
+const original = element.innerHTML;
+const restoreStyles = prepareSvgStyles(element);
+try {
+  const clone = element.cloneNode(true);
+  assert.ok(clone instanceof dom.window.HTMLElement);
+  const fill = clone.querySelector('.fill');
+  assert.ok(fill instanceof dom.window.SVGElement);
+  assert.equal(fill.style.fill, 'rgb(255, 255, 255)');
+  const edge = clone.querySelector('.edge');
+  assert.ok(edge instanceof dom.window.SVGElement);
+  assert.equal(edge.style.fill, 'rgba(0, 0, 0, 0)');
+  assert.equal(edge.style.stroke, 'rgb(58, 53, 46)');
+  assert.equal(edge.style.strokeWidth, '2px');
+  assert.equal(edge.style.strokeDasharray, '5 5');
+  assert.equal(edge.style.opacity, '0.7');
+} finally {
+  restoreStyles();
+}
+assert.equal(element.innerHTML, original, 'capture must restore the original inline styles');
+dom.window.close();
+
 if (failed) process.exit(1);
-console.log('PASS: gif cycle length, frame maths and scaling');
+console.log('PASS: gif cycle length, frame maths, scaling and SVG capture styles');

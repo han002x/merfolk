@@ -1,23 +1,59 @@
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { Handle, Position, useConnection, type NodeProps } from '@xyflow/react';
-import type { ElementStyle, NodeShape } from '../types';
+import { DEFAULT_IMAGE_SIZE, type ElementStyle, type NodeImage, type NodeShape } from '../types';
 import { useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
-import { STYLE_DEFAULTS, animationClass, flowDash, fontFamilyCss } from '../style';
+import { STYLE_DEFAULTS, animationClass, flowDash, fontFamilyCss, inkOn } from '../style';
 import { CatalogIcon, ShapeOutline } from './ShapeOutline';
-import { hasOutline, iconTileCss, shapeCss } from '../shapes';
+import { iconTileCss, shapeCss } from '../shapes';
+import { seedOf } from '../rough';
 
 export interface NodeData {
   label: string;
   shape: NodeShape;
   /** Iconify id: the node renders as an icon tile */
   icon?: string;
+  /** Mermaid `img` node: the picture with the label above or below */
+  image?: NodeImage;
   isGroup: boolean;
   collapsed: boolean;
   /** how many nodes are folded inside this card */
   childCount: number;
   style?: ElementStyle;
   [key: string]: unknown;
+}
+
+/** An image node's picture; a broken or blocked source shows a placeholder. */
+export function NodeImg({ image }: { image: NodeImage }) {
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const w = image.w ?? DEFAULT_IMAGE_SIZE;
+  const h = image.h ?? DEFAULT_IMAGE_SIZE;
+  if (failedSrc === image.src) {
+    return (
+      <span className="mf-node-img is-broken" style={{ width: w, height: h }} title="Image failed to load">
+        <svg viewBox="0 0 24 24" width={24} height={24} aria-hidden>
+          <path
+            d="M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M3 3l18 18"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    );
+  }
+  return (
+    <img
+      className="mf-node-img"
+      src={image.src}
+      alt=""
+      draggable={false}
+      style={{ width: w, height: h, objectFit: image.constraint ? 'contain' : 'fill' }}
+      onError={() => setFailedSrc(image.src)}
+    />
+  );
 }
 
 function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
@@ -44,42 +80,25 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
     setEditing(false);
   };
 
-  const icon = d.icon;
-  const diamond = !icon && d.shape === 'diamond';
-  // shapes CSS can't draw get an SVG outline; the div itself goes invisible
-  const outline = !icon && hasOutline(d.shape);
+  const image = d.image;
+  // an image wins over an icon; both draw as a tile whose shape picks corners
+  const icon = image ? undefined : d.icon;
+  const tile = !!(icon || image);
+  const diamond = !tile && d.shape === 'diamond';
+  const seed = useMemo(() => seedOf(id), [id]);
 
   const st = d.style;
-  const sloppiness = st?.sloppiness ?? STYLE_DEFAULTS.sloppiness;
-  // Derive concrete CSS from the optional style overrides. Unset fields fall
-  // back to the theme-driven CSS variables so untouched nodes look unchanged.
+  // The box only sets the footprint; the visible body is the inked SVG outline
+  // (fill, stroke, width, dash, sloppiness all land on its paths).
   const rounded = (st?.edges ?? STYLE_DEFAULTS.edges) === 'round';
-  const styleCss: React.CSSProperties = icon ? iconTileCss(d.shape, rounded) : shapeCss(d.shape, rounded);
-  // the corner radius the flow ring follows (before sloppiness skews it)
-  const baseRadius = styleCss.borderRadius;
-  // an outline shape takes stroke/fill/dash on its SVG path instead
-  if (!outline) {
-    if (st?.stroke) styleCss.borderColor = st.stroke;
-    if (st?.background) styleCss.background = st.background;
-    if (st?.strokeWidth != null) styleCss.borderWidth = st.strokeWidth;
-    if (st?.strokeStyle && st.strokeStyle !== 'solid')
-      styleCss.borderStyle = st.strokeStyle;
-  }
-  // icons take the stroke color, like the text and the outline
+  const styleCss: React.CSSProperties = tile ? iconTileCss(d.shape, rounded) : shapeCss(d.shape, rounded);
+  // labels stay legible on a light fill; icons take the stroke color, like the ink
+  const labelInk = inkOn(st?.background);
+  if (labelInk) styleCss.color = labelInk;
   if (icon && st?.stroke) styleCss.color = st.stroke;
   if (st?.opacity != null) styleCss.opacity = st.opacity;
   if (st?.fontFamily) styleCss.fontFamily = fontFamilyCss(st.fontFamily);
   if (st?.fontSize != null) styleCss.fontSize = st.fontSize;
-  // "Sloppiness" has no border-dash analogue, so approximate the hand-drawn
-  // feel with a subtle rotation + asymmetric corner radii; 0 stays clean.
-  // (Skip the rotation on diamonds, whose body is already rotated.)
-  if (sloppiness > 0 && !diamond) {
-    styleCss.transform = `rotate(${sloppiness === 1 ? -0.4 : -0.9}deg)`;
-  }
-  if (sloppiness > 0 && typeof styleCss.borderRadius === 'number') {
-    const r = styleCss.borderRadius as number;
-    styleCss.borderRadius = `${r + 4 * sloppiness}px ${r}px ${r + 2 * sloppiness}px ${r}px`;
-  }
 
   // motion preset: a CSS class drives the keyframes, its cycle length comes
   // from the per-element speed (falls back to the theme default)
@@ -93,21 +112,16 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
     const dur = `${st?.animationSpeed ?? STYLE_DEFAULTS.animationSpeed}s`;
     styleCss.animationDuration = dur;
     (styleCss as Record<string, string | number>)['--mf-anim-dur'] = dur;
-    if (flowing) {
-      const vars = styleCss as Record<string, string | number>;
-      vars['--mf-flow-period'] = `${fd.period}px`;
-      vars['--mf-flow-w'] = `${strokeW}px`;
-      if (st?.stroke) vars['--mf-flow-ink'] = st.stroke;
-      // the ring replaces the CSS border, which would otherwise show through
-      if (!outline) styleCss.borderColor = 'transparent';
-    }
+    if (flowing) (styleCss as Record<string, string | number>)['--mf-flow-period'] = `${fd.period}px`;
   }
 
   const cls = [
     'mf-node',
     `mf-shape-${d.shape}`,
-    outline ? 'is-outline' : '',
+    'is-outline',
     icon ? 'is-icon' : '',
+    image ? 'is-image' : '',
+    image?.pos === 't' ? 'is-label-top' : '',
     d.isGroup ? 'is-group' : '',
     d.isGroup && d.collapsed ? 'is-folded' : '',
     selected ? 'selected' : '',
@@ -116,7 +130,6 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
     isConnectionTarget ? 'join-target' : '',
     highlighted ? 'mf-linked' : '',
     animCls ?? '',
-    st?.stroke ? 'has-stroke' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -133,18 +146,17 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
       }}
     >
       <Handle type="target" position={Position.Top} />
-      {outline && <ShapeOutline shape={d.shape} style={st} flowDash={flowing ? fd.array : undefined} />}
-      {flowing && !outline && (
-        <svg className="mf-flow-ring" aria-hidden="true">
-          <rect
-            width="100%"
-            height="100%"
-            rx={typeof baseRadius === 'number' ? baseRadius + strokeW / 2 : (baseRadius ?? 0)}
-            strokeDasharray={fd.array}
-          />
-        </svg>
-      )}
+      <ShapeOutline
+        shape={d.shape}
+        icon={tile}
+        rounded={rounded}
+        style={st}
+        seed={seed}
+        flowDash={flowing ? fd.array : undefined}
+        pages={d.isGroup && d.collapsed}
+      />
       {icon && <CatalogIcon id={icon} />}
+      {image && <NodeImg image={image} />}
       <div className="mf-node-body" style={diamond ? { transform: 'rotate(-45deg)' } : undefined}>
         {editing ? (
           <input

@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useDiagram } from '../store';
-import type { ElementStyle } from '../types';
+import { DEFAULT_IMAGE_SIZE, type DiagramNode, type ElementStyle } from '../types';
+import { asImageSrc, isDataUri, kb, readImageFile, sizedImage } from '../imageUpload';
 import {
   ANIMATIONS,
   ANIM_SPEEDS,
@@ -77,6 +78,8 @@ export function StylePanel() {
   };
 
   const count = selectedNodeIds.length + selectedEdgeIds.length;
+  const imageNode =
+    count === 1 && hasNodes ? nodes.find((n) => n.id === selectedNodeIds[0] && n.image) : undefined;
 
   return (
     <aside className="mf-style-panel" aria-label="Style properties">
@@ -85,6 +88,8 @@ export function StylePanel() {
           Style{count > 1 ? ` · ${count}` : ''}
         </span>
       </div>
+
+      {imageNode && <ImageSection key={imageNode.id} node={imageNode} />}
 
       <section className="mf-style-section">
         <label className="mf-style-label">Stroke</label>
@@ -102,7 +107,7 @@ export function StylePanel() {
           <label className="mf-swatch mf-swatch-custom" title="Custom stroke color">
             <input
               type="color"
-              value={toHex(val('stroke')) ?? '#e6e8ec'}
+              value={toHex(val('stroke')) ?? '#2a2723'}
               onChange={(e) => patch({ stroke: e.target.value })}
             />
           </label>
@@ -131,7 +136,7 @@ export function StylePanel() {
             >
               <input
                 type="color"
-                value={toHex(val('background')) ?? '#1e2530'}
+                value={toHex(val('background')) ?? '#fffdf8'}
                 onChange={(e) => patch({ background: e.target.value })}
               />
             </label>
@@ -181,7 +186,7 @@ export function StylePanel() {
             <button
               key={s}
               className={active('sloppiness', s) ? 'active' : ''}
-              title={['Architect', 'Artist', 'Cartoonist'][s]}
+              title={['Ink', 'Sketch', 'Scribble'][s]}
               onClick={() => patch({ sloppiness: s })}
             >
               {SLOPPINESS_GLYPH[s]}
@@ -305,6 +310,127 @@ export function StylePanel() {
         );
       })()}
     </aside>
+  );
+}
+
+/** image size presets; px labels, so they don't read as the font S/M/L */
+const IMAGE_SIZES = [48, DEFAULT_IMAGE_SIZE, 128];
+
+/** Source, label position and size of a single selected image node. */
+function ImageSection({ node }: { node: DiagramNode }) {
+  const updateNodeImage = useDiagram((s) => s.updateNodeImage);
+  const image = node.image!;
+  const embedded = isDataUri(image.src);
+  const [draft, setDraft] = useState(embedded ? '' : image.src);
+  // the source can also change from the Mermaid panel or undo: follow it
+  const [seenSrc, setSeenSrc] = useState(image.src);
+  if (seenSrc !== image.src) {
+    setSeenSrc(image.src);
+    setDraft(embedded ? '' : image.src);
+  }
+  const [error, setError] = useState<string | null>(null);
+  const file = useRef<HTMLInputElement>(null);
+  const w = image.w ?? DEFAULT_IMAGE_SIZE;
+  const h = image.h ?? DEFAULT_IMAGE_SIZE;
+  const longest = Math.max(w, h);
+
+  const commitUrl = () => {
+    if (!draft.trim() || draft.trim() === image.src) return;
+    const src = asImageSrc(draft);
+    if (!src) return setError('enter an http(s) image URL');
+    setError(null);
+    // keep the node's current footprint, reshaped to the new picture
+    sizedImage(src, longest).then((next) => updateNodeImage(node.id, next));
+  };
+
+  return (
+    <section className="mf-style-section">
+      <label className="mf-style-label">
+        Image
+        {embedded && <span className="mf-style-value">Embedded · {kb(image.src)} KB</span>}
+      </label>
+      <div className="mf-image-src">
+        <input
+          className="mf-picker-filter"
+          aria-label="Image URL"
+          placeholder={embedded ? 'Replace with a URL…' : 'https://…'}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setError(null);
+          }}
+          onBlur={commitUrl}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitUrl();
+          }}
+        />
+        <button className="mf-image-upload" title="Upload an image (embedded)" onClick={() => file.current?.click()}>
+          Upload
+        </button>
+        <input
+          ref={file}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={async (e) => {
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            if (!f) return;
+            try {
+              updateNodeImage(node.id, await readImageFile(f, longest));
+              setDraft('');
+              setError(null);
+            } catch (err) {
+              setError((err as Error).message);
+            }
+          }}
+        />
+      </div>
+      {error && <p className="mf-picker-error">{error}</p>}
+      {embedded && !error && (
+        <p className="mf-style-hint">Embedded images work in merfolk and mermaid.live; GitHub blocks data: images.</p>
+      )}
+      <div className="mf-seg">
+        {IMAGE_SIZES.map((px) => (
+          <button
+            key={px}
+            className={longest === px ? 'active' : ''}
+            title={`Longest side ${px}px`}
+            aria-label={`Image size ${px}px`}
+            // scale the longest side, keeping the node's proportions
+            onClick={() =>
+              updateNodeImage(node.id, { w: Math.round((w * px) / longest), h: Math.round((h * px) / longest) })
+            }
+          >
+            {px}
+          </button>
+        ))}
+      </div>
+      <div className="mf-seg">
+        <button
+          className={image.pos !== 't' ? 'active' : ''}
+          title="Label below the image"
+          onClick={() => updateNodeImage(node.id, { pos: undefined })}
+        >
+          Label ↓
+        </button>
+        <button
+          className={image.pos === 't' ? 'active' : ''}
+          title="Label above the image"
+          onClick={() => updateNodeImage(node.id, { pos: 't' })}
+        >
+          Label ↑
+        </button>
+      </div>
+      <label className="mf-image-check">
+        <input
+          type="checkbox"
+          checked={!!image.constraint}
+          onChange={(e) => updateNodeImage(node.id, { constraint: e.target.checked })}
+        />
+        Keep aspect ratio
+      </label>
+    </section>
   );
 }
 

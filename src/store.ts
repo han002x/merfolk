@@ -4,6 +4,7 @@ import type {
   DiagramEdge,
   DiagramNode,
   ElementStyle,
+  NodeImage,
   NodeShape,
 } from './types';
 import { fromMermaid, mergeDiagram, parseMermaid, toMermaid } from './mermaid/io';
@@ -29,10 +30,13 @@ function nextNodeId(nodes: DiagramNode[]): string {
 
 /**
  * Whether two diagrams are equivalent for live-sync purposes: same nodes
- * (id, label, shape, icon, parentId, position) and same edges (source, target,
+ * (id, label, shape, icon, image, parentId, position) and same edges (source, target,
  * label), in the same order. Lets `syncMermaid` skip no-op edits so moving the
  * caret or re-typing identical text neither re-renders nor grows undo history.
  */
+const imageKey = (i?: NodeImage) =>
+  i ? `${i.src}\u0000${i.pos ?? ''}\u0000${i.w ?? ''}\u0000${i.h ?? ''}\u0000${i.constraint ? 1 : 0}` : '';
+
 function unchanged(a: Diagram, b: Diagram): boolean {
   if (a.nodes.length !== b.nodes.length || a.edges.length !== b.edges.length) return false;
   for (let i = 0; i < a.nodes.length; i++) {
@@ -43,6 +47,7 @@ function unchanged(a: Diagram, b: Diagram): boolean {
       x.label !== y.label ||
       x.shape !== y.shape ||
       x.icon !== y.icon ||
+      imageKey(x.image) !== imageKey(y.image) ||
       x.parentId !== y.parentId ||
       x.position.x !== y.position.x ||
       x.position.y !== y.position.y
@@ -153,8 +158,14 @@ interface State {
   setSelection: (nodeIds: string[], edgeIds: string[]) => void;
 
   // mutations
-  addNode: (shape: NodeShape, position: { x: number; y: number }, icon?: string) => string;
+  addNode: (
+    shape: NodeShape,
+    position: { x: number; y: number },
+    extra?: { icon?: string; image?: NodeImage; label?: string },
+  ) => string;
   updateLabel: (id: string, label: string) => void;
+  /** patch a node's image (`null` turns it back into a plain node) */
+  updateNodeImage: (id: string, patch: Partial<NodeImage> | null) => void;
   updateNodeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
   updateEdgeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
   moveNode: (id: string, position: { x: number; y: number }) => void;
@@ -342,16 +353,17 @@ export const useDiagram = create<State>((set, get) => {
       return { selectedNodeIds: nodeIds, selectedEdgeIds: edgeIds };
     }),
 
-  addNode: (shape, position, icon) => {
+  addNode: (shape, position, { icon, image, label = '' } = {}) => {
     const id = nextNodeId(get().nodes);
     const node: DiagramNode = {
       id,
-      label: '',
+      label,
       shape,
       parentId: null,
       collapsed: false,
       position,
       ...(icon && { icon }),
+      ...(image && { image }),
     };
     set((s) => ({ ...snapshot(), nodes: [...s.nodes, node] }));
     return id;
@@ -362,6 +374,29 @@ export const useDiagram = create<State>((set, get) => {
       ...snapshot(),
       nodes: s.nodes.map((n) => (n.id === id ? { ...n, label } : n)),
     })),
+
+  updateNodeImage: (id, patch) =>
+    set((s) => {
+      const node = s.nodes.find((n) => n.id === id);
+      if (!node || (!node.image && !patch?.src)) return s;
+      return {
+        ...snapshot(),
+        nodes: s.nodes.map((n) => {
+          if (n.id !== id) return n;
+          if (!patch) {
+            const rest = { ...n };
+            delete rest.image;
+            return rest;
+          }
+          const image = { ...n.image, ...patch } as NodeImage;
+          // `undefined` in a patch clears that option rather than storing it
+          for (const k of Object.keys(image) as (keyof NodeImage)[]) {
+            if (image[k] === undefined || image[k] === false) delete image[k];
+          }
+          return { ...n, image };
+        }),
+      };
+    }),
 
   updateNodeStyle: (ids, patch) =>
     set((s) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -9,6 +9,7 @@ import { useDiagram } from '../store';
 import { Icon } from './Icon';
 import type { ElementStyle } from '../types';
 import { STYLE_DEFAULTS, animationClass, dashArray, flowDash, fontFamilyCss } from '../style';
+import { arrowHead, ink, seedOf, type Side } from '../rough';
 
 const EDGE_STYLE_BASE: React.CSSProperties = {
   transition: 'stroke 160ms ease, stroke-width 160ms ease',
@@ -131,6 +132,20 @@ export function DiagramEdge({
     ownStyle.opacity = 0.7;
   }
 
+  // the visible line is ink over the clean bezier (which stays the hitbox),
+  // ending in a hand-drawn chevron; dashes need one continuous pass
+  const sloppiness = st?.sloppiness ?? STYLE_DEFAULTS.sloppiness;
+  const seed = useMemo(() => seedOf(id), [id]);
+  const continuous = ownStyle.strokeDasharray != null;
+  const inkPath = useMemo(
+    () => ink(path, { sloppiness, seed, continuous, pinEnds: true }),
+    [path, sloppiness, seed, continuous],
+  );
+  const arrow = useMemo(
+    () => arrowHead(targetX, targetY, targetPosition as Side, { sloppiness, seed: seed + 3, size: 6 + strokeWidth * 2 }),
+    [targetX, targetY, targetPosition, sloppiness, seed, strokeWidth],
+  );
+
   const edgeStyle: React.CSSProperties = (highlighted || selected) && !folded
     ? {
         ...ownStyle,
@@ -158,7 +173,18 @@ export function DiagramEdge({
         onPointerEnter={inert ? undefined : () => setHighlight({ kind: 'edge', id })}
         onPointerLeave={inert ? undefined : () => setHighlight(null)}
       />
-      <BaseEdge id={id} path={path} markerEnd={markerEnd} style={edgeStyle} className={edgeAnimCls ?? undefined} />
+      <BaseEdge id={id} path={inkPath} markerEnd={markerEnd} style={edgeStyle} className={edgeAnimCls ?? undefined} />
+      <path
+        className="mf-edge-arrow"
+        d={arrow}
+        style={{
+          stroke: edgeStyle.stroke,
+          strokeWidth: edgeStyle.strokeWidth,
+          opacity: edgeStyle.opacity,
+          filter: edgeStyle.filter,
+          transition: EDGE_STYLE_BASE.transition,
+        }}
+      />
       <EdgeLabelRenderer>
         {inert ? (
           text && (

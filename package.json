@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/mermaid-compat.ts",
+    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/rough.ts && node --experimental-strip-types scripts/mermaid-compat.ts",
     "icons": "node --experimental-strip-types scripts/icons.ts",
     "preview": "vite preview"
   },
@@ -15,11 +15,13 @@
     "@dagrejs/dagre": "^1.1.5",
     "@fontsource/inter": "^5.2.6",
     "@fontsource/jetbrains-mono": "^5.2.6",
+    "@fontsource/kalam": "^5.3.0",
     "@xyflow/react": "^12.8.6",
     "gif.js": "^0.2.0",
     "html-to-image": "^1.11.13",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "roughjs": "^4.6.6",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

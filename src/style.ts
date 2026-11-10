@@ -9,24 +9,24 @@ import type {
   StrokeStyle,
 } from './types';
 
-/** Preset stroke colors shown as swatches in the panel. */
+/** Preset ink colors shown as swatches in the panel. */
 export const STROKE_COLORS = [
-  '#e6e8ec', // default (theme ink)
-  '#e03131', // red
-  '#2f9e44', // green
-  '#1971c2', // blue
-  '#f08c00', // amber
-  '#ae3ec9', // purple
+  'var(--mf-ink)', // theme ink: sumi on paper, chalk on night paper
+  '#c8442b', // vermilion
+  '#4f7a3a', // moss
+  '#3b5b9a', // indigo
+  '#c08a1e', // ochre
+  '#8a4a7a', // plum
 ];
 
-/** Preset background fills. 'transparent' is first so it's the obvious default. */
+/** Preset paper fills (washi tints). 'transparent' is first so it's the obvious default. */
 export const BACKGROUND_COLORS = [
   'transparent',
-  '#ffc9c9', // red tint
-  '#b2f2bb', // green tint
-  '#a5d8ff', // blue tint
-  '#ffec99', // amber tint
-  '#eebefa', // purple tint
+  '#f6d6cf', // sakura
+  '#dbe7c9', // matcha
+  '#d4e2f0', // sky
+  '#f4e4b4', // kraft yellow
+  '#e4d9ef', // wisteria
 ];
 
 export const STROKE_WIDTHS: { value: number; label: string }[] = [
@@ -76,13 +76,13 @@ export const ANIM_SPEEDS: { value: number; label: string }[] = [
 export const STYLE_DEFAULTS: Required<
   Omit<ElementStyle, 'stroke' | 'background'>
 > & { stroke: string; background: string } = {
-  stroke: 'var(--mf-border)',
+  stroke: 'var(--mf-ink)',
   background: 'var(--mf-node)',
   strokeWidth: 1,
   strokeStyle: 'solid',
-  sloppiness: 0,
+  sloppiness: 1,
   edges: 'round',
-  fontFamily: 'sans',
+  fontFamily: 'hand',
   fontSize: 13,
   opacity: 1,
   animation: 'none',
@@ -96,10 +96,23 @@ export function fontFamilyCss(f: FontFamily): string {
     case 'mono':
       return 'var(--mf-mono)';
     case 'hand':
-      return '"Comic Sans MS", "Segoe Print", "Bradley Hand", cursive';
+      return 'var(--mf-hand)';
     default:
       return 'var(--mf-sans)';
   }
+}
+
+/**
+ * Text color for a node filled with `background`: on a light fill (the washi
+ * tints) the label stays sumi ink even on night paper, so it never vanishes.
+ * Unset, transparent or dark fills keep the theme's text color.
+ */
+export function inkOn(background: string | undefined): string | undefined {
+  const m = background?.match(/^#([0-9a-f]{6})$/i);
+  if (!m) return undefined;
+  const n = parseInt(m[1], 16);
+  const lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+  return lum > 0.6 ? '#2a2723' : undefined;
 }
 
 /** Map a stroke style + width to an SVG/CSS dash array. */

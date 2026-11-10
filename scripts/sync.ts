@@ -108,5 +108,24 @@ const current: Diagram = {
   check('the surviving node keeps its position', merged?.nodes[0]?.position.x === 100, merged?.nodes);
 }
 
+{
+  // editing an image URL in the text reaches the node; position stays
+  const pic: Diagram = {
+    nodes: [
+      { id: 'P', label: 'Pic', shape: 'rect', parentId: null, collapsed: false, position: { x: 7, y: 9 }, image: { src: 'https://a.example/1.png', w: 60, h: 60 } },
+    ],
+    edges: [],
+  };
+  const parsed = parseMermaid(toMermaid(pic).replace('1.png', '2.png'));
+  const merged = parsed.ok ? mergeDiagram(parsed.diagram, pic) : null;
+  const p = merged?.nodes[0];
+  check('image src follows the text', p?.image?.src === 'https://a.example/2.png', p);
+  check('image size survives the edit', p?.image?.w === 60 && p?.image?.h === 60, p);
+  check('image node keeps its position', p?.position.x === 7 && p?.position.y === 9, p);
+  const removed = parseMermaid('flowchart TD\n  P["Pic"]');
+  const plain = removed.ok ? mergeDiagram(removed.diagram, pic).nodes[0] : null;
+  check('dropping img: from the text makes it a plain node', plain != null && plain.image === undefined, plain);
+}
+
 if (failed) process.exit(1);
 console.log('PASS: mermaid parse validation + state-preserving merge');

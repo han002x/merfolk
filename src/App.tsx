@@ -20,7 +20,7 @@ import {
 import '@xyflow/react/dist/style.css';
 
 import { splitEdgeFor, useDiagram } from './store';
-import { DiagramNode, type NodeData } from './components/DiagramNode';
+import { DiagramNode, NodeImg, type NodeData } from './components/DiagramNode';
 import { GhostNode, type GhostData } from './components/GhostNode';
 import { SheetNode, type SheetData } from './components/SheetNode';
 import {
@@ -35,16 +35,18 @@ import {
   sheets,
 } from './fold';
 import { useFoldMotion } from './foldMotion';
-import { GHOST_SIZE, sizeFor } from './layout';
+import { GHOST_SIZE, IMAGE_LABEL_SPACE, sizeFor } from './layout';
 import { DiagramEdge } from './components/DiagramEdge';
 import { JoinPreview } from './components/JoinPreview';
 import { MermaidPanel } from './components/MermaidPanel';
 import { StylePanel } from './components/StylePanel';
 import { Icon } from './components/Icon';
 import { ShapePicker, type Placement } from './components/ShapePicker';
+import { ImagePicker } from './components/ImagePicker';
 import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
 import { toggleTheme, useTheme } from './theme';
-import { useHotkeys } from './useHotkeys';
+import { isTyping, useHotkeys } from './useHotkeys';
+import { copyImageNode, imagesFromClipboard, snapshotClipboard } from './clipboard';
 import {
   startAutosave,
   restore,
@@ -53,7 +55,7 @@ import {
   clearSaved,
 } from './persist';
 import { exportGif } from './gif';
-import type { DiagramNode as DNode, NodeShape } from './types';
+import type { DiagramNode as DNode } from './types';
 import { SAMPLE } from './sample';
 import { hasOutline, shapeDef } from './shapes';
 import './App.css';
@@ -75,7 +77,11 @@ const edgeTypes: EdgeTypes = { diagram: DiagramEdge };
 
 /** A toolbar button whose tooltip announces its keyboard shortcut. */
 /** half the rendered size of a freshly placed node (see `.mf-place-ghost`) */
-function placeHalf({ shape, icon }: Placement): { x: number; y: number } {
+function placeHalf({ shape, icon, image }: Placement): { x: number; y: number } {
+  if (image) {
+    const { width, height } = sizeFor(shape, undefined, image);
+    return { x: width / 2, y: (height - IMAGE_LABEL_SPACE) / 2 + 8 };
+  }
   if (icon) return shape === 'circle' ? { x: 45, y: 45 } : { x: 48, y: 42 };
   return shapeDef(shape).square ? { x: 45, y: 45 } : { x: 60, y: 24 };
 }
@@ -89,7 +95,7 @@ function ToolButton({
 }: {
   label: string;
   hotkey?: string;
-  /** a mode toggle (select / hand): show it pressed when it is the live tool */
+  /** show the current tool pressed */
   active?: boolean;
   onClick: () => void;
   children: React.ReactNode;
@@ -129,15 +135,23 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const groupNodes = useDiagram((s) => s.groupNodes);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  /** pointer tool: select drags a selection box, hand drags the canvas */
-  const [tool, setTool] = useState<'select' | 'hand'>('select');
-  const hand = tool === 'hand';
-
   /** shape awaiting placement, and the live cursor position for its preview */
   const [pending, setPending] = useState<Placement | null>(null);
   /** the shape + icon library popover */
   const [pickerOpen, setPickerOpen] = useState(false);
+  /** the image (URL / upload / clipboard) popover */
+  const [imageOpen, setImageOpen] = useState(false);
   const [cursor, setCursor] = useState<{ x: number; y: number } | null>(null);
+  /** last pointer position over the canvas: where a pasted image lands */
+  const pointer = useRef<{ x: number; y: number } | null>(null);
+  /** a short-lived message, e.g. why a paste was refused */
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<number | undefined>(undefined);
+  const flash = useCallback((msg: string) => {
+    window.clearTimeout(noticeTimer.current);
+    setNotice(msg);
+    noticeTimer.current = window.setTimeout(() => setNotice(null), 3500);
+  }, []);
 
   /** the overflow (3-dot) menu: open state and its anchor for click-outside */
   const [menuOpen, setMenuOpen] = useState(false);
@@ -246,7 +260,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   }, [sizeKey]);
   const sizeOf = useMemo(() => {
     const measured = new Map(sizeCache.current);
-    return (n: DNode) => measured.get(n.id) ?? sizeFor(n.shape, n.icon);
+    return (n: DNode) => measured.get(n.id) ?? sizeFor(n.shape, n.icon, n.image);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sizesVersion]);
 
@@ -301,6 +315,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           label: n.label,
           shape: n.shape,
           icon: n.icon,
+          image: n.image,
           isGroup: isGroup(n.id),
           collapsed: n.collapsed,
           childCount: descendants(n.id, kids).length,
@@ -559,8 +574,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 
   // Arm a shape for placement: the next left-click on the canvas drops it at
   // the cursor. A preview ghost follows the pointer until then.
-  const arm = useCallback((shape: NodeShape, icon?: string) => {
-    setPending(icon ? { shape, icon } : { shape });
+  const arm = useCallback((p: Placement) => {
+    setPending(p.image ? { shape: p.shape, image: p.image } : p.icon ? { shape: p.shape, icon: p.icon } : { shape: p.shape });
     setCursor(null);
   }, []);
 
@@ -583,7 +598,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
       if (!pending) return;
       const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       const half = placeHalf(pending);
-      addNode(pending.shape, { x: flow.x - half.x, y: flow.y - half.y }, pending.icon);
+      addNode(pending.shape, { x: flow.x - half.x, y: flow.y - half.y }, pending);
       cancelPending();
     },
     [pending, screenToFlowPosition, addNode, cancelPending],
@@ -640,13 +655,13 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   useHotkeys(
     useMemo(
       () => [
-        { key: 'v', run: () => setTool('select') },
-        { key: 'h', run: () => setTool('hand') },
-        { key: 'r', run: () => arm('rect') },
-        { key: 'o', run: () => arm('round') },
-        { key: 'd', run: () => arm('diamond') },
-        { key: 'c', run: () => arm('circle') },
-        { key: 's', run: () => setPickerOpen((v) => !v) },
+        { key: 'v', run: cancelPending },
+        { key: 'r', run: () => arm({ shape: 'rect' }) },
+        { key: 'o', run: () => arm({ shape: 'round' }) },
+        { key: 'd', run: () => arm({ shape: 'diamond' }) },
+        { key: 'c', run: () => arm({ shape: 'circle' }) },
+        { key: 's', run: () => (setImageOpen(false), setPickerOpen((v) => !v)) },
+        { key: 'i', run: () => (setPickerOpen(false), setImageOpen((v) => !v)) },
         { key: 'l', run: () => tidy('TB') },
         { key: 'l', shift: true, run: () => tidy('LR') },
         { key: 't', run: () => toggleTheme() },
@@ -664,35 +679,85 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     ),
   );
 
+  // Ctrl/Cmd+C on one selected image node copies it; Ctrl/Cmd+V of any picture
+  // (file, copied web image, image URL, or a copied node) drops an image node
+  // at the pointer. Text fields keep their own native copy/paste.
+  useEffect(() => {
+    const onCopy = (e: ClipboardEvent) => {
+      if (isTyping(document.activeElement) || window.getSelection()?.toString()) return;
+      const { nodes: all, selectedNodeIds, selectedEdgeIds } = useDiagram.getState();
+      if (selectedNodeIds.length !== 1 || selectedEdgeIds.length > 0) return;
+      const node = all.find((n) => n.id === selectedNodeIds[0]);
+      if (node?.image) copyImageNode(e, node.image, node.label);
+    };
+    let lastPaste: { x: number; y: number; n: number } | null = null;
+    const onPaste = (e: ClipboardEvent) => {
+      if (isTyping(document.activeElement) || !e.clipboardData) return;
+      const clip = snapshotClipboard(e.clipboardData);
+      if (!clip) return;
+      e.preventDefault();
+      // at the pointer when it is over the canvas, else the middle of the view
+      const pane = document.querySelector('.react-flow')?.getBoundingClientRect();
+      const p = pointer.current;
+      const inside = p && pane && p.x >= pane.left && p.x <= pane.right && p.y >= pane.top && p.y <= pane.bottom;
+      const screen = inside ? p : pane ? { x: pane.left + pane.width / 2, y: pane.top + pane.height / 2 } : { x: 0, y: 0 };
+      const at = screenToFlowPosition(screen);
+      // pasting again at the same spot cascades instead of stacking exactly
+      const n = lastPaste && Math.hypot(lastPaste.x - at.x, lastPaste.y - at.y) < 1 ? lastPaste.n + 1 : 0;
+      lastPaste = { ...at, n };
+      imagesFromClipboard(clip)
+        .then((items) => {
+          if (items.length === 0) return;
+          const ids = items.map(({ image, label }, i) => {
+            const half = placeHalf({ shape: 'rect', image });
+            const off = (n + i) * 24;
+            return addNode('rect', { x: at.x - half.x + off, y: at.y - half.y + off }, { image, label });
+          });
+          setSelection(ids, []);
+        })
+        .catch((err: Error) => flash(`Couldn't paste the image: ${err.message}`));
+    };
+    document.addEventListener('copy', onCopy);
+    document.addEventListener('paste', onPaste);
+    return () => {
+      document.removeEventListener('copy', onCopy);
+      document.removeEventListener('paste', onPaste);
+    };
+  }, [addNode, screenToFlowPosition, setSelection, flash]);
+
   return (
     <div
-      className={`mf-canvas ${connecting ? 'is-connecting' : ''} ${pending ? 'is-placing' : ''} ${hand ? 'is-hand' : ''}`}
+      className={`mf-canvas ${connecting ? 'is-connecting' : ''} ${pending ? 'is-placing' : ''}`}
+      onPointerMove={(e) => {
+        pointer.current = { x: e.clientX, y: e.clientY };
+      }}
+      onPointerLeave={() => {
+        pointer.current = null;
+      }}
     >
       <div className="mf-toolbar">
         <span className="mf-brand">merfolk</span>
         <div className="mf-group-btns">
-          <ToolButton label="Select" hotkey="V" active={!hand} onClick={() => setTool('select')}>
+          <ToolButton label="Select" hotkey="V" active={!pending} onClick={cancelPending}>
             <Icon name="cursor" />
-          </ToolButton>
-          <ToolButton label="Hand" hotkey="H  ·  hold Space" active={hand} onClick={() => setTool('hand')}>
-            <Icon name="hand" />
           </ToolButton>
         </div>
         <span className="mf-sep" />
         <div className="mf-group-btns">
-          <ToolButton label="Rectangle" hotkey="R" onClick={() => arm('rect')}>
+          <ToolButton label="Rectangle" hotkey="R" onClick={() => arm({ shape: 'rect' })}>
             <Icon name="rect" />
           </ToolButton>
-          <ToolButton label="Rounded" hotkey="O" onClick={() => arm('round')}>
+          <ToolButton label="Rounded" hotkey="O" onClick={() => arm({ shape: 'round' })}>
             <Icon name="round" />
           </ToolButton>
-          <ToolButton label="Diamond" hotkey="D" onClick={() => arm('diamond')}>
+          <ToolButton label="Diamond" hotkey="D" onClick={() => arm({ shape: 'diamond' })}>
             <Icon name="diamond" />
           </ToolButton>
-          <ToolButton label="Circle" hotkey="C" onClick={() => arm('circle')}>
+          <ToolButton label="Circle" hotkey="C" onClick={() => arm({ shape: 'circle' })}>
             <Icon name="circle" />
           </ToolButton>
-          <ShapePicker open={pickerOpen} onOpenChange={setPickerOpen} onPick={(p) => arm(p.shape, p.icon)} />
+          <ShapePicker open={pickerOpen} onOpenChange={setPickerOpen} onPick={arm} />
+          <ImagePicker open={imageOpen} onOpenChange={setImageOpen} onPick={arm} />
         </div>
         <span className="mf-sep" />
         <div className="mf-group-btns">
@@ -800,13 +865,9 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         connectionLineComponent={JoinPreview}
         colorMode={theme}
         deleteKeyCode={null}
-        // select: drag on empty canvas draws a selection box; middle/right
-        // drag (or Space + drag) still pans. hand: every drag pans, nodes included
-        selectionOnDrag={!hand}
-        panOnDrag={hand ? true : [1, 2]}
-        nodesDraggable={!hand}
-        nodesConnectable={!hand}
-        elementsSelectable={!hand}
+        // Drag on empty canvas selects; middle/right drag or Space + drag pans.
+        selectionOnDrag
+        panOnDrag={[1, 2]}
         fitView
       >
         <NodeToolbar
@@ -845,27 +906,35 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
             <div
               className={[
                 'mf-place-ghost',
-                `mf-place-${pending.icon ? 'icon' : pending.shape}`,
-                !pending.icon && hasOutline(pending.shape) ? 'is-outline' : '',
+                `mf-place-${pending.image ? 'image' : pending.icon ? 'icon' : pending.shape}`,
+                !pending.icon && !pending.image && hasOutline(pending.shape) ? 'is-outline' : '',
               ].join(' ')}
               style={{ left: cursor.x, top: cursor.y }}
             >
-              {pending.icon ? (
+              {pending.image ? (
+                <NodeImg image={pending.image} />
+              ) : pending.icon ? (
                 <CatalogIcon id={pending.icon} />
               ) : (
-                <ShapeOutline shape={pending.shape} />
+                hasOutline(pending.shape) && <ShapeOutline shape={pending.shape} style={{ sloppiness: 0 }} />
               )}
             </div>
           )}
         </div>
       )}
       <StylePanel />
+      {notice && (
+        <div className="mf-notice" role="status">
+          {notice}
+        </div>
+      )}
     </div>
   );
 }
 
 export default function App() {
   const [panelOpen, setPanelOpen] = useState(true);
+  const [panelWidth, setPanelWidth] = useState(360);
   const load = useDiagram((s) => s.load);
 
   // on first mount: restore the saved diagram, or seed the sample; then
@@ -883,7 +952,11 @@ export default function App() {
       <div className="mf-app">
         <Canvas onTogglePanel={() => setPanelOpen((v) => !v)} />
         {panelOpen ? (
-          <MermaidPanel onClose={() => setPanelOpen(false)} />
+          <MermaidPanel
+            width={panelWidth}
+            onWidthChange={setPanelWidth}
+            onClose={() => setPanelOpen(false)}
+          />
         ) : (
           <button
             className="mf-reopen"
