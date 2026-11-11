@@ -5,6 +5,7 @@
 import type { FlowchartDiagram, WorkspaceDocument } from './types';
 import { useDiagram } from './store.ts';
 import { normalizeDiagram, mergePages } from './pages.ts';
+import { decodeStructural } from './structural/io.ts';
 import { decodeSequence } from './sequence/io.ts';
 
 const KEY = 'merfolk.diagram';
@@ -12,7 +13,7 @@ const VERSION = 3;
 
 export function currentDocument(): WorkspaceDocument {
   const state = useDiagram.getState();
-  return { diagram: state.sequence ?? { kind: 'flowchart', nodes: state.nodes, edges: state.edges }, pages: state.pages };
+  return { diagram: state.diagram, pages: state.pages };
 }
 
 export function decodeDocument(value: unknown): WorkspaceDocument {
@@ -28,7 +29,8 @@ export function decodeDocument(value: unknown): WorkspaceDocument {
     && 'body' in p && typeof p.body === 'string' && 'updatedAt' in p && typeof p.updatedAt === 'number' && Number.isFinite(p.updatedAt);
   if (!Array.isArray(pageData) || !pageData.every(isPage)) throw new Error('Invalid wiki pages');
   const pages = pageData;
-  if ('kind' in diagram && diagram.kind !== 'flowchart' && diagram.kind !== 'sequence') throw new Error('Unsupported diagram kind');
+  if ('kind' in diagram && diagram.kind !== 'flowchart' && diagram.kind !== 'sequence' && diagram.kind !== 'er' && diagram.kind !== 'class') throw new Error('Unsupported diagram kind');
+  if ('kind' in diagram && (diagram.kind === 'er' || diagram.kind === 'class')) return { diagram: decodeStructural(diagram), pages };
   if ('kind' in diagram && diagram.kind === 'sequence') return { diagram: decodeSequence(diagram), pages };
   if (!('nodes' in diagram) || !Array.isArray(diagram.nodes) || !('edges' in diagram) || !Array.isArray(diagram.edges)) throw new Error('Not a merfolk diagram file');
   // Legacy flowchart normalization also migrates the old single-page field.
@@ -62,13 +64,9 @@ export function loadDocument(document: WorkspaceDocument, remote = false) {
     if (pages !== state.pages) useDiagram.setState({ pages });
     return;
   }
-  if (document.diagram.kind === 'sequence') {
-    useDiagram.setState({ sequence: document.diagram, nodes: [], edges: [], pages, history: [], selectedNodeIds: [], selectedEdgeIds: [] });
-  } else {
-    const graph = { ...document.diagram, pages };
-    if (remote) { state.applyRemote(graph); if (state.sequence) useDiagram.setState({ sequence: null, history: [], selectedNodeIds: [], selectedEdgeIds: [], highlight: null, insertion: null }); }
-    else state.load(graph);
-  }
+  useDiagram.setState({ diagram: document.diagram, pages,
+    history: remote && state.diagram.kind === document.diagram.kind ? state.history : [],
+    selectedNodeIds: [], selectedEdgeIds: [], highlight: null, insertion: null });
 }
 
 /** Subscribe the store to localStorage with a debounce. Call once at startup. */
@@ -77,7 +75,7 @@ export function startAutosave(debounceMs = 400): () => void {
   const unsubscribe = useDiagram.subscribe((state) => {
     window.clearTimeout(timer);
     timer = window.setTimeout(
-      () => write({ diagram: state.sequence ?? { kind: 'flowchart', nodes: state.nodes, edges: state.edges }, pages: state.pages }),
+      () => write({ diagram: state.diagram, pages: state.pages }),
       debounceMs,
     );
   });

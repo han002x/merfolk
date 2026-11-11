@@ -1,8 +1,9 @@
-import type { SequenceDiagram } from './sequence/types';
-import { emitSequence } from './sequence/io.ts';
-import { parseDiagram } from './mermaid/document.ts';
+import { walkEvents } from './sequence/io.ts';
+import { entitiesOf, mapPageEntities } from './entities.ts';
+import { emitDiagram, parseDiagram } from './mermaid/document.ts';
 import { create } from 'zustand';
 import type {
+  Diagram,
   FlowchartDiagram,
   DiagramEdge,
   DiagramNode,
@@ -11,7 +12,7 @@ import type {
   NodeShape,
   Page,
 } from './types';
-import { fromMermaid, mergeDiagram, toMermaid } from './mermaid/io.ts';
+import { mergeDiagram } from './mermaid/io.ts';
 import { layout, type Direction } from './layout.ts';
 import { createPageFor, mergePages, newPageId, normalizeDiagram } from './pages.ts';
 import {
@@ -31,41 +32,6 @@ function nextNodeId(nodes: DiagramNode[]): string {
     id = `node${Math.floor(Math.random() * 36 ** 5).toString(36).padStart(5, '0')}`;
   } while (nodes.some((node) => node.id === id));
   return id;
-}
-
-/**
- * Whether two diagrams are equivalent for live-sync purposes: same nodes
- * (id, label, shape, icon, image, parentId, position) and same edges (source, target,
- * label), in the same order. Lets `syncMermaid` skip no-op edits so moving the
- * caret or re-typing identical text neither re-renders nor grows undo history.
- */
-const imageKey = (i?: NodeImage) =>
-  i ? `${i.src}\u0000${i.pos ?? ''}\u0000${i.w ?? ''}\u0000${i.h ?? ''}\u0000${i.constraint ? 1 : 0}` : '';
-
-function unchanged(a: FlowchartDiagram, b: FlowchartDiagram): boolean {
-  if (a.nodes.length !== b.nodes.length || a.edges.length !== b.edges.length) return false;
-  for (let i = 0; i < a.nodes.length; i++) {
-    const x = a.nodes[i];
-    const y = b.nodes[i];
-    if (
-      x.id !== y.id ||
-      x.label !== y.label ||
-      x.shape !== y.shape ||
-      x.icon !== y.icon ||
-      JSON.stringify(x.pageIds ?? []) !== JSON.stringify(y.pageIds ?? []) ||
-      imageKey(x.image) !== imageKey(y.image) ||
-      x.parentId !== y.parentId ||
-      x.position.x !== y.position.x ||
-      x.position.y !== y.position.y
-    )
-      return false;
-  }
-  for (let i = 0; i < a.edges.length; i++) {
-    const x = a.edges[i];
-    const y = b.edges[i];
-    if (x.source !== y.source || x.target !== y.target || x.label !== y.label) return false;
-  }
-  return true;
 }
 
 export interface Highlight {
@@ -118,17 +84,11 @@ export function splitEdgeFor(
   );
 }
 
-interface Snapshot {
-  sequence: SequenceDiagram | null;
-  nodes: DiagramNode[];
-  edges: DiagramEdge[];
-}
+interface Snapshot { diagram: Diagram }
 
 interface State {
-  sequence: SequenceDiagram | null;
-  setSequence: (diagram: SequenceDiagram | null) => void;
-  nodes: DiagramNode[];
-  edges: DiagramEdge[];
+  diagram: Diagram;
+  setDiagram: (diagram: Diagram) => void;
   /** wiki pages; not part of undo history */
   pages: Page[];
 
@@ -229,8 +189,23 @@ interface State {
 }
 
 const HISTORY_LIMIT = 100;
+const EMPTY_FLOWCHART = { kind: 'flowchart', nodes: [], edges: [] } satisfies Diagram;
+export function flowchartOf(state: { diagram: Diagram }): FlowchartDiagram & { kind: 'flowchart' } {
+  return state.diagram.kind === 'flowchart' ? state.diagram : EMPTY_FLOWCHART;
+}
+type FlowState = State & FlowchartDiagram;
+type FlowUpdate = Partial<FlowState> | ((state: FlowState) => Partial<FlowState> | FlowState);
 
 export const useDiagram = create<State>((set, get) => {
+  const getFlow = (): FlowState => ({ ...get(), ...flowchartOf(get()) });
+  const setFlow = (update: FlowUpdate) => set((state) => {
+    if (state.diagram.kind !== 'flowchart') return state;
+    const current = { ...state, ...state.diagram };
+    const next = typeof update === 'function' ? update(current) : update;
+    if (next === current) return state;
+    const { nodes, edges, ...rest } = next;
+    return { ...rest, diagram: { ...state.diagram, nodes: nodes ?? state.diagram.nodes, edges: edges ?? state.diagram.edges } };
+  });
   /** id of the node in an in-progress drag, so a drag coalesces to one undo */
   let lastMoveId: string | null = null;
 
@@ -245,8 +220,8 @@ export const useDiagram = create<State>((set, get) => {
     lastMoveId = null; // any snapshotted change ends a drag-coalescing run
     lastStyleKey = null; // ...and ends a style-coalescing run
     syncing = false; // ...and ends a live-mermaid-sync run
-    const { nodes, edges, history, sequence } = get();
-    const next = [...history, { nodes, edges, sequence }];
+    const { diagram, history } = get();
+    const next = [...history, { diagram }];
     if (next.length > HISTORY_LIMIT) next.shift();
     return { history: next };
   };
@@ -261,17 +236,15 @@ export const useDiagram = create<State>((set, get) => {
     lastMoveId = null;
     syncing = false;
     if (coalesce) return null;
-    const { nodes, edges, history, sequence } = get();
-    const next = [...history, { nodes, edges, sequence }];
+    const { diagram, history } = get();
+    const next = [...history, { diagram }];
     if (next.length > HISTORY_LIMIT) next.shift();
     return { history: next };
   };
 
   return {
-  sequence: null,
-  setSequence: (sequence) => set({ ...snapshot(), sequence, selectedNodeIds: [], selectedEdgeIds: [], highlight: null, insertion: null }),
-  nodes: [],
-  edges: [],
+  diagram: EMPTY_FLOWCHART,
+  setDiagram: (diagram) => set({ ...snapshot(), diagram, selectedNodeIds: [], selectedEdgeIds: [], highlight: null, insertion: null }),
   pages: [],
   highlight: null,
   insertion: null,
@@ -280,9 +253,9 @@ export const useDiagram = create<State>((set, get) => {
   selectedEdgeIds: [],
   history: [],
 
-  isGroup: (id) => get().nodes.some((n) => n.parentId === id),
+  isGroup: (id) => getFlow().nodes.some((n) => n.parentId === id),
 
-  hiddenNodeIds: () => computeHidden(get().nodes),
+  hiddenNodeIds: () => computeHidden(getFlow().nodes),
 
   canUndo: () => get().history.length > 0,
 
@@ -291,9 +264,7 @@ export const useDiagram = create<State>((set, get) => {
       if (s.history.length === 0) return s;
       const prev = s.history[s.history.length - 1];
       return {
-        sequence: prev.sequence,
-        nodes: prev.nodes,
-        edges: prev.edges,
+        diagram: prev.diagram,
         history: s.history.slice(0, -1),
       };
     }),
@@ -334,10 +305,10 @@ export const useDiagram = create<State>((set, get) => {
     ),
 
   commitInsertion: (shape = 'rect') => {
-    const { insertion, ghostAt, nodes, edges } = get();
+    const { insertion, ghostAt, nodes, edges } = getFlow();
     if (!insertion || !ghostAt) return null;
     const { parentId, beforeNodeId } = insertion;
-    const id = nextNodeId(get().nodes);
+    const id = nextNodeId(getFlow().nodes);
     const node: DiagramNode = {
       id,
       label: '',
@@ -374,7 +345,7 @@ export const useDiagram = create<State>((set, get) => {
         )
       : edges;
 
-    set({ ...snapshot(), nodes: next, edges: nextEdges, insertion: null, ghostAt: null });
+    setFlow({ ...snapshot(), nodes: next, edges: nextEdges, insertion: null, ghostAt: null });
     return id;
   },
 
@@ -390,7 +361,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   addNode: (shape, position, { icon, image, label = '' } = {}) => {
-    const id = nextNodeId(get().nodes);
+    const id = nextNodeId(getFlow().nodes);
     const node: DiagramNode = {
       id,
       label,
@@ -401,12 +372,12 @@ export const useDiagram = create<State>((set, get) => {
       ...(icon && { icon }),
       ...(image && { image }),
     };
-    set((s) => ({ ...snapshot(), nodes: [...s.nodes, node] }));
+    setFlow((s) => ({ ...snapshot(), nodes: [...s.nodes, node] }));
     return id;
   },
 
   updateLabel: (id, label) =>
-    set((s) => {
+    setFlow((s) => {
       const nodes = s.nodes.map((n) => (n.id === id ? { ...n, label } : n));
       return {
         ...snapshot(),
@@ -415,74 +386,41 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   openPage: (nodeId, pageId) => {
-    const { nodes: flowNodes, pages, sequence } = get();
-    const nodes = sequence ? sequence.participants : flowNodes;
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return null;
-    if (pageId && !node.pageIds?.includes(pageId)) return null;
+    const { diagram, pages } = get();
+    const node = entitiesOf(diagram).find((n) => n.id === nodeId);
+    if (!node || (pageId && !node.pageIds?.includes(pageId))) return null;
     const target = pageId ? { ...node, pageIds: [pageId] } : node;
     const page = createPageFor(target, pages);
-    if (page) {
-      set({
-        pages: [...pages, page],
-        ...(sequence ? { sequence: { ...sequence, participants: sequence.participants.map((n) => n.id === nodeId && !n.pageIds?.length ? { ...n, pageIds: [page.id] } : n) } } : { nodes: flowNodes.map((n) => n.id === nodeId && !n.pageIds?.length ? { ...n, pageIds: [page.id] } : n) }),
-      });
-    }
+    if (page) set({ pages: [...pages, page], diagram: mapPageEntities(diagram, (n) => n.id === nodeId && !n.pageIds?.length ? { ...n, pageIds: [page.id] } : n) });
     return page?.id ?? target.pageIds?.[0] ?? null;
   },
-
   createPageForNode: (nodeId) => {
-    const { nodes: flowNodes, pages, sequence } = get();
-    const nodes = sequence ? sequence.participants : flowNodes;
-    const node = nodes.find((n) => n.id === nodeId);
+    const { diagram, pages } = get();
+    const node = entitiesOf(diagram).find((n) => n.id === nodeId);
     if (!node) return null;
     const id = newPageId(pages);
-    set({
-      pages: [...pages, { id, title: node.label, body: '', updatedAt: Date.now() }],
-      ...(sequence ? { sequence: { ...sequence, participants: sequence.participants.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), id] } : n) } } : { nodes: flowNodes.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), id] } : n) }),
-    });
+    set({ pages: [...pages, { id, title: node.label, body: '', updatedAt: Date.now() }], diagram: mapPageEntities(diagram, (n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), id] } : n) });
     return id;
   },
-
   createPage: (title) => {
     const id = newPageId(get().pages);
     set((s) => ({ pages: [...s.pages, { id, title, body: '', updatedAt: Date.now() }] }));
     return id;
   },
-
-  deletePage: (id) =>
-    set((s) => ({
-      pages: s.pages.filter((p) => p.id !== id),
-      sequence: s.sequence ? { ...s.sequence, participants: s.sequence.participants.map((p) => ({ ...p, pageIds: p.pageIds?.filter((v) => v !== id) })) } : null,
-      nodes: s.nodes.map((n) => n.pageIds?.includes(id)
-        ? { ...n, pageIds: n.pageIds.filter((p) => p !== id) } : n),
-      // Undo can restore deleted nodes, but must not revive links to deleted pages.
-      history: s.history.map((h) => ({ ...h, sequence: h.sequence ? { ...h.sequence, participants: h.sequence.participants.map((p) => ({ ...p, pageIds: p.pageIds?.filter((v) => v !== id) })) } : null, nodes: h.nodes.map((n) => n.pageIds?.includes(id)
-        ? { ...n, pageIds: n.pageIds.filter((p) => p !== id) } : n) })),
-    })),
-
-  linkPage: (pageId, nodeId) =>
-    set((s) => {
-      const node = (s.sequence ? s.sequence.participants : s.nodes).find((n) => n.id === nodeId);
-      if (!node || node.pageIds?.includes(pageId) || !s.pages.some((p) => p.id === pageId)) return s;
-      return s.sequence ? { sequence: { ...s.sequence, participants: s.sequence.participants.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), pageId] } : n) } } : { nodes: s.nodes.map((n) => (n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), pageId] } : n)) };
-    }),
-
-  unlinkPage: (pageId, nodeId) =>
-    set((s) => s.sequence ? { sequence: { ...s.sequence, participants: s.sequence.participants.map((p) => p.id === nodeId ? { ...p, pageIds: p.pageIds?.filter((id) => id !== pageId) } : p) } } : ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
-      ? { ...n, pageIds: n.pageIds.filter((id) => id !== pageId) } : n) })),
-
-  makeDefaultPage: (pageId, nodeId) =>
-    set((s) => s.sequence ? { sequence: { ...s.sequence, participants: s.sequence.participants.map((p) => p.id === nodeId && p.pageIds?.includes(pageId) ? { ...p, pageIds: [pageId, ...p.pageIds.filter((id) => id !== pageId)] } : p) } } : ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
-      ? { ...n, pageIds: [pageId, ...n.pageIds.filter((id) => id !== pageId)] } : n) })),
-
-  updatePage: (id, patch) =>
-    set((s) => ({
-      pages: s.pages.map((p) => (p.id === id ? { ...p, ...patch, updatedAt: Date.now() } : p)),
-    })),
+  deletePage: (id) => set((s) => {
+    const drop = (diagram: Diagram) => mapPageEntities(diagram, (n) => n.pageIds?.includes(id) ? { ...n, pageIds: n.pageIds.filter((p) => p !== id) } : n);
+    return { pages: s.pages.filter((p) => p.id !== id), diagram: drop(s.diagram), history: s.history.map((h) => ({ diagram: drop(h.diagram) })) };
+  }),
+  linkPage: (pageId, nodeId) => set((s) => {
+    if (!s.pages.some((p) => p.id === pageId)) return s;
+    return { diagram: mapPageEntities(s.diagram, (n) => n.id === nodeId && !n.pageIds?.includes(pageId) ? { ...n, pageIds: [...(n.pageIds ?? []), pageId] } : n) };
+  }),
+  unlinkPage: (pageId, nodeId) => set((s) => ({ diagram: mapPageEntities(s.diagram, (n) => n.id === nodeId && n.pageIds?.includes(pageId) ? { ...n, pageIds: n.pageIds.filter((id) => id !== pageId) } : n) })),
+  makeDefaultPage: (pageId, nodeId) => set((s) => ({ diagram: mapPageEntities(s.diagram, (n) => n.id === nodeId && n.pageIds?.includes(pageId) ? { ...n, pageIds: [pageId, ...n.pageIds.filter((id) => id !== pageId)] } : n) })),
+  updatePage: (id, patch) => set((s) => ({ pages: s.pages.map((p) => p.id === id ? { ...p, ...patch, updatedAt: Date.now() } : p) })),
 
   updateNodeImage: (id, patch) =>
-    set((s) => {
+    setFlow((s) => {
       const node = s.nodes.find((n) => n.id === id);
       if (!node || (!node.image && !patch?.src)) return s;
       return {
@@ -505,7 +443,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   updateNodeStyle: (ids, patch) =>
-    set((s) => {
+    setFlow((s) => {
       if (ids.length === 0) return s;
       const key = `node:${patch ? Object.keys(patch).join(',') : ''}:${ids.join(',')}`;
       const set$ = new Set(ids);
@@ -518,7 +456,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   updateEdgeStyle: (ids, patch) =>
-    set((s) => {
+    setFlow((s) => {
       if (ids.length === 0) return s;
       const key = `edge:${patch ? Object.keys(patch).join(',') : ''}:${ids.join(',')}`;
       const set$ = new Set(ids);
@@ -531,7 +469,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   setEdgeOrder: (ids, order) =>
-    set((s) => {
+    setFlow((s) => {
       if (ids.length === 0) return s;
       const set$ = new Set(ids);
       return {
@@ -546,7 +484,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   moveNode: (id, position) =>
-    set((s) => {
+    setFlow((s) => {
       // coalesce a continuous drag of one node into a single history entry:
       // only snapshot when the move starts on a different node than last time
       const coalesce = lastMoveId === id && s.history.length > 0;
@@ -576,7 +514,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   removeNode: (id) =>
-    set((s) => {
+    setFlow((s) => {
       // remove node, its descendants, and touching edges
       const toRemove = new Set<string>([id]);
       let changed = true;
@@ -599,7 +537,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   connect: (source, target) =>
-    set((s) => {
+    setFlow((s) => {
       if (source === target) return s;
       const exists = s.edges.some(
         (e) => e.source === source && e.target === target,
@@ -612,7 +550,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   updateEdgeLabel: (id, label) =>
-    set((s) => ({
+    setFlow((s) => ({
       ...snapshot(),
       edges: s.edges.map((e) =>
         e.id === id ? { ...e, label: label.trim() || undefined } : e,
@@ -620,10 +558,10 @@ export const useDiagram = create<State>((set, get) => {
     })),
 
   removeEdge: (id) =>
-    set((s) => ({ ...snapshot(), edges: s.edges.filter((e) => e.id !== id) })),
+    setFlow((s) => ({ ...snapshot(), edges: s.edges.filter((e) => e.id !== id) })),
 
   toggleCollapse: (id) =>
-    set((s) => ({
+    setFlow((s) => ({
       ...snapshot(),
       nodes: s.nodes.map((n) =>
         n.id === id ? { ...n, collapsed: !n.collapsed } : n,
@@ -631,7 +569,7 @@ export const useDiagram = create<State>((set, get) => {
     })),
 
   setCollapsed: (ids, collapsed) =>
-    set((s) => {
+    setFlow((s) => {
       const target = new Set(ids);
       if (!s.nodes.some((n) => target.has(n.id) && n.collapsed !== collapsed)) return s;
       return {
@@ -643,7 +581,7 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   nestInto: (childId, groupId) =>
-    set((s) => {
+    setFlow((s) => {
       if (childId === groupId) return s;
       return {
         ...snapshot(),
@@ -654,13 +592,13 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   groupNodes: (ids) => {
-    const plan = groupPlan(get().nodes, ids);
+    const plan = groupPlan(getFlow().nodes, ids);
     if (!plan) return null;
     const members = new Set(plan.members);
     if (plan.kind === 'join') {
       // a group is already selected: the rest move into it, no new card
       const into = plan.groupId;
-      set((s) => ({
+      setFlow((s) => ({
         ...snapshot(),
         nodes: s.nodes.map((n) => (members.has(n.id) ? { ...n, parentId: into } : n)),
         selectedNodeIds: [into],
@@ -668,8 +606,8 @@ export const useDiagram = create<State>((set, get) => {
       }));
       return into;
     }
-    const id = nextNodeId(get().nodes);
-    const nodesAfter = get().nodes.map((n) => (members.has(n.id) ? { ...n, parentId: id } : n));
+    const id = nextNodeId(getFlow().nodes);
+    const nodesAfter = getFlow().nodes.map((n) => (members.has(n.id) ? { ...n, parentId: id } : n));
     const group: DiagramNode = {
       id,
       label: '',
@@ -679,7 +617,7 @@ export const useDiagram = create<State>((set, get) => {
       // unused: a group's position is always derived from its contents
       position: groupOrigin(id, nodesAfter) ?? { x: 0, y: 0 },
     };
-    set(() => ({
+    setFlow(() => ({
       ...snapshot(),
       nodes: [...nodesAfter, group],
       // the new group has nothing on screen to select: keep its members selected
@@ -690,7 +628,7 @@ export const useDiagram = create<State>((set, get) => {
   },
 
   autoLayout: (direction = 'TB') =>
-    set((s) => {
+    setFlow((s) => {
       // only lay out what's currently on screen; hidden nodes keep positions
       const hidden = computeHidden(s.nodes);
       const visible = s.nodes.filter((n) => !hidden.has(n.id));
@@ -704,76 +642,64 @@ export const useDiagram = create<State>((set, get) => {
       };
     }),
 
-  loadMermaid: (src) => {
-    const d = fromMermaid(src);
-    set({ ...snapshot(), nodes: d.nodes, edges: d.edges });
-  },
-
+  loadMermaid: (src) => { get().syncMermaid(src); },
   syncMermaid: (src) => {
     const result = parseDiagram(src);
     if (!result.ok) return result;
-    if (result.diagram.kind === 'sequence') {
-      get().setSequence(result.diagram);
-      return { ok: true };
+    const current = get().diagram;
+    let next = reconcileDiagram(result.diagram, current);
+    if (next.kind === 'flowchart') {
+      const old = flowchartOf(get());
+      const curIds = new Set(old.nodes.map((n) => n.id));
+      if (next.nodes.some((n) => !curIds.has(n.id))) {
+        const positions = layout(next.nodes, next.edges, 'TB');
+        next = { ...next, nodes: next.nodes.map((n) => !curIds.has(n.id) && positions[n.id] ? { ...n, position: positions[n.id] } : n) };
+      }
     }
-
-    const { nodes: curNodes, edges: curEdges } = get();
-    const merged = mergeDiagram(result.diagram, { nodes: curNodes, edges: curEdges });
-
-    // bail out when the merge changed nothing structural or textual, so moving
-    // the caret or a no-op re-sync neither re-renders nor touches undo history
-    if (!get().sequence && unchanged(merged, { nodes: curNodes, edges: curEdges })) return { ok: true };
-
-    // lay out only genuinely new nodes (absent from the current diagram), so
-    // existing nodes keep the positions the merge preserved
-    const curIds = new Set(curNodes.map((n) => n.id));
-    const isNew = (n: DiagramNode) => !curIds.has(n.id);
-    let laidOut = merged.nodes;
-    if (merged.nodes.some(isNew)) {
-      const positions = layout(merged.nodes, merged.edges, 'TB');
-      laidOut = merged.nodes.map((n) =>
-        isNew(n) && positions[n.id] ? { ...n, position: positions[n.id] } : n,
-      );
-    }
-
-    // coalesce a run of live edits into one undo entry: snapshot only the
-    // first edit of the run, then keep extending it until another mutation
-    // (drag, delete, style, undo) ends the run via snapshot()/styleSnapshot()
-    const coalesce = syncing && get().history.length > 0;
-    const hist = coalesce ? null : snapshot();
+    if (JSON.stringify(next) === JSON.stringify(current)) return { ok: true };
+    const hist = syncing && get().history.length ? null : snapshot();
     syncing = true;
-
-    set({ ...hist, sequence: null, nodes: laidOut, edges: merged.edges });
+    set({ ...hist, diagram: next, selectedNodeIds: current.kind === next.kind ? get().selectedNodeIds : [], selectedEdgeIds: current.kind === next.kind ? get().selectedEdgeIds : [] });
     return { ok: true };
   },
-
-  exportMermaid: () => { const s = get(); return s.sequence ? emitSequence(s.sequence).text : toMermaid({ nodes: s.nodes, edges: s.edges }); },
-
+  exportMermaid: () => emitDiagram(get().diagram).text,
   applyRemote: (incoming) => {
     const d = normalizeDiagram(incoming);
     set((s) => {
       const pages = mergePages(s.pages, d.pages ?? []);
-      const same = JSON.stringify([s.nodes, s.edges]) === JSON.stringify([d.nodes, d.edges]);
-      if (same && pages === s.pages) return s;
-      return same ? { pages } : { nodes: d.nodes, edges: d.edges, pages };
+      const diagram: Diagram = { kind: 'flowchart', nodes: d.nodes, edges: d.edges };
+      if (JSON.stringify(s.diagram) === JSON.stringify(diagram) && pages === s.pages) return s;
+      return { diagram, pages };
     });
   },
-
-  // Loading a whole new document (startup restore, file import, clear) starts
-  // a fresh editing session — reset undo history rather than making it undoable.
   load: (incoming) => {
     const d = normalizeDiagram(incoming);
     lastMoveId = null;
     lastStyleKey = null;
-    set({
-      history: [],
-      sequence: null,
-      nodes: d.nodes,
-      edges: d.edges,
-      pages: d.pages ?? [],
-      selectedNodeIds: [],
-      selectedEdgeIds: [],
-    });
+    set({ history: [], diagram: { kind: 'flowchart', nodes: d.nodes, edges: d.edges }, pages: d.pages ?? [], selectedNodeIds: [], selectedEdgeIds: [] });
   },
   };
 });
+
+export function reconcileDiagram(parsed: Diagram, current: Diagram): Diagram {
+  if (parsed.kind !== current.kind) return parsed;
+  if (parsed.kind === 'flowchart' && current.kind === 'flowchart') return { ...mergeDiagram(parsed, current), kind: 'flowchart' };
+  const preserve = <T extends { id: string; position?: { x: number; y: number }; collapsed?: boolean; style?: ElementStyle; pageIds?: string[] }>(items: T[], old: T[]): T[] => items.map((item) => {
+    const prev = old.find((entry) => entry.id === item.id);
+    if (!prev) return item;
+    const result = { ...item };
+    for (const key of ['position', 'collapsed', 'style', 'pageIds'] as const) {
+      if (key === 'pageIds' && 'pageIds' in item) continue;
+      if (key in prev) Object.assign(result, { [key]: prev[key] });
+    }
+    return result;
+  });
+  if (parsed.kind === 'sequence' && current.kind === 'sequence') {
+    const previous = new Map(walkEvents(current.events).map((e) => [e.id, e]));
+    const events = (items: typeof parsed.events): typeof parsed.events => preserve(items, [...previous.values()]).map((e) => e.kind === 'fragment' ? { ...e, branches: e.branches.map((b) => ({ ...b, events: events(b.events) })) } : e);
+    return { ...parsed, participants: preserve(parsed.participants, current.participants), events: events(parsed.events) };
+  }
+  if (parsed.kind === 'er' && current.kind === 'er') return { ...parsed, entities: preserve(parsed.entities, current.entities), relationships: preserve(parsed.relationships, current.relationships) };
+  if (parsed.kind === 'class' && current.kind === 'class') return { ...parsed, classes: preserve(parsed.classes, current.classes), namespaces: preserve(parsed.namespaces, current.namespaces), relationships: preserve(parsed.relationships, current.relationships) };
+  return parsed;
+}

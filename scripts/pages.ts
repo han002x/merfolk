@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 (globalThis as { window?: unknown }).window = new JSDOM('').window;
 const { renderPage } = await import('../src/wiki/render.ts');
 const { parseRoute, pageHref } = await import('../src/route.ts');
-const { useDiagram } = await import('../src/store.ts');
+const { flowchartOf, useDiagram } = await import('../src/store.ts');
 const { showPage, useDock } = await import('../src/dock.ts');
 const { readSaved, write, importFile, startSync, startAutosave } = await import('../src/persist.ts');
 import {
@@ -172,14 +172,14 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
   const second = st.createPageForNode('a');
   assert.ok(second);
   assert.notEqual(first, second);
-  const ids = (id: string) => useDiagram.getState().nodes.find((n) => n.id === id)?.pageIds;
+  const ids = (id: string) => flowchartOf(useDiagram.getState()).nodes.find((n) => n.id === id)?.pageIds;
   assert.deepEqual(ids('a'), [first, second]);
   assert.equal(st.openPage('a'), first);
   st.linkPage(second, 'a');
   st.linkPage(second, 'b');
   st.linkPage('missing', 'a');
   assert.deepEqual(ids('a'), [first, second]);
-  assert.deepEqual(nodesOfPage(useDiagram.getState().nodes, second).map((n) => n.id), ['a', 'b']);
+  assert.deepEqual(nodesOfPage(flowchartOf(useDiagram.getState()).nodes, second).map((n) => n.id), ['a', 'b']);
   st.updatePage(second, { title: 'Shared notes', body: 'Persist this body' });
   st.updateLabel('a', 'Renamed');
   assert.equal(useDiagram.getState().pages.find((p) => p.id === first)?.title, 'API');
@@ -198,16 +198,16 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
   st.unlinkPage(second, 'a');
   assert.deepEqual(ids('a'), [first]);
   assert.deepEqual(ids('b'), [second]);
-  assert.equal(orphanPages(useDiagram.getState().nodes, useDiagram.getState().pages).length, 0);
+  assert.equal(orphanPages(flowchartOf(useDiagram.getState()).nodes, useDiagram.getState().pages).length, 0);
   st.removeNode('b');
-  assert.deepEqual(orphanPages(useDiagram.getState().nodes, useDiagram.getState().pages).map((p) => p.id), [second]);
+  assert.deepEqual(orphanPages(flowchartOf(useDiagram.getState()).nodes, useDiagram.getState().pages).map((p) => p.id), [second]);
   st.undo();
   assert.deepEqual(ids('b'), [second]);
   st.deletePage(second);
   assert.deepEqual(ids('b'), []);
   assert.ok(!useDiagram.getState().pages.some((p) => p.id === second));
   st.undo();
-  assert.ok(useDiagram.getState().nodes.every((n) => !n.pageIds?.includes(second)));
+  assert.ok(flowchartOf(useDiagram.getState()).nodes.every((n) => !n.pageIds?.includes(second)));
 
   st.load({ nodes: [node('a', 'API', { pageIds: ['missing', 'later'] })], edges: [] });
   assert.equal(st.openPage('a', 'later'), 'later');
@@ -233,23 +233,23 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
   localStorage.setItem('merfolk.diagram', JSON.stringify({ version: 1, diagram: legacy }));
   assert.deepEqual(readSaved()?.nodes[0].pageIds, ['p1']);
   useDiagram.getState().load(legacy);
-  assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
+  assert.deepEqual(flowchartOf(useDiagram.getState()).nodes[0].pageIds, ['p1']);
   useDiagram.getState().applyRemote(legacy);
-  assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
+  assert.deepEqual(flowchartOf(useDiagram.getState()).nodes[0].pageIds, ['p1']);
   await importFile(new File([JSON.stringify({ version: 1, diagram: legacy })], 'legacy.merfolk.json'));
-  assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
+  assert.deepEqual(flowchartOf(useDiagram.getState()).nodes[0].pageIds, ['p1']);
   const multiple: FlowchartDiagram = { nodes: [node('a', 'API', { pageIds: ['p2', 'p1'] }), node('b', 'DB', { pageIds: ['p2'] })],
     edges: [], pages: [page('p1', 'First', 1), page('p2', 'Shared', 2)] };
   write(multiple);
   assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 3);
   assert.deepEqual(readSaved(), multiple);
   await importFile(new File([JSON.stringify({ version: 2, diagram: multiple })], 'new.merfolk.json'));
-  assert.deepEqual(useDiagram.getState().nodes.map((n) => n.pageIds), [['p2', 'p1'], ['p2']]);
+  assert.deepEqual(flowchartOf(useDiagram.getState()).nodes.map((n) => n.pageIds), [['p2', 'p1'], ['p2']]);
   write({ ...multiple, nodes: [node('a', 'API', { pageIds: ['p1', 'p2'] }), node('b', 'DB', { pageIds: [] })] });
   // Dispatch the same storage event the other window receives.
   const stop = startSync();
   window.dispatchEvent(new window.StorageEvent('storage', { key: 'merfolk.diagram' }));
-  assert.deepEqual(useDiagram.getState().nodes.map((n) => n.pageIds), [['p1', 'p2'], []]);
+  assert.deepEqual(flowchartOf(useDiagram.getState()).nodes.map((n) => n.pageIds), [['p1', 'p2'], []]);
   stop();
   const stopAutosave = startAutosave(0);
   useDiagram.getState().makeDefaultPage('p2', 'a');

@@ -147,5 +147,5 @@ export interface PageEntity {
   collapsed?: boolean;
 }
 
-export type Diagram = (FlowchartDiagram & { kind: 'flowchart' }) | import('./sequence/types').SequenceDiagram;
+export type Diagram = (FlowchartDiagram & { kind: 'flowchart' }) | import('./sequence/types').SequenceDiagram | import('./structural/types').StructuralDiagram;
 export interface WorkspaceDocument { diagram: Diagram; pages: Page[] }

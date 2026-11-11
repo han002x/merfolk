@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useDiagram } from '../store';
+import { flowchartOf, useDiagram } from '../store';
 import { toMermaidWithMap } from '../mermaid/io';
 import { Icon } from './Icon';
 import { TreePanel } from './TreePanel';
@@ -31,8 +31,8 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
 
   const autoLayout = useDiagram((s) => s.autoLayout);
   const syncMermaid = useDiagram((s) => s.syncMermaid);
-  const nodes = useDiagram((s) => s.nodes);
-  const edges = useDiagram((s) => s.edges);
+  const nodes = useDiagram((s) => flowchartOf(s).nodes);
+  const edges = useDiagram((s) => flowchartOf(s).edges);
   const highlight = useDiagram((s) => s.highlight);
   const setHighlight = useDiagram((s) => s.setHighlight);
   const setInsertion = useDiagram((s) => s.setInsertion);

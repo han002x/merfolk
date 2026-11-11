@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { useDiagram } from '../store';
+import { flowchartOf, useDiagram } from '../store';
 import { DEFAULT_IMAGE_SIZE, type DiagramNode, type ElementStyle } from '../types';
 import { asImageSrc, isDataUri, kb, readImageFile, sizedImage } from '../imageUpload';
 import {
@@ -38,8 +38,8 @@ const FONT_GLYPH: Record<string, string> = {
 export function StylePanel() {
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
-  const nodes = useDiagram((s) => s.nodes);
-  const edges = useDiagram((s) => s.edges);
+  const nodes = useDiagram((s) => flowchartOf(s).nodes);
+  const edges = useDiagram((s) => flowchartOf(s).edges);
   const updateNodeStyle = useDiagram((s) => s.updateNodeStyle);
   const updateEdgeStyle = useDiagram((s) => s.updateEdgeStyle);
   const setEdgeOrder = useDiagram((s) => s.setEdgeOrder);

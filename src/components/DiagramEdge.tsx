@@ -5,7 +5,7 @@ import {
   getBezierPath,
   type EdgeProps,
 } from '@xyflow/react';
-import { useDiagram } from '../store';
+import { flowchartOf, useDiagram } from '../store';
 import { Icon } from './Icon';
 import type { ElementStyle } from '../types';
 import { STYLE_DEFAULTS, animationClass, dashArray, flowDash, fontFamilyCss } from '../style';
@@ -48,7 +48,7 @@ export function DiagramEdge({
   // dashed legs A → ghost → B. The new node joins whichever group both ends
   // share (or the group one end *is*, when the edge runs group → child).
   const previewInsert = () => {
-    const byId = new Map(useDiagram.getState().nodes.map((n) => [n.id, n]));
+    const byId = new Map(flowchartOf(useDiagram.getState()).nodes.map((n) => [n.id, n]));
     const a = byId.get(source);
     const b = byId.get(target);
     let parentId: string | null = null;

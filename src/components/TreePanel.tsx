@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { useDiagram } from '../store';
+import { flowchartOf, useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
 import type { DiagramNode } from '../types';
 import { Icon } from './Icon';
@@ -49,8 +49,8 @@ function EditableLabel({ label, fallback, onSave }: {
 }
 
 export function TreePanel() {
-  const nodes = useDiagram((s) => s.nodes);
-  const edges = useDiagram((s) => s.edges);
+  const nodes = useDiagram((s) => flowchartOf(s).nodes);
+  const edges = useDiagram((s) => flowchartOf(s).edges);
   const pages = useDiagram((s) => s.pages);
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
