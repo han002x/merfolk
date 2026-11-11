@@ -7,6 +7,7 @@
 //       L[/Trap\]  M[\Trap/]  N>Flag]
 //   - v11 shape/icon metadata:  A@{ shape: cyl, label: "DB" }
 //                              B@{ icon: "simple-icons:github", form: "square", label: "GitHub" }
+//                              C@{ img: "https://…/logo.png", label: "Logo", pos: "t", w: 60, h: 60, constraint: "on" }
 //   - edges:  A --> B   A -->|label| B   A --- B
 //   - subgraphs:  subgraph Title ... end   (become collapsible group nodes)
 //
@@ -15,7 +16,7 @@
 // Everything merfolk emits is checked against the real mermaid parser by
 // scripts/mermaid-compat.ts.
 
-import type { Diagram, DiagramEdge, DiagramNode, NodeShape } from '../types';
+import type { Diagram, DiagramEdge, DiagramNode, NodeImage, NodeShape } from '../types';
 import { SHAPES, SHAPE_ALIAS, iconForm, shapeDef, shapeForForm } from '../shapes.ts';
 
 interface ParsedNode {
@@ -24,6 +25,7 @@ interface ParsedNode {
   shape: NodeShape;
   parentId: string | null;
   icon?: string;
+  image?: NodeImage;
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
@@ -50,9 +52,30 @@ function stripQuotes(s: string): string {
   return t;
 }
 
+const positiveNum = (v: string | undefined): number | undefined => {
+  const n = Number(v);
+  return v != null && Number.isFinite(n) && n > 0 ? n : undefined;
+};
+
+function parseImage(meta: Record<string, string>): NodeImage {
+  const image: NodeImage = { src: meta.img.trim() };
+  const pos = meta.pos?.trim();
+  if (pos === 't' || pos === 'b') image.pos = pos;
+  const w = positiveNum(meta.w);
+  const h = positiveNum(meta.h);
+  if (w) image.w = w;
+  if (h) image.h = h;
+  if (meta.constraint?.trim() === 'on') image.constraint = true;
+  return image;
+}
+
 function parseMeta(id: string, body: string, parentId: string | null): ParsedNode {
   const meta: Record<string, string> = {};
   for (const m of body.matchAll(META_PAIR_RE)) meta[m[1]] = stripQuotes(m[2]);
+  if (meta.img) {
+    // like mermaid, an image node without a label shows no text
+    return { id, label: meta.label ?? '', shape: 'rect', parentId, image: parseImage(meta) };
+  }
   const label = meta.label ?? id;
   if (meta.icon) {
     return { id, label, shape: shapeForForm(meta.form), parentId, icon: meta.icon };
@@ -127,10 +150,11 @@ function parseCore(src: string): CoreResult {
       return;
     }
     // enrich: prefer a real shape/label over a bare reference
-    if (existing.label === existing.id && (parsed.label !== parsed.id || parsed.icon)) {
+    if (existing.label === existing.id && (parsed.label !== parsed.id || parsed.icon || parsed.image)) {
       existing.label = parsed.label;
       existing.shape = parsed.shape;
       if (parsed.icon) existing.icon = parsed.icon;
+      if (parsed.image) existing.image = parsed.image;
     }
     if (existing.parentId == null && parsed.parentId != null) {
       existing.parentId = parsed.parentId;
@@ -229,6 +253,7 @@ function parseCore(src: string): CoreResult {
     position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
     ...(n.icon && { icon: n.icon }),
     ...(pageIds.has(n.id) && { pageId: pageIds.get(n.id) }),
+    ...(n.image && { image: n.image }),
   }));
 
   return { diagram: { nodes, edges }, issues, meaningfulLines };
@@ -303,6 +328,16 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
 
 function shapeWrap(node: DiagramNode): string {
   const l = node.label;
+  if (node.image) {
+    // always quoted: a data: URI carries commas, which end a bare value
+    const { src, pos, w, h, constraint } = node.image;
+    const meta = [`img: "${src.replace(/"/g, '%22')}"`, `label: "${l}"`];
+    if (pos) meta.push(`pos: "${pos}"`);
+    if (w) meta.push(`w: ${w}`);
+    if (h) meta.push(`h: ${h}`);
+    if (constraint) meta.push('constraint: "on"');
+    return `${node.id}@{ ${meta.join(', ')} }`;
+  }
   if (node.icon) {
     return `${node.id}@{ icon: "${node.icon}", form: "${iconForm(node.shape)}", label: "${l}" }`;
   }

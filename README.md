@@ -54,10 +54,16 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 - **Persistence** — the diagram autosaves to `localStorage` and restores on
   reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
   or clear the canvas, from the toolbar.
+- **Paper and ink** — one look throughout: a grained paper desk, card-stock
+  panels, crisp kraft sheets for unfolded groups, and diagrams drawn in
+  hand-drawn ink (roughjs, seeded per element so the wobble never changes)
+  with handwritten Kalam labels and open chevron arrowheads. The style panel's
+  Sloppiness picks **Ink** (clean), **Sketch** (default) or **Scribble**.
 - **Dark / light themes** — toolbar toggle (☀ / ☾). Follows the OS by default,
   remembers your choice in `localStorage`. The whole UI — canvas, nodes, panel,
   React Flow controls and minimap — is driven by CSS variables + React Flow's
-  `colorMode`, so it's a single attribute flip.
+  `colorMode`, so it's a single attribute flip. Light is white paper with sumi ink;
+  dark is night paper with chalk.
 
 ## Design
 
@@ -70,6 +76,7 @@ simple architecture, simple design, simple implementation, no filler text.
 | --- | --- |
 | `R` / `O` / `D` / `C` | Add rectangle / rounded / diamond / circle |
 | `S` | Open the shape + icon picker (type to filter, `Enter` picks the first) |
+| `I` | Add an image: paste a URL, upload a file, or take it from the clipboard |
 | `L` | Tidy top-down |
 | `⇧L` | Tidy left-right |
 | `T` | Toggle theme |
@@ -78,6 +85,8 @@ simple architecture, simple design, simple implementation, no filler text.
 | `F` | Fold / unfold the selected group (or the sheet a selected node sits on) |
 | `[` / `]` | Fold / unfold one level |
 | `⌫` / `Del` | Delete selected node(s) |
+| `Ctrl/⌘V` | Paste an image (screenshot, copied web image, image URL) as an image node at the pointer |
+| `Ctrl/⌘C` | Copy the selected image node (pastes back with its size and label; other apps get the picture) |
 
 Shortcuts are suspended while you're typing in a field. Every toolbar button
 shows its key in the tooltip.

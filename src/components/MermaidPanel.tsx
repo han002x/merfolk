@@ -10,7 +10,24 @@ const PagePanel = lazy(() => import('./PagePanel'));
 const views: View[] = ['mermaid', 'tree', 'page'];
 const titles: Record<View, string> = { mermaid: 'Mermaid', tree: 'Tree', page: 'Page' };
 
-export function MermaidPanel({ onClose }: { onClose: () => void }) {
+export function MermaidPanel({ width, onWidthChange, onClose }: {
+  width: number;
+  onWidthChange: (width: number) => void;
+  onClose: () => void;
+}) {
+  const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
+  const resize = useRef<{ pointerId: number; x: number; width: number } | null>(null);
+  const maxWidth = Math.min(720, Math.max(280, viewportWidth - 240), viewportWidth);
+  const minWidth = Math.min(280, maxWidth);
+  const clampWidth = (value: number) => Math.min(maxWidth, Math.max(minWidth, value));
+  const panelWidth = clampWidth(width);
+
+  useEffect(() => {
+    const onResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const autoLayout = useDiagram((s) => s.autoLayout);
   const syncMermaid = useDiagram((s) => s.syncMermaid);
   const nodes = useDiagram((s) => s.nodes);
@@ -314,7 +331,50 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <aside className="mf-panel">
+    <aside className="mf-panel" id="mf-right-panel" style={{ width: panelWidth }}>
+      <div
+        className="mf-panel-resize"
+        role="separator"
+        tabIndex={0}
+        aria-label="Resize right panel"
+        aria-orientation="vertical"
+        aria-controls="mf-right-panel"
+        aria-valuemin={minWidth}
+        aria-valuemax={maxWidth}
+        aria-valuenow={panelWidth}
+        aria-valuetext={`${panelWidth} pixels`}
+        title="Drag to resize · Double-click to reset"
+        onPointerDown={(event) => {
+          if (event.button !== 0 || !event.isPrimary) return;
+          event.preventDefault();
+          event.currentTarget.focus();
+          event.currentTarget.setPointerCapture(event.pointerId);
+          resize.current = { pointerId: event.pointerId, x: event.clientX, width: panelWidth };
+        }}
+        onPointerMove={(event) => {
+          const start = resize.current;
+          if (start?.pointerId !== event.pointerId) return;
+          onWidthChange(clampWidth(start.width + start.x - event.clientX));
+        }}
+        onPointerUp={(event) => {
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+        }}
+        onPointerCancel={() => { resize.current = null; }}
+        onLostPointerCapture={() => { resize.current = null; }}
+        onDoubleClick={() => onWidthChange(clampWidth(360))}
+        onKeyDown={(event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const step = event.shiftKey ? 50 : 10;
+          const next = event.key === 'Home' ? minWidth
+            : event.key === 'End' ? maxWidth
+            : panelWidth + (event.key === 'ArrowLeft' ? step : -step);
+          onWidthChange(clampWidth(next));
+        }}
+      />
       <div className="mf-panel-head">
         <div className="mf-panel-tabs" role="tablist" aria-label="Diagram views">
           {views.map((view) => (

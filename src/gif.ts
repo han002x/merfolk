@@ -10,6 +10,7 @@ import { toCanvas } from 'html-to-image';
 import GIF from 'gif.js';
 import workerUrl from 'gif.js/dist/gif.worker.js?url';
 import type { Diagram } from './types';
+import { preparePaperTexture, prepareSvgStyles } from './gifCapture';
 import {
   GIF_DEFAULTS,
   cycleSeconds,
@@ -48,11 +49,10 @@ export async function exportGif(
   const frames = frameCount(seconds, fps);
   const delay = frameDelayMs(fps);
 
-  // read the canvas background so flattened frames are not transparent (a
-  // transparent GIF palette wastes a slot and can fringe on dark viewers)
+  // React Flow is transparent. Flatten onto the theme's paper color before
+  // encoding, since GIF cannot retain the canvas's alpha channel.
   const bg =
-    getComputedStyle(element).backgroundColor ||
-    getComputedStyle(document.body).backgroundColor ||
+    getComputedStyle(element).getPropertyValue('--mf-bg').trim() ||
     '#ffffff';
 
   const gif = new GIF({
@@ -73,6 +73,9 @@ export async function exportGif(
     canvasHeight: outH,
     backgroundColor: bg,
     pixelRatio: 1,
+    // a remote image node whose host refuses CORS can't be inlined; draw it
+    // blank instead of failing the frame (embedded data: images always work)
+    imagePlaceholder: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
     // skip the transient overlays so the GIF is just the diagram
     filter: (node: HTMLElement) => {
       const cls = typeof node.className === 'string' ? node.className : '';
@@ -84,12 +87,21 @@ export async function exportGif(
     },
   };
 
-  // grab evenly spaced frames across exactly one cycle of real time, so the
-  // live CSS animations advance between captures
-  for (let i = 0; i < frames; i++) {
-    const canvas = await toCanvas(element, captureOpts);
-    gif.addFrame(canvas, { delay, copy: true });
-    if (i < frames - 1) await sleep((seconds * 1000) / frames);
+  await document.fonts.ready;
+  const restoreTexture = await preparePaperTexture(element);
+  try {
+    for (let i = 0; i < frames; i++) {
+      const restoreStyles = prepareSvgStyles(element);
+      try {
+        const canvas = await toCanvas(element, captureOpts);
+        gif.addFrame(canvas, { delay, copy: true });
+      } finally {
+        restoreStyles();
+      }
+      if (i < frames - 1) await sleep((seconds * 1000) / frames);
+    }
+  } finally {
+    restoreTexture();
   }
 
   const blob: Blob = await new Promise((resolve) => {

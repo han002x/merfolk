@@ -8,7 +8,8 @@ export interface Hotkey {
   run: () => void;
 }
 
-function isTyping(el: EventTarget | null): boolean {
+/** Whether keyboard input is going into a text field (so shortcuts stand down). */
+export function isTyping(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
   const tag = el.tagName;
   return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;

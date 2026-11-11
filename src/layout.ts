@@ -5,7 +5,7 @@
 // positions keyed by node id; the store applies them.
 
 import Dagre from '@dagrejs/dagre';
-import type { DiagramEdge, DiagramNode, NodeShape } from './types';
+import { DEFAULT_IMAGE_SIZE, type DiagramEdge, type DiagramNode, type NodeImage, type NodeShape } from './types.ts';
 
 export type Direction = 'TB' | 'LR';
 
@@ -15,7 +15,19 @@ export type Direction = 'TB' | 'LR';
 export const GHOST_SIZE = { width: 120, height: 48 };
 
 // Dagre needs width/height to space nodes without overlap.
-export function sizeFor(shape: NodeShape, icon?: string): { width: number; height: number } {
+/** label strip under (or over) an image node's picture, padding included */
+export const IMAGE_LABEL_SPACE = 34;
+
+export function sizeFor(
+  shape: NodeShape,
+  icon?: string,
+  image?: NodeImage,
+): { width: number; height: number } {
+  if (image) {
+    const w = image.w ?? DEFAULT_IMAGE_SIZE;
+    const h = image.h ?? DEFAULT_IMAGE_SIZE;
+    return { width: Math.max(w + 16, 96), height: h + IMAGE_LABEL_SPACE };
+  }
   if (icon) return shape === 'circle' ? { width: 96, height: 96 } : { width: 96, height: 84 };
   switch (shape) {
     case 'circle':
@@ -82,7 +94,7 @@ function run(
   g.setDefaultEdgeLabel(() => ({}));
 
   // an unfolded group has no card, only its sheet (cluster)
-  for (const n of nodes) if (!unfolded.has(n.id)) g.setNode(n.id, sizeFor(n.shape, n.icon));
+  for (const n of nodes) if (!unfolded.has(n.id)) g.setNode(n.id, sizeFor(n.shape, n.icon, n.image));
   for (const id of open) g.setNode(sheetId(id), {});
   for (const n of nodes) {
     if (open.has(n.id)) {
@@ -105,7 +117,7 @@ function run(
     const p = g.node(n.id);
     if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
     // dagre gives node centers; React Flow positions are top-left
-    const { width, height } = sizeFor(n.shape, n.icon);
+    const { width, height } = sizeFor(n.shape, n.icon, n.image);
     positions[n.id] = { x: p.x - width / 2, y: p.y - height / 2 };
   }
   return positions;

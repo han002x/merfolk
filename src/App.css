@@ -1,32 +1,45 @@
-/* Palettes. :root is the dark default; [data-theme] on <html> overrides it.
-   Every surface reads these variables, so theming is a single attribute flip. */
+/* Palettes: paper and ink. :root is the night-paper default; [data-theme] on
+   <html> overrides it. Every surface reads these variables, so theming is a
+   single attribute flip.
+   - paper: bg is the white canvas, panel the card stock of the chrome, node the stock
+     a shape is cut from, group the kraft of a folded sheet
+   - ink: what is drawn on the paper (outlines, edges, handwriting)
+   - seal: the one vermilion mark (brand, fold count) */
 :root,
 :root[data-theme='dark'] {
-  --mf-bg: #0f1115;
-  --mf-panel: #171a21;
-  --mf-border: #2a2f3a;
-  --mf-text: #e6e8ec;
-  --mf-muted: #9aa3b2;
-  --mf-accent: #6aa3ff;
-  --mf-node: #1e2530;
-  --mf-group: #24303f;
-  --mf-input: #0c0e12;
-  --mf-glow: rgba(106, 163, 255, 0.55);
-  --mf-shadow: rgba(0, 0, 0, 0.45);
+  --mf-bg: #1a1916;
+  --mf-panel: #22201c;
+  --mf-border: #3a362f;
+  --mf-text: #ece5d8;
+  --mf-muted: #9b9384;
+  --mf-ink: #d9d1c3;
+  --mf-pencil: #3d3932;
+  --mf-accent: #8fa8dc;
+  --mf-seal: #e9764f;
+  --mf-node: #27241f;
+  --mf-group: #2d2a24;
+  --mf-input: #161512;
+  --mf-glow: rgba(143, 168, 220, 0.4);
+  --mf-shadow: rgba(0, 0, 0, 0.5);
+  --mf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .3 0 0 0 -.13'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 :root[data-theme='light'] {
-  --mf-bg: #f7f8fa;
-  --mf-panel: #ffffff;
-  --mf-border: #d9dde5;
-  --mf-text: #1b1f27;
-  --mf-muted: #6b7380;
-  --mf-accent: #2f6ee0;
+  --mf-bg: #ffffff;
+  --mf-panel: #fbfaf7;
+  --mf-border: #e6e1d7;
+  --mf-text: #2a2723;
+  --mf-muted: #8a857c;
+  --mf-ink: #3a352e;
+  --mf-pencil: #e2ddd2;
+  --mf-accent: #3b5b9a;
+  --mf-seal: #d0532f;
   --mf-node: #ffffff;
-  --mf-group: #eef3fb;
+  --mf-group: #f6f2ea;
   --mf-input: #ffffff;
-  --mf-glow: rgba(47, 110, 224, 0.4);
-  --mf-shadow: rgba(30, 41, 59, 0.18);
+  --mf-glow: rgba(59, 91, 154, 0.28);
+  --mf-shadow: rgba(74, 58, 32, 0.16);
+  --mf-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3  0 0 0 0 .3  0 0 0 0 .3  .35 0 0 0 -.14'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 * {
@@ -38,14 +51,20 @@
     'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mf-mono:
     'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  --mf-radius: 9px;
+  --mf-hand: 'Kalam', 'Segoe Print', 'Bradley Hand', cursive;
+  --mf-radius: 6px;
+  /* paper sits on the desk (contact) and lifts off it (lift) */
+  --mf-contact: 0 1px 1.5px color-mix(in srgb, var(--mf-shadow) 90%, transparent);
+  --mf-lift:
+    0 1px 1.5px color-mix(in srgb, var(--mf-shadow) 90%, transparent),
+    0 8px 22px -6px var(--mf-shadow);
 }
 
 body,
 #root {
   margin: 0;
   height: 100vh;
-  background: var(--mf-bg);
+  background: var(--mf-grain), var(--mf-bg);
   color: var(--mf-text);
   font-family: var(--mf-sans);
   font-feature-settings: 'cv05', 'ss01';
@@ -77,12 +96,11 @@ body,
   display: flex;
   gap: 6px;
   align-items: center;
-  background: color-mix(in srgb, var(--mf-panel) 88%, transparent);
-  backdrop-filter: blur(10px) saturate(1.1);
+  background: var(--mf-grain), var(--mf-panel);
   border: 1px solid var(--mf-border);
-  border-radius: 13px;
+  border-radius: 8px;
   padding: 6px;
-  box-shadow: 0 8px 28px var(--mf-shadow);
+  box-shadow: var(--mf-lift);
 }
 
 .mf-sep {
@@ -93,14 +111,16 @@ body,
 }
 
 .mf-brand {
+  font-family: var(--mf-hand);
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: -0.02em;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 0;
   color: var(--mf-text);
   padding: 0 8px 0 6px;
 }
 .mf-brand::first-letter {
-  color: var(--mf-accent);
+  color: var(--mf-seal);
 }
 
 /* segmented group: buttons sit flush inside one rounded shell */
@@ -136,26 +156,11 @@ body,
 .mf-tool:active {
   transform: scale(0.94);
 }
-/* the live pointer tool (select / hand) */
+/* the live pointer tool */
 .mf-tool.is-active {
   background: color-mix(in srgb, var(--mf-accent) 14%, transparent);
   color: var(--mf-accent);
   border-color: color-mix(in srgb, var(--mf-accent) 30%, transparent);
-}
-
-/* hand tool: the whole canvas, nodes included, is something to grab */
-.mf-canvas.is-hand .react-flow__pane,
-.mf-canvas.is-hand .react-flow__node {
-  cursor: grab;
-}
-.mf-canvas.is-hand .react-flow__pane.dragging {
-  cursor: grabbing;
-}
-/* a box selection leaves a draggable rect over its nodes; let hand drags pan
-   straight through it (the selection itself stays) */
-.mf-canvas.is-hand .react-flow__nodesselection,
-.mf-canvas.is-hand .react-flow__nodesselection-rect {
-  pointer-events: none;
 }
 
 /* ---- floating selection bar (above 2+ selected nodes) ------------------ */
@@ -163,11 +168,10 @@ body,
   display: flex;
   gap: 4px;
   padding: 3px;
-  background: color-mix(in srgb, var(--mf-panel) 88%, transparent);
-  backdrop-filter: blur(10px) saturate(1.1);
+  background: var(--mf-grain), var(--mf-panel);
   border: 1px solid var(--mf-border);
   border-radius: 10px;
-  box-shadow: 0 4px 14px rgb(0 0 0 / 0.08);
+  box-shadow: var(--mf-contact);
 }
 .mf-selbar-btn {
   display: inline-flex;
@@ -207,11 +211,10 @@ body,
   flex-direction: column;
   gap: 2px;
   padding: 6px;
-  background: color-mix(in srgb, var(--mf-panel) 94%, transparent);
-  backdrop-filter: blur(10px) saturate(1.1);
+  background: var(--mf-grain), var(--mf-panel);
   border: 1px solid var(--mf-border);
-  border-radius: 11px;
-  box-shadow: 0 10px 30px var(--mf-shadow);
+  border-radius: 7px;
+  box-shadow: var(--mf-lift);
   z-index: 6;
 }
 
@@ -250,7 +253,7 @@ body,
 }
 
 .mf-menu-danger:hover {
-  color: #e5484d;
+  color: var(--mf-seal);
 }
 
 .mf-svg {
@@ -290,7 +293,7 @@ body,
 .mf-primary {
   background: var(--mf-accent) !important;
   border-color: var(--mf-accent) !important;
-  color: #fff !important;
+  color: var(--mf-panel) !important;
   font-weight: 600 !important;
   flex: 1;
 }
@@ -327,7 +330,8 @@ body,
   align-items: center;
   justify-content: center;
   padding: 8px 12px;
-  font-size: 13px;
+  font-family: var(--mf-hand);
+  font-size: 14px;
   box-shadow: 0 2px 10px var(--mf-shadow);
   transition:
     box-shadow 160ms ease,
@@ -428,9 +432,9 @@ body,
   height: 20px;
   padding: 0 6px;
   border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--mf-accent) 45%, transparent);
-  background: color-mix(in srgb, var(--mf-accent) 14%, transparent);
-  color: var(--mf-accent);
+  border: 1px solid color-mix(in srgb, var(--mf-seal) 50%, transparent);
+  background: color-mix(in srgb, var(--mf-seal) 14%, transparent);
+  color: var(--mf-seal);
   font: 600 11.5px/1 var(--mf-sans);
   font-variant-numeric: tabular-nums;
   cursor: pointer;
@@ -439,7 +443,7 @@ body,
     transform 130ms ease;
 }
 .mf-unfold:hover {
-  background: color-mix(in srgb, var(--mf-accent) 26%, transparent);
+  background: color-mix(in srgb, var(--mf-seal) 26%, transparent);
 }
 .mf-unfold:active {
   transform: scale(0.92);
@@ -447,13 +451,67 @@ body,
 
 /* mermaid panel */
 .mf-panel {
+  position: relative;
+  flex-shrink: 0;
   width: 360px;
-  background: var(--mf-panel);
+  background: var(--mf-grain), var(--mf-panel);
   border-left: 1px solid var(--mf-border);
   display: flex;
   flex-direction: column;
   padding: 12px;
   gap: 10px;
+}
+
+.mf-panel :is(.mf-mermaid-text, .mf-tree)::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.mf-panel :is(.mf-mermaid-text, .mf-tree)::-webkit-scrollbar-track,
+.mf-panel :is(.mf-mermaid-text, .mf-tree)::-webkit-scrollbar-corner {
+  background: transparent;
+}
+.mf-panel :is(.mf-mermaid-text, .mf-tree)::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--mf-muted) 55%, transparent);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
+}
+.mf-panel :is(.mf-mermaid-text, .mf-tree)::-webkit-scrollbar-thumb:hover {
+  background-color: var(--mf-muted);
+}
+@supports not selector(::-webkit-scrollbar) {
+  .mf-panel :is(.mf-mermaid-text, .mf-tree) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--mf-muted) transparent;
+  }
+}
+
+.mf-panel-resize {
+  position: absolute;
+  z-index: 6;
+  inset: 0 auto 0 -5px;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+.mf-panel-resize::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 4px;
+  width: 2px;
+  background: transparent;
+}
+.mf-panel-resize:hover::after,
+.mf-panel-resize:active::after,
+.mf-panel-resize:focus-visible::after {
+  background: var(--mf-accent);
+}
+.mf-app:has(.mf-panel-resize:active),
+.mf-app:has(.mf-panel-resize:active) * {
+  cursor: col-resize !important;
+  user-select: none !important;
 }
 
 .mf-panel-head {
@@ -610,7 +668,7 @@ body,
 }
 
 .mf-err {
-  color: #ff8a8a;
+  color: var(--mf-seal);
   font-size: 12px;
   white-space: pre-wrap;
 }
@@ -626,10 +684,9 @@ body,
   width: 38px;
   height: 38px;
   padding: 0;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--mf-panel) 88%, transparent);
-  backdrop-filter: blur(10px) saturate(1.1);
-  box-shadow: 0 8px 28px var(--mf-shadow);
+  border-radius: 7px;
+  background: var(--mf-grain), var(--mf-panel);
+  box-shadow: var(--mf-lift);
 }
 .mf-reopen:hover {
   color: var(--mf-accent);
@@ -687,16 +744,16 @@ body,
 .mf-edge-label {
   position: absolute;
   pointer-events: all;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-family: var(--mf-hand);
+  font-size: 13px;
 }
 .mf-edge-text {
-  background: var(--mf-panel);
+  background: var(--mf-grain), var(--mf-panel);
   color: var(--mf-text);
   border: 1px solid var(--mf-border);
-  border-radius: 6px;
+  border-radius: 3px;
   padding: 1px 7px;
+  box-shadow: var(--mf-contact);
   cursor: text;
 }
 .mf-edge-add {
@@ -731,6 +788,7 @@ body,
   pointer-events: all;
 }
 .mf-edge-action {
+  font-family: var(--mf-sans);
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -739,7 +797,7 @@ body,
   border-radius: 11px;
   border: 1px solid var(--mf-accent);
   background: var(--mf-accent);
-  color: #fff;
+  color: var(--mf-panel);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -846,7 +904,51 @@ body,
   }
 }
 
-/* react-flow dark tweaks */
+/* react-flow on paper: the desk shows through, dots are pencil marks, edges
+   are ink, and the controls + minimap are cards like the rest of the chrome */
+.react-flow {
+  --xy-background-color: transparent;
+  --xy-background-pattern-color: var(--mf-pencil);
+  --xy-edge-stroke: var(--mf-ink);
+  --xy-controls-button-background-color: var(--mf-panel);
+  --xy-controls-button-background-color-hover: var(--mf-node);
+  --xy-controls-button-color: var(--mf-text);
+  --xy-controls-button-color-hover: var(--mf-accent);
+  --xy-controls-button-border-color: var(--mf-border);
+  --xy-controls-box-shadow: var(--mf-lift);
+  --xy-minimap-background-color: var(--mf-panel);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--mf-bg) 70%, transparent);
+  --xy-minimap-node-background-color: var(--mf-border);
+}
+.react-flow__controls,
+.react-flow__minimap {
+  border: 1px solid var(--mf-border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.react-flow__minimap {
+  box-shadow: var(--mf-lift);
+}
+.react-flow__edge-path {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.mf-edge-arrow {
+  fill: none;
+  stroke: var(--xy-edge-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.react-flow__edge.selected .mf-edge-arrow {
+  stroke: var(--mf-accent);
+}
+.react-flow__edge.mf-ghost-edge .mf-edge-arrow {
+  stroke: var(--mf-accent) !important;
+}
+.react-flow__edge.mf-edge-splitting .mf-edge-arrow {
+  opacity: 0.18 !important;
+}
 .react-flow__attribution {
   display: none;
 }
@@ -866,11 +968,10 @@ body,
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  background: color-mix(in srgb, var(--mf-panel) 92%, transparent);
-  backdrop-filter: blur(10px) saturate(1.1);
+  background: var(--mf-grain), var(--mf-panel);
   border: 1px solid var(--mf-border);
-  border-radius: 13px;
-  box-shadow: 0 8px 28px var(--mf-shadow);
+  border-radius: 8px;
+  box-shadow: var(--mf-lift);
   animation: mf-panel-in 140ms ease;
 }
 
@@ -1033,16 +1134,25 @@ body,
 .mf-sheet-paper {
   position: absolute;
   inset: 0;
-  border-radius: 14px;
+  border-radius: 4px;
+  /* the creases of a sheet that has been folded before: a valley and a
+     fainter mountain fold, over grain and kraft */
   background:
     linear-gradient(
       118deg,
       transparent calc(50% - 0.5px),
-      color-mix(in srgb, var(--mf-text) 5%, transparent) 50%,
+      color-mix(in srgb, var(--mf-text) 7%, transparent) 50%,
       transparent calc(50% + 0.5px)
     ),
-    color-mix(in srgb, var(--mf-group) 50%, transparent);
-  border: 1px solid color-mix(in srgb, var(--mf-accent) 18%, var(--mf-border));
+    linear-gradient(
+      28deg,
+      transparent calc(50% - 0.5px),
+      color-mix(in srgb, var(--mf-panel) 60%, transparent) 50%,
+      transparent calc(50% + 0.5px)
+    ),
+    var(--mf-grain),
+    color-mix(in srgb, var(--mf-group) 60%, transparent);
+  border: 1px solid var(--mf-border);
   clip-path: polygon(
     0 0,
     calc(100% - var(--ear)) 0,
@@ -1073,10 +1183,9 @@ body,
   max-width: calc(100% - 48px);
   height: 22px;
   padding: 0 6px;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-family: var(--mf-hand);
+  font-size: 14px;
+  font-weight: 700;
   line-height: 22px;
   color: var(--mf-text);
   border-radius: 6px;
@@ -1121,31 +1230,14 @@ body,
   background: linear-gradient(
     225deg,
     transparent 50%,
-    color-mix(in srgb, var(--mf-accent) 32%, var(--mf-panel)) 50%,
-    color-mix(in srgb, var(--mf-accent) 14%, var(--mf-panel))
+    color-mix(in srgb, var(--mf-text) 14%, var(--mf-panel)) 50%,
+    var(--mf-panel)
   );
+  filter: drop-shadow(-1px 1px 1px color-mix(in srgb, var(--mf-shadow) 80%, transparent));
   border-bottom-left-radius: 4px;
   transition:
     width 160ms ease,
     height 160ms ease;
-}
-
-/* a folded card carries its pages stacked underneath */
-.mf-node.is-folded {
-  --mf-stack:
-    4px 4px 0 -1px var(--mf-group),
-    4px 4px 0 0 color-mix(in srgb, var(--mf-accent) 35%, var(--mf-border)),
-    8px 8px 0 -1px var(--mf-group),
-    8px 8px 0 0 color-mix(in srgb, var(--mf-accent) 20%, var(--mf-border));
-  box-shadow:
-    var(--mf-stack),
-    0 4px 14px var(--mf-shadow);
-}
-.mf-node.is-folded:hover {
-  box-shadow:
-    var(--mf-stack),
-    0 6px 20px var(--mf-shadow),
-    0 0 0 1px var(--mf-accent);
 }
 
 /* fold: the subtree slides onto its card (node transform transition) while
@@ -1298,8 +1390,7 @@ body,
      element's own stroke color, width and style (dash pattern set inline), and
      shifts by exactly one dash period per cycle so the loop is seamless. */
   .react-flow__edge-path.mf-anim-flow,
-  .mf-node.mf-anim-flow .mf-outline path:not(.mf-outline-detail),
-  .mf-node.mf-anim-flow .mf-flow-ring rect {
+  .mf-node.mf-anim-flow .mf-outline > .mf-outline-ink {
     animation-name: mf-anim-flow;
     animation-duration: var(--mf-anim-dur, 1.6s);
     animation-timing-function: linear;
@@ -1332,9 +1423,14 @@ body,
   background: transparent;
   border-color: transparent;
   box-shadow: none;
-  filter: drop-shadow(0 2px 6px var(--mf-shadow));
+  filter: drop-shadow(0 1px 1px var(--mf-shadow)) drop-shadow(0 3px 6px var(--mf-shadow));
 }
-.mf-node.is-outline > .mf-node-body {
+.mf-node.is-outline:hover {
+  filter: drop-shadow(0 1px 1px var(--mf-shadow)) drop-shadow(0 8px 14px var(--mf-shadow));
+}
+/* label and icon artwork sit above the outline's paper fill */
+.mf-node.is-outline > .mf-node-body,
+.mf-node.is-outline > .mf-catalog-icon {
   position: relative;
 }
 .mf-outline {
@@ -1345,17 +1441,23 @@ body,
   overflow: visible;
   pointer-events: none;
 }
-.mf-outline path {
+.mf-outline-fill {
   fill: var(--mf-node);
-  stroke: var(--mf-border);
-  stroke-width: 1;
-  stroke-linejoin: round;
-  transition:
-    stroke 160ms ease,
-    fill 160ms ease;
+  stroke: none;
+  transition: fill 160ms ease;
 }
-.mf-outline path.mf-outline-detail {
+.mf-outline-ink,
+.mf-outline-detail {
   fill: none;
+  stroke: var(--mf-ink);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke 160ms ease;
+}
+/* the folded pages under a card: same stock, fainter ink */
+.mf-outline-page .mf-outline-ink {
+  stroke: color-mix(in srgb, var(--mf-ink) 45%, transparent);
 }
 .mf-node.is-outline:hover,
 .mf-node.is-outline.selected,
@@ -1369,12 +1471,12 @@ body,
 .mf-node.is-outline.join-target {
   animation: none;
 }
-.mf-node.is-outline:hover .mf-outline path,
-.mf-node.is-outline.mf-linked .mf-outline path {
+.mf-node.is-outline:hover .mf-outline > :is(.mf-outline-ink, .mf-outline-detail),
+.mf-node.is-outline.mf-linked .mf-outline > :is(.mf-outline-ink, .mf-outline-detail) {
   stroke: var(--mf-accent);
 }
-.mf-node.is-outline.selected .mf-outline path,
-.mf-node.is-outline.join-target .mf-outline path {
+.mf-node.is-outline.selected .mf-outline > :is(.mf-outline-ink, .mf-outline-detail),
+.mf-node.is-outline.join-target .mf-outline > :is(.mf-outline-ink, .mf-outline-detail) {
   stroke: var(--mf-accent);
   stroke-width: 2;
 }
@@ -1383,7 +1485,7 @@ body,
 .mf-node.is-outline.mf-linked {
   filter: drop-shadow(0 0 1.5px var(--mf-accent)) drop-shadow(0 0 8px var(--mf-glow));
 }
-.mf-node.is-outline.is-group .mf-outline path {
+.mf-node.is-outline.is-group .mf-outline > .mf-outline-fill {
   fill: var(--mf-group);
 }
 /* room for slanted sides and the cylinder's lid */
@@ -1413,7 +1515,7 @@ body,
     animation-name: none;
     background-image: none;
   }
-  .mf-node.is-outline.mf-anim-draw .mf-outline path:not(.mf-outline-detail) {
+  .mf-node.is-outline.mf-anim-draw .mf-outline > .mf-outline-ink {
     stroke-dasharray: 100;
     animation: mf-outline-draw var(--mf-anim-dur, 1.6s) ease-in-out infinite alternate;
   }
@@ -1448,6 +1550,38 @@ body,
 .mf-catalog-icon {
   display: block;
   flex: none;
+}
+
+/* ── Image nodes ───────────────────────────────────────────────────────
+   Mermaid `@{ img: ... }`: the picture with its label below (or above with
+   `pos: "t"`); the tile outline still carries stroke, fill and sloppiness. */
+.mf-node.is-image {
+  flex-direction: column;
+  gap: 6px;
+  min-width: 96px;
+  padding: 8px 8px 6px;
+}
+.mf-node.is-image.is-label-top {
+  flex-direction: column-reverse;
+  padding: 6px 8px 8px;
+}
+.mf-node.is-image:has(.mf-node-label:empty) {
+  gap: 0;
+}
+.mf-node-img {
+  position: relative;
+  display: block;
+  flex: none;
+  border-radius: 4px;
+  user-select: none;
+  pointer-events: none;
+}
+.mf-node-img.is-broken {
+  display: grid;
+  place-items: center;
+  color: var(--mf-muted);
+  border: 1px dashed currentColor;
+  opacity: 0.6;
 }
 
 /* ── Shape + icon picker ─────────────────────────────────────────────── */
@@ -1517,6 +1651,96 @@ body,
   outline: none;
 }
 
+.mf-image-picker {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: 248px;
+  gap: 4px;
+  padding: 8px;
+}
+.mf-image-picker .mf-picker-filter {
+  margin-bottom: 4px;
+}
+.mf-image-picker .mf-menu-item:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+.mf-image-picker .mf-picker-error,
+.mf-image-picker .mf-style-hint {
+  margin: 4px 2px 0;
+}
+.mf-picker-error {
+  margin: 4px 2px 0;
+  font-size: 11px;
+  color: var(--mf-seal);
+}
+
+.mf-image-src {
+  display: flex;
+  gap: 4px;
+}
+.mf-image-src .mf-picker-filter {
+  flex: 1;
+  min-width: 0;
+}
+.mf-image-upload {
+  flex: none;
+  padding: 0 10px;
+  background: var(--mf-input);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-border);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mf-image-upload:hover {
+  border-color: var(--mf-accent);
+  color: var(--mf-accent);
+}
+.mf-image-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--mf-text);
+  cursor: pointer;
+}
+.mf-image-check input {
+  margin: 0;
+  accent-color: var(--mf-accent);
+}
+/* index.css pins color-scheme to dark; follow the app theme instead */
+:root[data-theme='light'] .mf-image-check input {
+  color-scheme: light;
+}
+.mf-style-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--mf-muted);
+}
+
+/* transient message, e.g. a refused paste */
+.mf-notice {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  z-index: 20;
+  transform: translateX(-50%);
+  max-width: min(480px, 80%);
+  padding: 8px 14px;
+  background: var(--mf-panel);
+  color: var(--mf-text);
+  border: 1px solid var(--mf-border);
+  border-left: 3px solid var(--mf-seal);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px var(--mf-shadow);
+  font-size: 13px;
+  pointer-events: none;
+}
+
 /* placement previews for outline shapes and icon tiles */
 .mf-place-ghost.is-outline {
   background: none;
@@ -1524,8 +1748,11 @@ body,
   box-shadow: none;
   filter: drop-shadow(0 0 10px var(--mf-glow));
 }
-.mf-place-ghost .mf-outline path {
+.mf-place-ghost .mf-outline-fill {
   fill: color-mix(in srgb, var(--mf-accent) 18%, transparent);
+}
+.mf-place-ghost .mf-outline-ink,
+.mf-place-ghost .mf-outline-detail {
   stroke: var(--mf-accent);
   stroke-width: 1.5;
   stroke-dasharray: 4 3;
@@ -1543,6 +1770,17 @@ body,
 .mf-place-ghost.mf-place-stadium {
   border-radius: 999px;
 }
+.mf-place-ghost.mf-place-image {
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 12px;
+}
+.mf-place-ghost.mf-place-image .mf-node-img {
+  opacity: 0.85;
+}
 .mf-place-ghost.mf-place-icon {
   display: grid;
   place-items: center;
@@ -1552,33 +1790,6 @@ body,
   margin-top: -42px;
   border-radius: 12px;
   color: var(--mf-accent);
-}
-
-/* Flow ring on border-drawn nodes: an SVG rect centred on the CSS border,
-   standing in for it while the flow animation runs. */
-.mf-node.mf-anim-flow:not(.is-outline) {
-  position: relative;
-}
-.mf-flow-ring {
-  position: absolute;
-  top: calc(var(--mf-flow-w, 1px) / -2);
-  left: calc(var(--mf-flow-w, 1px) / -2);
-  width: calc(100% + var(--mf-flow-w, 1px));
-  height: calc(100% + var(--mf-flow-w, 1px));
-  overflow: visible;
-  pointer-events: none;
-}
-.mf-flow-ring rect {
-  fill: none;
-  stroke: var(--mf-flow-ink, var(--mf-border));
-  stroke-width: var(--mf-flow-w, 1px);
-  transition: stroke 160ms ease;
-}
-.mf-node.mf-anim-flow:not(.has-stroke):hover .mf-flow-ring rect,
-.mf-node.mf-anim-flow:not(.has-stroke).selected .mf-flow-ring rect,
-.mf-node.mf-anim-flow:not(.has-stroke).mf-linked .mf-flow-ring rect,
-.mf-node.mf-anim-flow:not(.has-stroke).join-target .mf-flow-ring rect {
-  stroke: var(--mf-accent);
 }
 
 .mf-panel-body {

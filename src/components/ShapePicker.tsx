@@ -1,7 +1,7 @@
 // Toolbar popover listing every shape and catalog icon. Picking one arms it for
 // placement, exactly like the toolbar's own shape buttons.
-import { useEffect, useMemo, useRef, useState } from 'react';
-import type { NodeShape } from '../types';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import type { NodeImage, NodeShape } from '../types';
 import { SHAPES } from '../shapes';
 import { ICONS } from '../icons/catalog';
 import { CatalogIcon, ShapeGlyph } from './ShapeOutline';
@@ -11,6 +11,7 @@ import { Icon } from './Icon';
 export interface Placement {
   shape: NodeShape;
   icon?: string;
+  image?: NodeImage;
 }
 
 interface Item {
@@ -45,17 +46,8 @@ const SECTIONS: { title: string; items: Item[] }[] = [
   })),
 ];
 
-export function ShapePicker({
-  open,
-  onOpenChange,
-  onPick,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onPick: (p: Placement) => void;
-}) {
-  const wrap = useRef<HTMLDivElement>(null);
-
+/** Close a toolbar popover on Escape or a click outside `wrap`. */
+export function usePopover(open: boolean, onOpenChange: (open: boolean) => void, wrap: RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -70,7 +62,20 @@ export function ShapePicker({
       window.removeEventListener('mousedown', onDown);
       window.removeEventListener('keydown', onKey);
     };
-  }, [open, onOpenChange]);
+  }, [open, onOpenChange, wrap]);
+}
+
+export function ShapePicker({
+  open,
+  onOpenChange,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPick: (p: Placement) => void;
+}) {
+  const wrap = useRef<HTMLDivElement>(null);
+  usePopover(open, onOpenChange, wrap);
 
   const pick = (p: Placement) => {
     onOpenChange(false);
@@ -142,3 +147,4 @@ function PickerPanel({ onPick }: { onPick: (p: Placement) => void }) {
     </div>
   );
 }
+

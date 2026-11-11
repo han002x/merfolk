@@ -1,38 +1,97 @@
-// Node outlines and icon artwork. Box-like shapes are plain CSS borders
-// (`shapeCss` in src/shapes.ts); the rest (cylinder, hexagon, parallelograms,
-// ...) are an SVG path stretched over the node (`ShapeOutline`).
+// Node outlines and icon artwork. Every node is drawn as ink on paper: a clean
+// fill under a hand-drawn outline (src/rough.ts), sized to the node in pixels
+// so the wobble never stretches.
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ElementStyle, NodeShape } from '../types';
 import { shapeDef } from '../shapes';
 import { ICON_BY_ID } from '../icons/catalog';
-import { dashArray } from '../style';
+import { STYLE_DEFAULTS, dashArray } from '../style';
+import { roughOutline } from '../rough';
 
-/** SVG outline for shapes CSS can't draw; renders nothing for the others. */
+/** Layout size of the element's parent (unaffected by canvas zoom). */
+function useParentSize(ref: React.RefObject<Element | null>) {
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  useLayoutEffect(() => {
+    const parent = ref.current?.parentElement;
+    if (!parent) return;
+    const read = () =>
+      setSize((s) =>
+        s && s.w === parent.clientWidth && s.h === parent.clientHeight
+          ? s
+          : { w: parent.clientWidth, h: parent.clientHeight },
+      );
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(parent);
+    return () => ro.disconnect();
+  }, [ref]);
+  return size;
+}
+
+/** Offsets of the pages stacked beneath a folded card. */
+const PAGES = [8, 4];
+
+/** Hand-drawn outline for a node body; fills its parent box. */
 export function ShapeOutline({
   shape,
+  icon = false,
+  rounded = true,
   style,
+  seed = 1,
   flowDash: flow,
+  pages = false,
 }: {
   shape: NodeShape;
+  /** an icon tile (its shape only picks the corners) */
+  icon?: boolean;
+  rounded?: boolean;
   style?: ElementStyle;
+  /** stable per-element seed (see seedOf) */
+  seed?: number;
   /** dash pattern while the flow animation runs (follows the stroke style) */
   flowDash?: string;
+  /** a folded card: draw its folded pages stacked underneath */
+  pages?: boolean;
 }) {
-  const { outline, detail } = shapeDef(shape);
-  if (!outline) return null;
+  const ref = useRef<SVGSVGElement>(null);
+  const size = useParentSize(ref);
+  const sloppiness = style?.sloppiness ?? STYLE_DEFAULTS.sloppiness;
+  const strokeStyle = style?.strokeStyle ?? STYLE_DEFAULTS.strokeStyle;
+  const drawing = style?.animation === 'draw';
+  // dashes and animations run along one continuous line
+  const continuous = strokeStyle !== 'solid' || flow != null || drawing;
+  const w = size?.w ?? 0;
+  const h = size?.h ?? 0;
+
+  const art = useMemo(() => {
+    if (!w || !h) return null;
+    const opts = { rounded, icon, sloppiness, continuous };
+    return {
+      body: roughOutline(shape, w, h, { ...opts, seed }),
+      pages: pages ? PAGES.map((_, i) => roughOutline(shape, w, h, { ...opts, seed: seed + 7 + i })) : [],
+    };
+  }, [shape, w, h, rounded, icon, sloppiness, continuous, seed, pages]);
+
   const width = style?.strokeWidth;
-  const stroke = {
-    stroke: style?.stroke,
-    strokeWidth: width,
-    strokeDasharray:
-      flow ?? (style?.strokeStyle ? dashArray(style.strokeStyle, width ?? 1) : undefined),
-  };
-  const detailStroke = flow
-    ? { ...stroke, strokeDasharray: style?.strokeStyle ? dashArray(style.strokeStyle, width ?? 1) : undefined }
-    : stroke;
+  const dash = dashArray(strokeStyle, width ?? 1);
+  const inkCss = { stroke: style?.stroke, strokeWidth: width, strokeDasharray: flow ?? dash };
+  const detailCss = { stroke: style?.stroke, strokeWidth: width, strokeDasharray: dash };
+
   return (
-    <svg className="mf-outline" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-      <path d={outline} pathLength={100} vectorEffect="non-scaling-stroke" style={{ ...stroke, fill: style?.background }} />
-      {detail && <path className="mf-outline-detail" d={detail} vectorEffect="non-scaling-stroke" style={detailStroke} />}
+    <svg ref={ref} className="mf-outline" viewBox={`0 0 ${w || 1} ${h || 1}`} aria-hidden="true">
+      {art && (
+        <>
+          {art.pages.map((p, i) => (
+            <g key={i} className="mf-outline-page" transform={`translate(${PAGES[i]} ${PAGES[i]})`}>
+              <path className="mf-outline-fill" d={p.fill} />
+              <path className="mf-outline-ink" d={p.ink} />
+            </g>
+          ))}
+          <path className="mf-outline-fill" d={art.body.fill} style={{ fill: style?.background }} />
+          <path className="mf-outline-ink" d={art.body.ink} pathLength={drawing ? 100 : undefined} style={inkCss} />
+          {art.body.detail && <path className="mf-outline-detail" d={art.body.detail} style={detailCss} />}
+        </>
+      )}
     </svg>
   );
 }

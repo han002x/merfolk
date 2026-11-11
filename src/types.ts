@@ -26,7 +26,7 @@ export type NodeShape =
 /** Stroke dash pattern for a node border or an edge line. */
 export type StrokeStyle = 'solid' | 'dashed' | 'dotted';
 
-/** Hand-drawn jitter level. 0 = architect (clean), 1 = artist, 2 = cartoonist. */
+/** Hand-drawn ink level. 0 = ink (clean), 1 = sketch, 2 = scribble. */
 export type Sloppiness = 0 | 1 | 2;
 
 /** Corner treatment for node outlines. */
@@ -66,6 +66,20 @@ export interface ElementStyle {
   animationSpeed?: number;
 }
 
+/** An image node's picture: a remote http(s) URL or an embedded data: URI. */
+export interface NodeImage {
+  src: string;
+  /** label position: 't' above the image, 'b' (default) below */
+  pos?: 't' | 'b';
+  /** image width / height in px (missing => DEFAULT_IMAGE_SIZE) */
+  w?: number;
+  h?: number;
+  /** keep the image's aspect ratio inside w x h (Mermaid `constraint: "on"`) */
+  constraint?: boolean;
+}
+
+export const DEFAULT_IMAGE_SIZE = 80;
+
 export interface DiagramNode {
   id: string;
   label: string;
@@ -88,6 +102,11 @@ export interface DiagramNode {
   icon?: string;
   /** wiki page attached to this node; created on first drill-in */
   pageId?: string;
+  /**
+   * Mermaid's `@{ img: ... }` image node. Set, the node shows the picture with
+   * its label above (`pos: 't'`) or below (default) it; wins over `icon`
+   */
+  image?: NodeImage;
   /** optional per-node visual overrides */
   style?: ElementStyle;
 }
