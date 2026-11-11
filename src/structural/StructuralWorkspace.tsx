@@ -122,8 +122,9 @@ function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onEx
   const updateNamespace = (id: string, update: (card: ClassNamespace) => ClassNamespace) => { if (diagram.kind === 'class') change({ ...diagram, namespaces: diagram.namespaces.map((c) => c.id === id ? update(c) : c) }); };
   const addCard = () => {
     const id = makeStructuralId(); const position = flow.screenToFlowPosition({ x: window.innerWidth / 3, y: window.innerHeight / 2 });
-    if (diagram.kind === 'er') { change({ ...diagram, entities: [...diagram.entities, { id, label: `Entity ${diagram.entities.length + 1}`, position, collapsed: false, attributes: [] }] }); select({ kind: 'entity', id }); }
-    else { change({ ...diagram, classes: [...diagram.classes, { id, label: `Class ${diagram.classes.length + 1}`, position, collapsed: false, generics: '', annotations: [], namespaceId: namespace?.id ?? null, members: [] }] }); select({ kind: 'class', id }); }
+    if (diagram.kind === 'er') { change(placeNewStructuralCards({ ...diagram, entities: [...diagram.entities, { id, label: `Entity ${diagram.entities.length + 1}`, position, collapsed: false, attributes: [] }] }, diagram)); select({ kind: 'entity', id }); }
+    else { change(placeNewStructuralCards({ ...diagram, classes: [...diagram.classes, { id, label: `Class ${diagram.classes.length + 1}`, position, collapsed: false, generics: '', annotations: [], namespaceId: namespace?.id ?? null, members: [] }] }, diagram)); select({ kind: 'class', id }); }
+    requestAnimationFrame(() => requestAnimationFrame(fit));
   };
   const addNamespace = () => { if (diagram.kind !== 'class') return; const id = makeStructuralId(); change({ ...diagram, namespaces: [...diagram.namespaces, { id, label: `Namespace${diagram.namespaces.length + 1}`, position: { x: 40, y: 60 }, collapsed: false, parentId: namespace?.id ?? null }] }); select({ kind: 'namespace', id }); };
   const addRelationship = (sourceId?: string, targetId?: string) => {
