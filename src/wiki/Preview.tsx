@@ -1,3 +1,6 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { SequenceDrawing } from '../sequence/SequenceWorkspace';
+import { usePageEntities } from '../entities';
 import { useEffect, useMemo, useRef } from 'react';
 import { useDiagram } from '../store';
 import { useTheme } from '../theme';
@@ -39,7 +42,9 @@ export default function Preview({
   /** a node in the embedded diagram was clicked */
   onNode?: (nodeId: string) => void;
 }) {
-  const nodes = useDiagram((s) => s.nodes);
+  const nodes = usePageEntities();
+  const sequence = useDiagram((s) => s.sequence);
+  const graphNodes = useDiagram((s) => s.nodes);
   const edges = useDiagram((s) => s.edges);
   const pages = useDiagram((s) => s.pages);
   const dark = useTheme() === 'dark';
@@ -47,14 +52,19 @@ export default function Preview({
 
   const html = useMemo(() => renderPage(body, { nodes, pages }), [body, nodes, pages]);
   const source = useMemo(() => {
-    if (!nodeId) return '';
-    const sub = embedDiagram({ nodes, edges }, nodeId);
+    if (!nodeId || sequence) return '';
+    const sub = embedDiagram({ nodes: graphNodes, edges }, nodeId);
     return sub.nodes.length ? toMermaid(sub) : '';
-  }, [nodes, edges, nodeId]);
+  }, [graphNodes, edges, nodeId, sequence]);
 
   useEffect(() => {
     const hosts = root.current?.querySelectorAll<HTMLElement>('[data-embed]');
     if (!hosts?.length) return;
+    if (sequence && nodeId) {
+      const svg = renderToStaticMarkup(<SequenceDrawing diagram={sequence} />);
+      hosts.forEach((host) => { host.innerHTML = svg; });
+      return;
+    }
     const render = new AbortController();
     if (source) {
       void diagramSvg(source, dark).then((svg) => {
@@ -62,7 +72,7 @@ export default function Preview({
       });
     } else hosts.forEach((host) => host.replaceChildren());
     return () => render.abort();
-  }, [html, source, dark]);
+  }, [html, source, dark, sequence, nodeId]);
 
   const onClick = (e: React.MouseEvent) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !(e.target instanceof Element)) return;
@@ -78,6 +88,8 @@ export default function Preview({
       if (id) onPage(id);
       return;
     }
+    const participant = t.closest<SVGElement>('[data-sequence-participant]')?.dataset.sequenceParticipant;
+    if (participant) { onNode(participant); return; }
     const hit = /^flowchart-(.+)-\d+$/.exec(t.closest('[data-embed] .node')?.id ?? '');
     if (hit) onNode(hit[1]);
   };

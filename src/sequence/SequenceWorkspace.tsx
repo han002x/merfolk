@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Background, Controls, ReactFlow, ReactFlowProvider, ViewportPortal, useReactFlow } from '@xyflow/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Background, Controls, ReactFlow, ReactFlowProvider, ViewportPortal, useReactFlow, useStore } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { Fragment, Participant, SequenceDiagram, SequenceEvent } from './types';
 import { SEQUENCE_ARROWS } from './types';
@@ -73,6 +73,7 @@ function Workspace({ diagram, onChange, onFlowchart, onOpenPage, onImportFile, o
   const theme = useTheme();
   const hash = useHash();
   const flow = useReactFlow();
+  const viewportSize = useStore((state) => `${state.width}:${state.height}`);
   const geometry = useMemo(() => sequenceGeometry(diagram), [diagram]);
   const participant = diagram.participants.find((p) => p.id === selected);
   const event = walkEvents(diagram.events).find((e) => e.id === selected);
@@ -101,7 +102,7 @@ function Workspace({ diagram, onChange, onFlowchart, onOpenPage, onImportFile, o
     const start = lines.slice(0, line).reduce((sum, value) => sum + value.length + 1, 0);
     editor.current.setSelectionRange(start, start + (lines[line]?.length ?? 0));
   }, [selectedId, source]);
-  const fit = () => { void flow.fitBounds({ x: 0, y: 0, width: geometry.width, height: geometry.height }, { padding: .15, duration: 200 }); };
+  const fit = useCallback(() => { void flow.fitBounds({ x: 0, y: 0, width: geometry.width, height: geometry.height }, { padding: .15, duration: 200 }); }, [flow, geometry.width, geometry.height]);
   useEffect(() => {
     const route = parseRoute(hash);
     if (route.kind !== 'node') return;
@@ -113,6 +114,10 @@ function Workspace({ diagram, onChange, onFlowchart, onOpenPage, onImportFile, o
     });
     return () => cancelAnimationFrame(frame);
   }, [hash, diagram.participants, flow, geometry.height]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => { fit(); });
+    return () => cancelAnimationFrame(frame);
+  }, [viewportSize, fit]);
   const change = (next: SequenceDiagram) => {
     const valid = parseSequence(emitSequence(next).text);
     if (!valid.ok) { setError(valid.error); return; }
@@ -157,7 +162,7 @@ function Workspace({ diagram, onChange, onFlowchart, onOpenPage, onImportFile, o
       case 'fragment': added = [{ kind, id, operator: 'opt', branches: [{ label: 'Condition', events: [] }], collapsed: false }]; break;
     }
     const insertion = target ?? (event?.kind === 'fragment' ? { id: event.id, branch: 0 } : null);
-    change({ ...diagram, events: appendEvent(diagram.events, added, selected, insertion) });
+    change({ ...diagram, events: appendEvent(diagram.events, added, event ? selected : null, insertion) });
     select(id);
   };
   const editSource = (value: string) => {

@@ -62,3 +62,7 @@
 .wk-preview .sq-drawing { width:100%; height:auto; max-width:100%; }
 @media (max-width:900px) { .sq-panel { width:310px; flex-basis:310px; } .sq-toolbar { left:10px; transform:none; gap:1px; } .sq-toolbar button { padding:6px; } .sq-toolbar-title { display:none; } }
 @media (max-width:650px) { .sq-workspace { flex-direction:column; } .sq-canvas { min-height:45vh; } .sq-panel { width:100%; flex:1; min-height:0; border-left:0; border-top:1px solid var(--mf-border); } .sq-tabs { padding:6px; } .sq-inspector { max-height:27vh; } }
+/* React Flow portals pass canvas gestures through; only diagram elements take clicks. */
+.sq-drawing { pointer-events:none; }
+.sq-drawing .sq-participant, .sq-drawing .sq-event, .sq-drawing [role=button] { pointer-events:all; }
+.sq-drawing .sq-event .sq-fragment-tab { stroke:color-mix(in srgb,var(--mf-accent) calc(var(--sq-progress)*100%),var(--mf-muted)); stroke-width:calc(1px + var(--sq-progress)*1.5px); }

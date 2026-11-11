@@ -1,4 +1,4 @@
-// Mermaid flowchart <-> merfolk Diagram interop.
+// Mermaid flowchart <-> merfolk FlowchartDiagram interop.
 //
 // We support the common `flowchart`/`graph` subset:
 //   - node declarations in every classic bracket shape (see src/shapes.ts):
@@ -16,7 +16,7 @@
 // Everything merfolk emits is checked against the real mermaid parser by
 // scripts/mermaid-compat.ts.
 
-import type { Diagram, DiagramEdge, DiagramNode, NodeImage, NodeShape } from '../types';
+import type { FlowchartDiagram, DiagramEdge, DiagramNode, NodeImage, NodeShape } from '../types';
 import { SHAPES, SHAPE_ALIAS, iconForm, shapeDef, shapeForForm } from '../shapes.ts';
 import { parsePageIds } from '../pages.ts';
 
@@ -135,7 +135,7 @@ export interface ParseIssue {
 }
 
 interface CoreResult {
-  diagram: Diagram;
+  diagram: FlowchartDiagram;
   issues: ParseIssue[];
   /** number of non-blank, non-comment lines seen (excludes the header) */
   meaningfulLines: number;
@@ -302,13 +302,13 @@ function parseCore(src: string): CoreResult {
   return { diagram: { nodes, edges }, issues, meaningfulLines };
 }
 
-export function fromMermaid(src: string): Diagram {
+export function fromMermaid(src: string): FlowchartDiagram {
   return parseCore(src).diagram;
 }
 
 /** Outcome of a validating parse: either a clean diagram or a readable error. */
 export type ParseResult =
-  | { ok: true; diagram: Diagram }
+  | { ok: true; diagram: FlowchartDiagram }
   | { ok: false; error: string };
 
 /**
@@ -342,7 +342,7 @@ export function parseMermaid(src: string): ParseResult {
  * carry over `style`. Elements absent from `parsed` are dropped; genuinely new
  * nodes keep the parsed (grid) position for the caller to lay out.
  */
-export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
+export function mergeDiagram(parsed: FlowchartDiagram, current: FlowchartDiagram): FlowchartDiagram {
   const curNodes = new Map(current.nodes.map((n) => [n.id, n]));
 
   const nodes: DiagramNode[] = parsed.nodes.map((p) => {
@@ -406,7 +406,7 @@ export interface MermaidResult {
  * Serialize a diagram to Mermaid, also returning a per-line map back to the
  * node/edge each line came from. Powers the editor<->canvas highlight sync.
  */
-export function toMermaidWithMap(diagram: Diagram): MermaidResult {
+export function toMermaidWithMap(diagram: FlowchartDiagram): MermaidResult {
   const { nodes, edges } = diagram;
   const children = new Map<string | null, DiagramNode[]>();
   for (const n of nodes) {
@@ -462,6 +462,6 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
   return { text: out.join('\n'), lineRefs };
 }
 
-export function toMermaid(diagram: Diagram): string {
+export function toMermaid(diagram: FlowchartDiagram): string {
   return toMermaidWithMap(diagram).text;
 }

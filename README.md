@@ -20,6 +20,16 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   with expandable groups and a connection list. Select nodes or connections in
   the tree, or double-click their labels to rename them; changes update the
   canvas and Mermaid source. **Copy** exports the source for other renderers.
+- **Sequence diagrams** — choose **New sequence** or paste `sequenceDiagram` into
+  the Mermaid panel. Edit participants, actors, messages, self-calls, notes,
+  activations, and nested `alt` / `opt` / `loop` / `par` blocks on a dedicated
+  canvas. Drag participants to reorder columns and messages to reorder events
+  within a branch. Select an element to edit its properties; the outline offers
+  branch insertion controls. Fold blocks while retaining lifelines and activation
+  state. Participants link shared wiki pages, and `{{diagram}}` embeds the full
+  sequence. Play or step through messages in source order. Unsupported syntax
+  reports an error and keeps the last valid canvas. Each document contains one
+  diagram kind.
 - **Auto-layout (dagre)** — **Tidy ↓** / **Tidy →** re-flow the diagram top-down
   or left-right. Only visible nodes are laid out, so collapsing a group re-flows
   the rest. Mermaid imports are tidied automatically.
@@ -89,7 +99,7 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 - **Persistence** — the diagram autosaves to `localStorage` and restores on
   reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
   or clear the canvas, from the toolbar. Older single-page saves and JSON files
-  migrate automatically; new saves use version 2.
+  migrate automatically; new saves use version 3, with wiki pages stored beside the active diagram.
 - **Paper and ink** — one look throughout: a grained paper desk, card-stock
   panels, crisp kraft sheets for unfolded groups, and diagrams drawn in
   hand-drawn ink (roughjs, seeded per element so the wobble never changes)
@@ -146,7 +156,8 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 
 | File | Role |
 | --- | --- |
-| `src/types.ts` | `Diagram` data model: flat nodes + edges, `parentId` for nesting, `collapsed` flag |
+| `src/types.ts` | Tagged flowchart/sequence documents and shared wiki pages |
+| `src/sequence/` | Sequence model, Mermaid parser/emitter, native SVG editor and chronological layout |
 | `src/store.ts` | Zustand store + mutations; `hiddenNodeIds()` derives what a collapse hides |
 | `src/mermaid/io.ts` | `fromMermaid` / `toMermaid` — pragmatic flowchart parser + emitter (subgraphs ↔ groups) |
 | `src/fold.ts` | Pure fold logic: hidden set, edge creases, fold levels, sheet geometry |
@@ -169,6 +180,16 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 | `src/App.tsx` | Canvas wiring, toolbar, visibility filtering |
 
 ## Mermaid support (subset)
+
+Sequences support participants and actors with aliases, the eight classic
+message arrows, self-calls, notes, explicit and shorthand activations, and
+nested `alt`, `opt`, `loop`, and `par` blocks. Mermaid comments preserve event
+IDs and participant page references. JSON preserves fold state and styles.
+Advanced constructs such as participant creation/destruction, boxes,
+`critical`, `break`, and newer arrows are rejected rather than discarded.
+Playback walks all branches once without evaluating conditions or repeating
+loops.
+
 
 Parses the common `flowchart` / `graph` subset: node declarations in all 14
 classic bracket shapes (`[]` `()` `([])` `[[]]` `[()]` `(())` `((()))` `{}`

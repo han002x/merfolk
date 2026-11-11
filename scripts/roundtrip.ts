@@ -1,11 +1,11 @@
 // Round-trip check: edge labels (and node labels) survive toMermaid -> fromMermaid.
 // Run with: node --experimental-strip-types scripts/roundtrip.ts
 import { toMermaid, fromMermaid, setPageBase } from '../src/mermaid/io.ts';
-import type { Diagram } from '../src/types.ts';
+import type { FlowchartDiagram } from '../src/types.ts';
 import assert from 'node:assert/strict';
 import { parseMermaid, mergeDiagram } from '../src/mermaid/io.ts';
 
-const d: Diagram = {
+const d: FlowchartDiagram = {
   nodes: [
     { id: 'A', label: 'Start', shape: 'rect', parentId: null, collapsed: false, position: { x: 0, y: 0 } },
     { id: 'B', label: 'End', shape: 'round', parentId: null, collapsed: false, position: { x: 0, y: 0 } },
@@ -27,7 +27,7 @@ if (!ok) {
 console.log('PASS: edge + node labels round-trip');
 
 // wiki links survive as `click` lines, on plain nodes and on groups
-const linked: Diagram = {
+const linked: FlowchartDiagram = {
   nodes: [
     { ...d.nodes[0], pageIds: ['pg1'] },
     { id: 'G', label: 'Group', shape: 'rect', parentId: null, collapsed: false, position: { x: 0, y: 0 }, pageIds: ['pg2'] },
@@ -46,7 +46,7 @@ if (ids.A !== 'pg1' || ids.G !== 'pg2' || ids.B !== undefined || !text.includes(
 console.log('PASS: wiki links round-trip as click lines');
 
 {
-  const multiple: Diagram = {
+  const multiple: FlowchartDiagram = {
     nodes: [
       { ...d.nodes[0], pageIds: ['second', 'shared', 'first'] },
       { ...d.nodes[1], pageIds: ['shared', 'second'] },
@@ -65,16 +65,16 @@ console.log('PASS: wiki links round-trip as click lines');
   assert.deepEqual(mergeDiagram(empty, multiple).nodes[0].pageIds, []);
   const omitted = fromMermaid('flowchart TD\nA[A]');
   assert.deepEqual(mergeDiagram(omitted, multiple).nodes[0].pageIds, ['second', 'shared', 'first']);
-  const encoded: Diagram = { nodes: [{ ...d.nodes[0], pageIds: ['a page/你好'] }], edges: [] };
+  const encoded: FlowchartDiagram = { nodes: [{ ...d.nodes[0], pageIds: ['a page/你好'] }], edges: [] };
   assert.deepEqual(fromMermaid(toMermaid(encoded)).nodes[0].pageIds, ['a page/你好']);
   assert.deepEqual(fromMermaid('flowchart TD\nA[A]\nclick A href "#/wiki/a%20page%2F%E4%BD%A0%E5%A5%BD"').nodes[0].pageIds, ['a page/你好']);
   console.log('PASS: multiple wiki links preserve order, sharing, metadata precedence, and explicit unlinking');
 }
 // image nodes: URL, embedded data: URI (commas!), every option, and a bare one
 const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-const node = (id: string, label: string, image: NonNullable<Diagram['nodes'][0]['image']>) =>
+const node = (id: string, label: string, image: NonNullable<FlowchartDiagram['nodes'][0]['image']>) =>
   ({ id, label, shape: 'rect', parentId: null, collapsed: false, position: { x: 0, y: 0 }, image }) as const;
-const imgs: Diagram = {
+const imgs: FlowchartDiagram = {
   nodes: [
     node('U', 'Logo', { src: 'https://example.com/logo.png?a=1,2' }),
     node('E', 'Upload', { src: PIXEL }),
@@ -110,7 +110,7 @@ console.log('PASS: image nodes round-trip (URL, data: URI, pos/w/h/constraint)')
 
 // page links take any base on the way out and any base on the way in
 {
-  const one: Diagram = { nodes: [{ ...d.nodes[0], pageIds: ['pg7'] }], edges: [] };
+  const one: FlowchartDiagram = { nodes: [{ ...d.nodes[0], pageIds: ['pg7'] }], edges: [] };
   const cases: [string, string][] = [
     ['', 'href "#/wiki/pg7"'],
     ['https://notes.example/app/', 'href "https://notes.example/app/#/wiki/pg7"'],

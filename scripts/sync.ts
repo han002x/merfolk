@@ -1,7 +1,7 @@
 // Live-sync checks: validating parse, state-preserving merge.
 // Run with: node --experimental-strip-types scripts/sync.ts
 import { parseMermaid, mergeDiagram, toMermaid } from '../src/mermaid/io.ts';
-import type { Diagram, DiagramNode } from '../src/types.ts';
+import type { FlowchartDiagram, DiagramNode } from '../src/types.ts';
 
 let failed = 0;
 const check = (name: string, ok: boolean, detail?: unknown) => {
@@ -67,7 +67,7 @@ const N = (
   ...extra,
 });
 
-const current: Diagram = {
+const current: FlowchartDiagram = {
   nodes: [
     N('A', 'Start', 100, 200, { style: { stroke: '#f00' } }),
     N('B', 'End', 300, 400, { collapsed: true }),
@@ -110,7 +110,7 @@ const current: Diagram = {
 
 {
   // editing an image URL in the text reaches the node; position stays
-  const pic: Diagram = {
+  const pic: FlowchartDiagram = {
     nodes: [
       { id: 'P', label: 'Pic', shape: 'rect', parentId: null, collapsed: false, position: { x: 7, y: 9 }, image: { src: 'https://a.example/1.png', w: 60, h: 60 } },
     ],

@@ -1,3 +1,4 @@
+import { usePageEntities, pageEntities } from '../entities';
 import { useDiagram } from '../store';
 import { showPage, useDock } from '../dock';
 import { nodesOfPage, pageOf, pathTo } from '../pages';
@@ -8,7 +9,7 @@ import '../wiki/wiki.css';
 
 /** The selected node's wiki page, editable beside the canvas. */
 export default function PagePanel() {
-  const nodes = useDiagram((s) => s.nodes);
+  const nodes = usePageEntities();
   const pages = useDiagram((s) => s.pages);
   const selected = useDiagram((s) => s.selectedNodeIds[0]);
   const mode = useDock((s) => s.mode);
@@ -24,7 +25,7 @@ export default function PagePanel() {
 
   const toPage = (id: string) => {
     const st = useDiagram.getState();
-    const targets = nodesOfPage(st.nodes, id);
+    const targets = nodesOfPage(pageEntities(), id);
     const target = targets.find((n) => n.id === selected) ?? targets[0];
     if (target) {
       showPage(target.id, id);

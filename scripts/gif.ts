@@ -10,7 +10,7 @@ import {
   gifFileName,
 } from '../src/gifMath.ts';
 import { STYLE_DEFAULTS } from '../src/style.ts';
-import type { Diagram, DiagramEdge, DiagramNode } from '../src/types.ts';
+import type { FlowchartDiagram, DiagramEdge, DiagramNode } from '../src/types.ts';
 import type { AnimationKind } from '../src/types.ts';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
@@ -39,7 +39,7 @@ const E = (
   target: 'b',
   style: animation ? { animation, animationSpeed } : undefined,
 });
-const D = (nodes: DiagramNode[], edges: DiagramEdge[] = []): Diagram => ({
+const D = (nodes: DiagramNode[], edges: DiagramEdge[] = []): FlowchartDiagram => ({
   nodes,
   edges,
 });

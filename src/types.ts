@@ -132,9 +132,20 @@ export interface DiagramEdge {
   style?: ElementStyle;
 }
 
-export interface Diagram {
+export interface FlowchartDiagram {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
   /** wiki pages; absent in diagrams saved before the wiki existed */
   pages?: Page[];
 }
+
+export interface PageEntity {
+  id: string;
+  label: string;
+  pageIds?: string[];
+  parentId?: string | null;
+  collapsed?: boolean;
+}
+
+export type Diagram = (FlowchartDiagram & { kind: 'flowchart' }) | import('./sequence/types').SequenceDiagram;
+export interface WorkspaceDocument { diagram: Diagram; pages: Page[] }

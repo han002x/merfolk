@@ -1,9 +1,10 @@
+import { pageEntities } from '../entities';
 import { useDiagram } from '../store';
-import type { DiagramNode } from '../types';
+import type { PageEntity } from '../types';
 
 /** Manage one node's ordered page links without changing shared page content. */
 export default function LinkedPages({ node, pageId, onPage }: {
-  node: DiagramNode;
+  node: PageEntity;
   pageId?: string;
   onPage: (id: string | null) => void;
 }) {
@@ -50,7 +51,7 @@ export default function LinkedPages({ node, pageId, onPage }: {
             <button className="wk-btn" onClick={() => {
               const st = useDiagram.getState();
               st.unlinkPage(active, node.id);
-              const next = useDiagram.getState().nodes.find((n) => n.id === node.id)?.pageIds?.[0];
+              const next = pageEntities().find((n) => n.id === node.id)?.pageIds?.[0];
               onPage(next ? st.openPage(node.id, next) : null);
             }}>Unlink</button>
           </>

@@ -1,3 +1,4 @@
+import { usePageEntities, pageEntities } from '../entities';
 import { useCallback, useEffect, useState } from 'react';
 import { useDiagram } from '../store';
 import { restore, startAutosave, startSync } from '../persist';
@@ -16,7 +17,7 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
     return () => stops.forEach((stop) => stop());
   }, []);
 
-  const nodes = useDiagram((s) => s.nodes);
+  const nodes = usePageEntities();
   const pages = useDiagram((s) => s.pages);
   const page = pages.find((p) => p.id === pageId);
   const pageNodes = page ? nodesOfPage(nodes, page.id) : [];
@@ -29,7 +30,7 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
 
   const targets = useCallback(() => {
     const st = useDiagram.getState();
-    const names = [...st.pages.map((p) => p.title), ...st.nodes.map((n) => n.label)];
+    const names = [...st.pages.map((p) => p.title), ...pageEntities().map((n) => n.label)];
     return [...new Set(names.filter(Boolean))];
   }, []);
 
@@ -45,7 +46,7 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
   };
 
   const toPage = (id: string) => {
-    const context = useDiagram.getState().nodes.find((n) => n.id === node?.id && n.pageIds?.includes(id));
+    const context = pageEntities().find((n) => n.id === node?.id && n.pageIds?.includes(id));
     window.location.hash = pageHref(id, context?.id);
   };
 

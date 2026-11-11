@@ -1,7 +1,7 @@
 // Pure wiki logic: pages link to any number of nodes and outlive them.
 // No store or DOM here, so scripts/pages.ts can exercise it directly.
 
-import type { Diagram, DiagramNode, Page } from './types';
+import type { FlowchartDiagram, Page, PageEntity } from './types';
 
 /** Validate page references at JSON and Mermaid boundaries. */
 export function parsePageIds(value: unknown): string[] {
@@ -11,7 +11,7 @@ export function parsePageIds(value: unknown): string[] {
 }
 
 /** Read old single-page diagrams without retaining a second source of truth. */
-export function normalizeDiagram(diagram: Diagram): Diagram {
+export function normalizeDiagram(diagram: FlowchartDiagram): FlowchartDiagram {
   return {
     ...diagram,
     pages: Array.isArray(diagram.pages) ? diagram.pages : [],
@@ -34,7 +34,7 @@ export function newPageId(pages: Page[]): string {
 }
 
 /** The default page of a node, if it exists. */
-export function pageOf(node: DiagramNode | undefined, pages: Page[]): Page | undefined {
+export function pageOf(node: PageEntity | undefined, pages: Page[]): Page | undefined {
   return pages.find((p) => p.id === node?.pageIds?.[0]);
 }
 
@@ -42,7 +42,7 @@ export function pageOf(node: DiagramNode | undefined, pages: Page[]): Page | und
  * Give `node` a page, titled from its label, unless it already has one.
  * Returns the new page, or null when nothing needed creating.
  */
-export function createPageFor(node: DiagramNode, pages: Page[], now = Date.now()): Page | null {
+export function createPageFor(node: PageEntity, pages: Page[], now = Date.now()): Page | null {
   if (pageOf(node, pages)) return null;
   // A reference imported from Mermaid may not have page content yet.
   const id = node.pageIds?.[0] ?? newPageId(pages);
@@ -50,7 +50,7 @@ export function createPageFor(node: DiagramNode, pages: Page[], now = Date.now()
 }
 
 /** Pages no node points at. */
-export function orphanPages(nodes: DiagramNode[], pages: Page[]): Page[] {
+export function orphanPages(nodes: PageEntity[], pages: Page[]): Page[] {
   const used = new Set(nodes.flatMap((n) => n.pageIds ?? []));
   return pages.filter((p) => !used.has(p.id));
 }
@@ -89,7 +89,7 @@ export function mergePages(local: Page[], remote: Page[], now = Date.now()): Pag
 }
 
 /** Nodes not yet linked to this page. */
-export function linkableNodes(nodes: DiagramNode[], pageId: string): DiagramNode[] {
+export function linkableNodes(nodes: PageEntity[], pageId: string): PageEntity[] {
   return nodes.filter((n) => !n.pageIds?.includes(pageId));
 }
 
@@ -102,7 +102,7 @@ export function extractLinks(body: string): string[] {
 
 export type Resolved =
   | { kind: 'page'; page: Page }
-  | { kind: 'node'; node: DiagramNode }
+  | { kind: 'node'; node: PageEntity }
   | { kind: 'none' };
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -111,7 +111,7 @@ const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLow
  * A link names a page title first, then a node label (whose page is created on
  * first visit). Case-insensitive; the first match in document order wins.
  */
-export function resolveLink(target: string, nodes: DiagramNode[], pages: Page[]): Resolved {
+export function resolveLink(target: string, nodes: PageEntity[], pages: Page[]): Resolved {
   const page = pages.find((p) => same(p.title, target));
   if (page) return { kind: 'page', page };
   const node = nodes.find((n) => n.label && same(n.label, target));
@@ -121,12 +121,12 @@ export function resolveLink(target: string, nodes: DiagramNode[], pages: Page[])
 }
 
 /** All nodes linked to a page, in diagram order. */
-export function nodesOfPage(nodes: DiagramNode[], pageId: string): DiagramNode[] {
+export function nodesOfPage(nodes: PageEntity[], pageId: string): PageEntity[] {
   return nodes.filter((n) => n.pageIds?.includes(pageId));
 }
 
 /** Pages whose body links to `page` (by title, or by its node's label). */
-export function backlinks(page: Page, nodes: DiagramNode[], pages: Page[]): Page[] {
+export function backlinks(page: Page, nodes: PageEntity[], pages: Page[]): Page[] {
   return pages.filter(
     (other) =>
       other.id !== page.id &&
@@ -141,16 +141,16 @@ export function backlinks(page: Page, nodes: DiagramNode[], pages: Page[]): Page
 // ---- diagram structure ------------------------------------------------------
 
 /** Root-to-node chain of groups, ending with the node itself. */
-export function pathTo(nodes: DiagramNode[], nodeId: string): DiagramNode[] {
+export function pathTo(nodes: PageEntity[], nodeId: string): PageEntity[] {
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  const path: DiagramNode[] = [];
+  const path: PageEntity[] = [];
   for (let n = byId.get(nodeId); n && !path.includes(n); n = n.parentId ? byId.get(n.parentId) : undefined)
     path.unshift(n);
   return path;
 }
 
 /** Folded groups hiding `nodeId`: unfold these to reveal it on the canvas. */
-export function foldedAncestors(nodes: DiagramNode[], nodeId: string): string[] {
+export function foldedAncestors(nodes: PageEntity[], nodeId: string): string[] {
   return pathTo(nodes, nodeId)
     .slice(0, -1)
     .filter((n) => n.collapsed)
@@ -161,7 +161,7 @@ export function foldedAncestors(nodes: DiagramNode[], nodeId: string): string[] 
  * What a page embeds: a group's subtree, or a lone node with its direct
  * neighbours. Page links are dropped, so the Mermaid carries no `click` lines.
  */
-export function embedDiagram(d: Diagram, nodeId: string): Diagram {
+export function embedDiagram(d: FlowchartDiagram, nodeId: string): FlowchartDiagram {
   const root = d.nodes.find((n) => n.id === nodeId);
   if (!root) return { nodes: [], edges: [] };
   const keep = new Set<string>([nodeId]);

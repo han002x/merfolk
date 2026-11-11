@@ -1,3 +1,4 @@
+import { pageEntities } from '../entities';
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
@@ -80,7 +81,7 @@ export default function Editor(props: Props) {
         const name = target.dataset.wikilink ?? '';
         if (event.ctrlKey || event.metaKey) {
           const st = useDiagram.getState();
-          const resolved = resolveLink(name, st.nodes, st.pages);
+          const resolved = resolveLink(name, pageEntities(), st.pages);
           const id = resolved.kind === 'page' ? resolved.page.id : resolved.kind === 'node' ? st.openPage(resolved.node.id) : st.createPage(name);
           if (id) latest.current.onPage(id);
           return true;

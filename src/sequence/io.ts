@@ -30,6 +30,7 @@ export function parseSequence(source: string): SequenceParseResult {
   let lineNumber = 0;
   function fail(message: string): never { throw new Error(`Line ${lineNumber + 1}: ${message}`); }
   const ensure = (id: string): Participant => {
+    if (ids.has(id)) fail(`Participant ID conflicts with event ID ${id}`);
     const existing = participants.get(id);
     if (existing) return existing;
     const participant: Participant = { id, label: id, kind: 'participant' };
@@ -44,7 +45,7 @@ export function parseSequence(source: string): SequenceParseResult {
   const eventId = (): string => {
     const id = pendingId ?? makeSequenceId();
     pendingId = undefined;
-    if (ids.has(id)) fail(`Duplicate event ID ${id}`);
+    if (ids.has(id) || participants.has(id)) fail(`Duplicate or conflicting event ID ${id}`);
     ids.add(id);
     return id;
   };

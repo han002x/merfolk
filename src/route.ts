@@ -11,13 +11,13 @@ export type Route =
   | { kind: 'wiki'; id: string | null; nodeId?: string };
 
 export function parseRoute(hash: string): Route {
-  const [, kind, id] = hash.match(/^#\/(wiki|node)(?:\/([^/?]+))?/) ?? [];
+  const [, kind, id] = hash.match(/^#\/(wiki|node|participant)(?:\/([^/?]+))?/) ?? [];
   const decoded = id ? decodeURIComponent(id) : null;
   if (kind === 'wiki') {
     const nodeId = new URLSearchParams(hash.split('?')[1]).get('node');
     return { kind: 'wiki', id: decoded, ...(nodeId && { nodeId }) };
   }
-  if (kind === 'node' && decoded) return { kind: 'node', id: decoded };
+  if ((kind === 'node' || kind === 'participant') && decoded) return { kind: 'node', id: decoded };
   return { kind: 'canvas' };
 }
 

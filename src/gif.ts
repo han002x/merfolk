@@ -9,7 +9,7 @@
 import { toCanvas } from 'html-to-image';
 import GIF from 'gif.js';
 import workerUrl from 'gif.js/dist/gif.worker.js?url';
-import type { Diagram } from './types';
+import type { FlowchartDiagram } from './types';
 import { preparePaperTexture, prepareSvgStyles } from './gifCapture';
 import {
   GIF_DEFAULTS,
@@ -40,7 +40,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  */
 export async function exportGif(
   element: HTMLElement,
-  diagram: Diagram,
+  diagram: FlowchartDiagram,
   opts: Partial<typeof GIF_DEFAULTS> = {},
   flow?: FlowCapture,
 ): Promise<void> {

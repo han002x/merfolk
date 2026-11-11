@@ -1,7 +1,7 @@
 // Pure maths for GIF export, kept free of any browser/DOM imports so it can be
 // unit-tested under `node --experimental-strip-types` (scripts/gif.ts).
 
-import type { Diagram } from './types';
+import type { FlowchartDiagram } from './types';
 
 /** Fallback cycle length (seconds) — mirrors STYLE_DEFAULTS.animationSpeed. */
 const DEFAULT_ANIMATION_SPEED = 1.6;
@@ -24,7 +24,7 @@ export const GIF_DEFAULTS = {
  * whole number of cycles within the GIF. `flowSeconds` is the sequenced flow's
  * loop (0 when it is not recorded). Returns 0 when nothing animates.
  */
-export function cycleSeconds(diagram: Diagram, flowSeconds = 0): number {
+export function cycleSeconds(diagram: FlowchartDiagram, flowSeconds = 0): number {
   let max = flowSeconds;
   const consider = (speed: number | undefined, animated: boolean) => {
     if (!animated) return;

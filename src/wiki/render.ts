@@ -3,12 +3,12 @@
 
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
-import type { DiagramNode, Page } from '../types';
+import type { PageEntity, Page } from '../types';
 import { resolveLink } from '../pages.ts';
 import { pageHref } from '../route.ts';
 
 export interface RenderContext {
-  nodes: DiagramNode[];
+  nodes: PageEntity[];
   pages: Page[];
 }
 

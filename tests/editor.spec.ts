@@ -20,7 +20,7 @@ async function seed(page: Page, body = '', dock = false) {
   await expect(page.getByLabel('Page content')).toBeVisible();
 }
 async function savedBody(page: Page) {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('merfolk.diagram') ?? '{}').diagram?.pages.find((p: { id: string }) => p.id === 'p')?.body);
+  return page.evaluate(() => (() => { const saved = JSON.parse(localStorage.getItem('merfolk.diagram') ?? '{}'); return (saved.document?.pages ?? saved.diagram?.pages)?.find((p: { id: string }) => p.id === 'p')?.body; })());
 }
 for (const dock of [false, true]) {
   test(`slash commands and table editing ${dock ? 'in dock' : 'in wiki'}`, async ({ page }) => {

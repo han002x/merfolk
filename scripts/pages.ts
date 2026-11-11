@@ -25,7 +25,7 @@ import {
   nodesOfPage,
 } from '../src/pages.ts';
 import { mergeDiagram } from '../src/mermaid/io.ts';
-import type { Diagram, DiagramNode, Page } from '../src/types.ts';
+import type { FlowchartDiagram, DiagramNode, Page } from '../src/types.ts';
 
 let failed = 0;
 const check = (name: string, ok: boolean, detail?: unknown) => {
@@ -94,8 +94,8 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
 
 // ---- Mermaid live sync keeps the link ----
 {
-  const current: Diagram = { nodes: [node('a', 'A', { pageIds: ['p1'] })], edges: [] };
-  const parsed: Diagram = { nodes: [node('a', 'A renamed')], edges: [] };
+  const current: FlowchartDiagram = { nodes: [node('a', 'A', { pageIds: ['p1'] })], edges: [] };
+  const parsed: FlowchartDiagram = { nodes: [node('a', 'A renamed')], edges: [] };
   const merged = mergeDiagram(parsed, current);
   check('merge keeps pageId', merged.nodes[0].pageIds?.[0] === 'p1', merged.nodes[0]);
 }
@@ -238,10 +238,10 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
   assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
   await importFile(new File([JSON.stringify({ version: 1, diagram: legacy })], 'legacy.merfolk.json'));
   assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
-  const multiple: Diagram = { nodes: [node('a', 'API', { pageIds: ['p2', 'p1'] }), node('b', 'DB', { pageIds: ['p2'] })],
+  const multiple: FlowchartDiagram = { nodes: [node('a', 'API', { pageIds: ['p2', 'p1'] }), node('b', 'DB', { pageIds: ['p2'] })],
     edges: [], pages: [page('p1', 'First', 1), page('p2', 'Shared', 2)] };
   write(multiple);
-  assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 2);
+  assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 3);
   assert.deepEqual(readSaved(), multiple);
   await importFile(new File([JSON.stringify({ version: 2, diagram: multiple })], 'new.merfolk.json'));
   assert.deepEqual(useDiagram.getState().nodes.map((n) => n.pageIds), [['p2', 'p1'], ['p2']]);

@@ -1,3 +1,6 @@
+import SequenceWorkspace from './sequence/SequenceWorkspace';
+import { sampleSequence } from './sequence/io';
+import { openWiki } from './route';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
@@ -51,6 +54,8 @@ import { showPage, useDock } from './dock';
 import { isTyping, useHotkeys } from './useHotkeys';
 import { copyImageNode, imagesFromClipboard, snapshotClipboard } from './clipboard';
 import {
+  currentDocument,
+  write,
   startAutosave,
   startSync,
   restore,
@@ -840,6 +845,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     >
       <div className="mf-toolbar">
         <span className="mf-brand">merfolk</span>
+        <button className="mf-btn" onClick={() => useDiagram.getState().setSequence(sampleSequence())}>New sequence</button>
         <div className="mf-group-btns">
           <ToolButton label="Select" hotkey="V" active={!pending} onClick={cancelPending}>
             <Icon name="cursor" />
@@ -1062,19 +1068,40 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 export default function App() {
   const panelOpen = useDock((s) => s.open);
   const setPanelOpen = useDock((s) => s.setOpen);
+  const sequence = useDiagram((s) => s.sequence);
+  const canUndo = useDiagram((s) => s.history.length > 0);
+  const sequenceImport = useRef<HTMLInputElement>(null);
+  const [importError, setImportError] = useState('');
   const [panelWidth, setPanelWidth] = useState(360);
   const load = useDiagram((s) => s.load);
 
   // on first mount: restore the saved diagram, or seed the sample; then
   // begin autosaving every change back to localStorage
   useEffect(() => {
-    if (useDiagram.getState().nodes.length === 0 && !restore()) {
+    if (!useDiagram.getState().sequence && useDiagram.getState().nodes.length === 0 && !restore()) {
       load(SAMPLE);
     }
     nameCanvasWindow();
     const stops = [startAutosave(), startSync()];
     return () => stops.forEach((stop) => stop());
   }, [load]);
+
+  if (sequence) return <>
+    <SequenceWorkspace diagram={sequence}
+      onChange={(next) => useDiagram.getState().setSequence(next)}
+      onFlowchart={() => useDiagram.getState().setSequence(null)}
+      onOpenPage={(id) => { const page = useDiagram.getState().openPage(id); if (page) { write(currentDocument()); openWiki(page, id); } }}
+      onImportFile={() => sequenceImport.current?.click()}
+      onExportFile={exportFile}
+      onSourceFlowchart={(source) => useDiagram.getState().syncMermaid(source)}
+      onUndo={() => useDiagram.getState().undo()} canUndo={canUndo} />
+    <input hidden type="file" accept=".json,application/json" ref={sequenceImport} onChange={async (event) => {
+      const file = event.target.files?.[0]; if (!file) return;
+      try { await importFile(file); setImportError(''); } catch (error) { setImportError(error instanceof Error ? error.message : 'Import failed'); }
+      event.target.value = '';
+    }} />
+    {importError && <div className="mf-notice" role="alert">{importError}</div>}
+  </>;
 
   return (
     <ReactFlowProvider>

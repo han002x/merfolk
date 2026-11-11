@@ -1,0 +1,9 @@
+ts	phase	decision	why	evidence	result
+2026-11-11	frame	Use isolated worktrees for core and canvas implementation	Keep existing wiki workspace unchanged	feat/sequence	baseline npm test passes
+2026-11-11	domain	Keep graph algorithms typed as FlowchartDiagram and add a tagged document union	Sequences require event order and independent identities	src/types.ts	in progress
+2026-11-11	persistence	Migrate saves to v3 with shared pages outside the diagram	Both native diagram kinds must survive reload and remote saves	src/persist.ts	in progress
+2026-11-11T12:35:26.763569+00:00	domain	Complete separate sequence model, parser and native SVG editor	Keep chronological events independent of graph layout	src/sequence/types.ts;src/sequence/io.ts;src/sequence/SequenceWorkspace.tsx	verified
+2026-11-11T12:35:26.763616+00:00	persistence	Complete v3 migration and shared participant wiki pages	Preserve both diagram kinds, page bodies and undo behavior	scripts/documents.ts;src/persist.ts	verified
+2026-11-11T12:35:26.763618+00:00	browser	Fix portal pointer events, page-open race, and participant-selected insertion	Normal device interactions exposed failures that compilation missed	tests/sequence.spec.ts	16 browser tests pass
+2026-11-11T12:35:26.763620+00:00	review	Reject IDs shared by participants and events	A collision could delete a participant when its message was selected	scripts/sequence.ts;src/sequence/io.ts	GPT-6 Astra review finding fixed
+2026-11-11T12:35:26.763621+00:00	verification	Run scripts, production build, lint and complete browser suite	Check compatibility, persistence and real UI together	package.json;tests/sequence.spec.ts;/tmp/sequence-all-e2e-final.log	tests and build pass; lint has 3 existing warnings

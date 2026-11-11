@@ -1,6 +1,9 @@
+import type { SequenceDiagram } from './sequence/types';
+import { emitSequence } from './sequence/io.ts';
+import { parseDiagram } from './mermaid/document.ts';
 import { create } from 'zustand';
 import type {
-  Diagram,
+  FlowchartDiagram,
   DiagramEdge,
   DiagramNode,
   ElementStyle,
@@ -8,7 +11,7 @@ import type {
   NodeShape,
   Page,
 } from './types';
-import { fromMermaid, mergeDiagram, parseMermaid, toMermaid } from './mermaid/io.ts';
+import { fromMermaid, mergeDiagram, toMermaid } from './mermaid/io.ts';
 import { layout, type Direction } from './layout.ts';
 import { createPageFor, mergePages, newPageId, normalizeDiagram } from './pages.ts';
 import {
@@ -39,7 +42,7 @@ function nextNodeId(nodes: DiagramNode[]): string {
 const imageKey = (i?: NodeImage) =>
   i ? `${i.src}\u0000${i.pos ?? ''}\u0000${i.w ?? ''}\u0000${i.h ?? ''}\u0000${i.constraint ? 1 : 0}` : '';
 
-function unchanged(a: Diagram, b: Diagram): boolean {
+function unchanged(a: FlowchartDiagram, b: FlowchartDiagram): boolean {
   if (a.nodes.length !== b.nodes.length || a.edges.length !== b.edges.length) return false;
   for (let i = 0; i < a.nodes.length; i++) {
     const x = a.nodes[i];
@@ -116,11 +119,14 @@ export function splitEdgeFor(
 }
 
 interface Snapshot {
+  sequence: SequenceDiagram | null;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
 }
 
 interface State {
+  sequence: SequenceDiagram | null;
+  setSequence: (diagram: SequenceDiagram | null) => void;
   nodes: DiagramNode[];
   edges: DiagramEdge[];
   /** wiki pages; not part of undo history */
@@ -214,12 +220,12 @@ interface State {
    */
   syncMermaid: (src: string) => { ok: true } | { ok: false; error: string };
   exportMermaid: () => string;
-  load: (d: Diagram) => void;
+  load: (d: FlowchartDiagram) => void;
   /**
    * Take on another window's saved diagram without touching undo history or
    * selection. Pages merge by `updatedAt`; a no-op when nothing differs.
    */
-  applyRemote: (d: Diagram) => void;
+  applyRemote: (d: FlowchartDiagram) => void;
 }
 
 const HISTORY_LIMIT = 100;
@@ -239,8 +245,8 @@ export const useDiagram = create<State>((set, get) => {
     lastMoveId = null; // any snapshotted change ends a drag-coalescing run
     lastStyleKey = null; // ...and ends a style-coalescing run
     syncing = false; // ...and ends a live-mermaid-sync run
-    const { nodes, edges, history } = get();
-    const next = [...history, { nodes, edges }];
+    const { nodes, edges, history, sequence } = get();
+    const next = [...history, { nodes, edges, sequence }];
     if (next.length > HISTORY_LIMIT) next.shift();
     return { history: next };
   };
@@ -255,13 +261,15 @@ export const useDiagram = create<State>((set, get) => {
     lastMoveId = null;
     syncing = false;
     if (coalesce) return null;
-    const { nodes, edges, history } = get();
-    const next = [...history, { nodes, edges }];
+    const { nodes, edges, history, sequence } = get();
+    const next = [...history, { nodes, edges, sequence }];
     if (next.length > HISTORY_LIMIT) next.shift();
     return { history: next };
   };
 
   return {
+  sequence: null,
+  setSequence: (sequence) => set({ ...snapshot(), sequence, selectedNodeIds: [], selectedEdgeIds: [], highlight: null, insertion: null }),
   nodes: [],
   edges: [],
   pages: [],
@@ -283,6 +291,7 @@ export const useDiagram = create<State>((set, get) => {
       if (s.history.length === 0) return s;
       const prev = s.history[s.history.length - 1];
       return {
+        sequence: prev.sequence,
         nodes: prev.nodes,
         edges: prev.edges,
         history: s.history.slice(0, -1),
@@ -406,7 +415,8 @@ export const useDiagram = create<State>((set, get) => {
     }),
 
   openPage: (nodeId, pageId) => {
-    const { nodes, pages } = get();
+    const { nodes: flowNodes, pages, sequence } = get();
+    const nodes = sequence ? sequence.participants : flowNodes;
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return null;
     if (pageId && !node.pageIds?.includes(pageId)) return null;
@@ -415,20 +425,21 @@ export const useDiagram = create<State>((set, get) => {
     if (page) {
       set({
         pages: [...pages, page],
-        nodes: nodes.map((n) => (n.id === nodeId && !n.pageIds?.length ? { ...n, pageIds: [page.id] } : n)),
+        ...(sequence ? { sequence: { ...sequence, participants: sequence.participants.map((n) => n.id === nodeId && !n.pageIds?.length ? { ...n, pageIds: [page.id] } : n) } } : { nodes: flowNodes.map((n) => n.id === nodeId && !n.pageIds?.length ? { ...n, pageIds: [page.id] } : n) }),
       });
     }
     return page?.id ?? target.pageIds?.[0] ?? null;
   },
 
   createPageForNode: (nodeId) => {
-    const { nodes, pages } = get();
+    const { nodes: flowNodes, pages, sequence } = get();
+    const nodes = sequence ? sequence.participants : flowNodes;
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return null;
     const id = newPageId(pages);
     set({
       pages: [...pages, { id, title: node.label, body: '', updatedAt: Date.now() }],
-      nodes: nodes.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), id] } : n),
+      ...(sequence ? { sequence: { ...sequence, participants: sequence.participants.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), id] } : n) } } : { nodes: flowNodes.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), id] } : n) }),
     });
     return id;
   },
@@ -442,26 +453,27 @@ export const useDiagram = create<State>((set, get) => {
   deletePage: (id) =>
     set((s) => ({
       pages: s.pages.filter((p) => p.id !== id),
+      sequence: s.sequence ? { ...s.sequence, participants: s.sequence.participants.map((p) => ({ ...p, pageIds: p.pageIds?.filter((v) => v !== id) })) } : null,
       nodes: s.nodes.map((n) => n.pageIds?.includes(id)
         ? { ...n, pageIds: n.pageIds.filter((p) => p !== id) } : n),
       // Undo can restore deleted nodes, but must not revive links to deleted pages.
-      history: s.history.map((h) => ({ ...h, nodes: h.nodes.map((n) => n.pageIds?.includes(id)
+      history: s.history.map((h) => ({ ...h, sequence: h.sequence ? { ...h.sequence, participants: h.sequence.participants.map((p) => ({ ...p, pageIds: p.pageIds?.filter((v) => v !== id) })) } : null, nodes: h.nodes.map((n) => n.pageIds?.includes(id)
         ? { ...n, pageIds: n.pageIds.filter((p) => p !== id) } : n) })),
     })),
 
   linkPage: (pageId, nodeId) =>
     set((s) => {
-      const node = s.nodes.find((n) => n.id === nodeId);
+      const node = (s.sequence ? s.sequence.participants : s.nodes).find((n) => n.id === nodeId);
       if (!node || node.pageIds?.includes(pageId) || !s.pages.some((p) => p.id === pageId)) return s;
-      return { nodes: s.nodes.map((n) => (n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), pageId] } : n)) };
+      return s.sequence ? { sequence: { ...s.sequence, participants: s.sequence.participants.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), pageId] } : n) } } : { nodes: s.nodes.map((n) => (n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), pageId] } : n)) };
     }),
 
   unlinkPage: (pageId, nodeId) =>
-    set((s) => ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
+    set((s) => s.sequence ? { sequence: { ...s.sequence, participants: s.sequence.participants.map((p) => p.id === nodeId ? { ...p, pageIds: p.pageIds?.filter((id) => id !== pageId) } : p) } } : ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
       ? { ...n, pageIds: n.pageIds.filter((id) => id !== pageId) } : n) })),
 
   makeDefaultPage: (pageId, nodeId) =>
-    set((s) => ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
+    set((s) => s.sequence ? { sequence: { ...s.sequence, participants: s.sequence.participants.map((p) => p.id === nodeId && p.pageIds?.includes(pageId) ? { ...p, pageIds: [pageId, ...p.pageIds.filter((id) => id !== pageId)] } : p) } } : ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
       ? { ...n, pageIds: [pageId, ...n.pageIds.filter((id) => id !== pageId)] } : n) })),
 
   updatePage: (id, patch) =>
@@ -698,15 +710,19 @@ export const useDiagram = create<State>((set, get) => {
   },
 
   syncMermaid: (src) => {
-    const result = parseMermaid(src);
-    if (!result.ok) return result; // hold the last good canvas
+    const result = parseDiagram(src);
+    if (!result.ok) return result;
+    if (result.diagram.kind === 'sequence') {
+      get().setSequence(result.diagram);
+      return { ok: true };
+    }
 
     const { nodes: curNodes, edges: curEdges } = get();
     const merged = mergeDiagram(result.diagram, { nodes: curNodes, edges: curEdges });
 
     // bail out when the merge changed nothing structural or textual, so moving
     // the caret or a no-op re-sync neither re-renders nor touches undo history
-    if (unchanged(merged, { nodes: curNodes, edges: curEdges })) return { ok: true };
+    if (!get().sequence && unchanged(merged, { nodes: curNodes, edges: curEdges })) return { ok: true };
 
     // lay out only genuinely new nodes (absent from the current diagram), so
     // existing nodes keep the positions the merge preserved
@@ -727,11 +743,11 @@ export const useDiagram = create<State>((set, get) => {
     const hist = coalesce ? null : snapshot();
     syncing = true;
 
-    set({ ...hist, nodes: laidOut, edges: merged.edges });
+    set({ ...hist, sequence: null, nodes: laidOut, edges: merged.edges });
     return { ok: true };
   },
 
-  exportMermaid: () => toMermaid({ nodes: get().nodes, edges: get().edges }),
+  exportMermaid: () => { const s = get(); return s.sequence ? emitSequence(s.sequence).text : toMermaid({ nodes: s.nodes, edges: s.edges }); },
 
   applyRemote: (incoming) => {
     const d = normalizeDiagram(incoming);
@@ -751,6 +767,7 @@ export const useDiagram = create<State>((set, get) => {
     lastStyleKey = null;
     set({
       history: [],
+      sequence: null,
       nodes: d.nodes,
       edges: d.edges,
       pages: d.pages ?? [],

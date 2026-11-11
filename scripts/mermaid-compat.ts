@@ -4,7 +4,7 @@
 import { JSDOM } from 'jsdom';
 import { setPageBase, toMermaid } from '../src/mermaid/io.ts';
 import { SHAPES } from '../src/shapes.ts';
-import type { Diagram, DiagramNode, NodeShape } from '../src/types.ts';
+import type { FlowchartDiagram, DiagramNode, NodeShape } from '../src/types.ts';
 
 // mermaid sanitizes labels with DOMPurify, which needs a DOM even to parse
 const dom = new JSDOM('<!doctype html><html><body></body></html>');
@@ -58,7 +58,7 @@ const nodes: DiagramNode[] = [
   node('b1', 'hexagon', ''),
 ];
 const leaves = nodes.slice(1);
-const d: Diagram = {
+const d: FlowchartDiagram = {
   nodes,
   edges: leaves.slice(1).map((n, i) => ({
     id: `e${i}`,

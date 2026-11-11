@@ -80,3 +80,25 @@ mermaid.initialize({ startOnLoad: false });
 for (const diagram of [sample, repeated.diagram, nested.diagram, special.diagram, linked.diagram, compact.diagram]) await mermaid.parse(emitSequence(diagram).text);
 for (const arrow of SEQUENCE_ARROWS) await mermaid.parse(emitSequence(parse(`sequenceDiagram\nA${arrow}B: message`).diagram).text);
 console.log('PASS: sequence parsing, ordered identity, nesting, metadata, JSON validation and real Mermaid compatibility');
+
+const { sequenceGeometry } = await import('../src/sequence/geometry.ts');
+const layoutInput = parseSequence('sequenceDiagram\nparticipant A\nparticipant B\nA->>A: Self\nloop Work\nactivate A\nA->>B: Inside\nend\nA->>B: Outside\ndeactivate A');
+assert.ok(layoutInput.ok);
+if (layoutInput.ok) {
+  const expanded = sequenceGeometry(layoutInput.diagram);
+  const block = layoutInput.diagram.events.find((e) => e.kind === 'fragment');
+  assert.ok(block && block.kind === 'fragment');
+  if (block?.kind === 'fragment') {
+    const folded = sequenceGeometry({ ...layoutInput.diagram, events: layoutInput.diagram.events.map((e) => e.id === block.id ? { ...block, collapsed: true } : e) });
+    assert.ok(folded.height < expanded.height);
+    assert.equal(folded.steps, 3, 'self-call, folded block, outside call');
+    assert.deepEqual(folded.rows.filter((r) => r.event.kind === 'message').map((r) => r.event.kind === 'message' ? r.event.text : ''), ['Self', 'Outside']);
+    assert.equal(folded.activations.length, 1, 'activation starting inside folded block continues outside');
+    assert.ok(folded.activations[0].height > 0);
+    assert.equal(expanded.rows.find((r) => r.event.kind === 'message' && r.event.text === 'Self')?.height, 82);
+  }
+}
+console.log('PASS: sequence layout ordering, self-calls, folding and activation continuity');
+
+assert.equal(parseSequence('sequenceDiagram\nparticipant A\nparticipant B\n%% merfolk-id A\nA->>B: First').ok, false, 'participant and event IDs cannot collide');
+assert.throws(() => decodeSequence({kind:'sequence', participants:[{kind:'participant',id:'A',label:'A'}],events:[{kind:'message',id:'A',from:'A',to:'A',text:'Call',arrow:'->>'}]}));

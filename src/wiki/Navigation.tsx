@@ -2,10 +2,10 @@ import { useMemo, useState } from 'react';
 import { Icon } from '../components/Icon';
 import { orphanPages, pathTo } from '../pages';
 import { pageHref } from '../route';
-import type { DiagramNode, Page } from '../types';
+import type { PageEntity, Page } from '../types';
 
 export default function Navigation({ nodes, pages, pageId, nodeId }: {
-  nodes: DiagramNode[];
+  nodes: PageEntity[];
   pages: Page[];
   pageId: string | null;
   nodeId: string | undefined;
@@ -24,7 +24,7 @@ export default function Navigation({ nodes, pages, pageId, nodeId }: {
         for (const ancestor of pathTo(nodes, node.id)) visible.add(ancestor.id);
       }
     }
-    const children = new Map<string | null, DiagramNode[]>();
+    const children = new Map<string | null, PageEntity[]>();
     for (const node of nodes) {
       if (!visible.has(node.id)) continue;
       const parent = node.parentId && visible.has(node.parentId) ? node.parentId : null;
