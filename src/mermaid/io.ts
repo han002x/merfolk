@@ -320,7 +320,8 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
 
   const edges: DiagramEdge[] = parsed.edges.map((p) => {
     const prev = curEdges.get(`${p.source}\u0000${p.target}`);
-    return prev ? { ...p, style: prev.style } : p;
+    if (!prev) return p;
+    return { ...p, style: prev.style, ...(prev.order != null && { order: prev.order }) };
   });
 
   return { nodes, edges };

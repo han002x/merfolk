@@ -183,6 +183,8 @@ interface State {
   updateNodeImage: (id: string, patch: Partial<NodeImage> | null) => void;
   updateNodeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
   updateEdgeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
+  /** set (or, with undefined, clear) the flow step of several edges */
+  setEdgeOrder: (ids: string[], order: number | undefined) => void;
   moveNode: (id: string, position: { x: number; y: number }) => void;
   removeNode: (id: string) => void;
   connect: (source: string, target: string) => void;
@@ -489,6 +491,21 @@ export const useDiagram = create<State>((set, get) => {
         edges: s.edges.map((e) =>
           set$.has(e.id) ? { ...e, style: { ...e.style, ...patch } } : e,
         ),
+      };
+    }),
+
+  setEdgeOrder: (ids, order) =>
+    set((s) => {
+      if (ids.length === 0) return s;
+      const set$ = new Set(ids);
+      return {
+        ...styleSnapshot(`order:${ids.join(',')}`),
+        edges: s.edges.map((e) => {
+          if (!set$.has(e.id)) return e;
+          const next = { ...e };
+          delete next.order;
+          return order == null ? next : { ...next, order };
+        }),
       };
     }),
 

@@ -146,6 +146,17 @@ export function DiagramEdge({
     [targetX, targetY, targetPosition, sloppiness, seed, strokeWidth],
   );
 
+  // the sequenced flow draws an accent trace over the line as the clock passes
+  // this edge's step (see .mf-flow-trace); one continuous pass so it can grow
+  const flowStep = !preview && typeof data?.flowStep === 'number' ? data.flowStep : null;
+  const traceD = useMemo(
+    () => (flowStep == null ? null : ink(path, { sloppiness, seed, continuous: true, pinEnds: true })),
+    [flowStep, path, sloppiness, seed],
+  );
+  const traceStyle = flowStep == null
+    ? undefined
+    : ({ '--mf-flow-s': flowStep, strokeWidth: Math.max(2.5, strokeWidth) + 0.5 } as React.CSSProperties);
+
   const edgeStyle: React.CSSProperties = (highlighted || selected) && !folded
     ? {
         ...ownStyle,
@@ -185,6 +196,12 @@ export function DiagramEdge({
           transition: EDGE_STYLE_BASE.transition,
         }}
       />
+      {traceD && (
+        <>
+          <path className="mf-flow-trace" d={traceD} pathLength={1} style={traceStyle} />
+          <path className="mf-flow-arrow" d={arrow} style={traceStyle} />
+        </>
+      )}
       <EdgeLabelRenderer>
         {inert ? (
           text && (

@@ -76,6 +76,10 @@ check(
   cycleSeconds(D([N('a', 'pulse')])),
 );
 
+// a recorded flow sequence sets the loop when it is the longest
+check('flow sets the loop', cycleSeconds(D([N('a'), N('b')]), 4.05) === 4.05);
+check('flow yields to a slower preset', cycleSeconds(D([N('a', 'fade', 6)]), 4.05) === 6);
+
 // frameCount / frameDelayMs: follow fps, never below 1
 check('frames round to nearest', frameCount(1.6, 12) === 19, frameCount(1.6, 12));
 check('at least one frame', frameCount(0, 12) === 1);

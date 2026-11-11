@@ -42,6 +42,7 @@ export function StylePanel() {
   const edges = useDiagram((s) => s.edges);
   const updateNodeStyle = useDiagram((s) => s.updateNodeStyle);
   const updateEdgeStyle = useDiagram((s) => s.updateEdgeStyle);
+  const setEdgeOrder = useDiagram((s) => s.setEdgeOrder);
 
   const hasNodes = selectedNodeIds.length > 0;
   const hasEdges = selectedEdgeIds.length > 0;
@@ -59,6 +60,8 @@ export function StylePanel() {
   }, [nodes, edges, selectedNodeIds, selectedEdgeIds]);
 
   if (!open) return null;
+
+  const selEdgeOrder = edges.find((e) => selectedEdgeIds.includes(e.id) && e.order != null)?.order;
 
   /** current value for a property across the selection (first element wins). */
   const val = <T extends K>(key: T): ElementStyle[T] | undefined => {
@@ -309,6 +312,24 @@ export function StylePanel() {
           </section>
         );
       })()}
+      {hasEdges && (
+        <section className="mf-style-section">
+          <label className="mf-style-label">Flow step</label>
+          <input
+            className="mf-picker-filter"
+            type="number"
+            min={1}
+            step={1}
+            aria-label="Flow step"
+            placeholder="Auto"
+            value={selEdgeOrder ?? ''}
+            onChange={(e) => {
+              const n = Math.floor(Number(e.target.value));
+              setEdgeOrder(selectedEdgeIds, e.target.value === '' || n < 1 ? undefined : n);
+            }}
+          />
+        </section>
+      )}
     </aside>
   );
 }
