@@ -77,6 +77,13 @@ export function parseStructural(source: string): StructuralParseResult {
       if (meta) { if (pending) fail('ID metadata must precede an element'); pending = meta[1]; continue; }
       const page = new RegExp(`^%%\\s+merfolk-pages\\s+${NAME}\\s+(.+)$`).exec(line);
       if (page) { const raw: unknown = JSON.parse(page[2]); if (!Array.isArray(raw) || !raw.every((v: unknown) => typeof v === 'string' && v.length)) fail('Invalid page IDs'); pages.set(unquote(page[1]), [...new Set<string>(raw)]); continue; }
+      if (line.startsWith('%% merfolk-empty-namespace ')) {
+        const raw: unknown = JSON.parse(line.slice('%% merfolk-empty-namespace '.length));
+        const n = record(raw); const id = string(n.id); const label = string(n.label); const parentId = n.parentId === null ? null : string(n.parentId);
+        if (diagram.kind !== 'class' || ids.has(id)) fail('Invalid empty namespace metadata');
+        ids.add(id); classes.namespaces.push({ ...card(id, classes.namespaces.length), label, parentId });
+        ref('namespace', id); continue;
+      }
       if (line.startsWith('%%')) { if (/^%%\s+merfolk-/.test(line)) fail('Malformed merfolk metadata'); continue; }
       if (line === '{') { if (!waiting) fail('Unexpected opening brace'); stack.push(waiting); waiting = null; continue; }
       if (line === '}') { if (!stack.length) fail('Unexpected closing brace'); if (pending) fail('ID metadata must precede an element'); const closed = stack.pop(); if (closed) ref(closed.kind, closed.id); waiting = null; continue; }
@@ -159,8 +166,17 @@ export function emitStructural(diagram: StructuralDiagram): StructuralSource {
       for (const member of c.members) { id(member.id, `${pad}  `); add(`${pad}  ${member.signature.replace(/\r?\n/g, '<br/>')}`, 'member', member.id); }
       add(`${pad}}`, 'class', c.id); pages(c, pad);
     };
+    const hasContent = (nsId: string, seen = new Set<string>()): boolean => {
+      if (seen.has(nsId)) return false;
+      seen.add(nsId);
+      return diagram.classes.some((c) => c.namespaceId === nsId) || diagram.namespaces.some((n) => n.parentId === nsId && hasContent(n.id, seen));
+    };
     const emitNamespace = (parentId: string | null, pad: string) => {
       for (const ns of diagram.namespaces.filter((n) => n.parentId === parentId)) {
+        if (!hasContent(ns.id)) {
+          lines.push(`${pad}%% merfolk-empty-namespace ${JSON.stringify({ id: ns.id, label: ns.label, parentId: ns.parentId })}`);
+          pages(ns, pad); emitNamespace(ns.id, pad); continue;
+        }
         const local = parentId && ns.id.startsWith(`${parentId}.`) ? ns.id.slice(parentId.length + 1) : ns.id;
         id(ns.id, pad);
         add(`${pad}namespace ${local}${ns.label !== local ? `[${quote(encodeText(ns.label))}]` : ''} {`, 'namespace', ns.id);
