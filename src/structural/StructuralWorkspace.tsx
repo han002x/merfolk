@@ -6,7 +6,7 @@ import { toggleTheme, useTheme } from '../theme';
 import { parseRoute, useHash } from '../route';
 import type { Cardinality, ClassCard, ClassMarker, ClassNamespace, ClassRelationship, ErEntity, ErRelationship, StructuralDiagram, StructuralRef } from './types';
 import { decodeStructural, emitStructural, makeStructuralId, parseStructural } from './io';
-import { layoutStructural, structuralProjection, type CardBox, type RelationLine } from './layout';
+import { layoutStructural, placeNewStructuralCards, structuralProjection, type CardBox, type RelationLine } from './layout';
 import { RelationshipInk, RelationshipMarkers } from './StructuralDrawing';
 import './structural.css';
 
@@ -167,6 +167,7 @@ function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onEx
     if (next.kind === 'class' && diagram.kind === 'class') next = { ...next, classes: preserve(next.classes, diagram.classes), namespaces: preserve(next.namespaces, diagram.namespaces) };
     if (next.kind === 'er') next = { ...next, relationships: next.relationships.map((relationship) => ({ ...relationship, style: diagram.relationships.find((old) => old.id === relationship.id)?.style })) };
     else next = { ...next, relationships: next.relationships.map((relationship) => ({ ...relationship, style: diagram.relationships.find((old) => old.id === relationship.id)?.style })) };
+    next = placeNewStructuralCards(next, diagram);
     sourceRefs.current = parsed.lineRefs; lastApplied.current = emitStructural(next).text; setError(''); onChange(next);
   };
   const sourceSelect = () => { if (!sourceEditor.current) return; const line = source.slice(0, sourceEditor.current.selectionStart).split('\n').length - 1; const ref = sourceRefs.current.get(line); if (ref) select(ref); };

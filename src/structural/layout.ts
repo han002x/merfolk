@@ -91,3 +91,24 @@ export function relationPath(source: CardBox, target: CardBox, parallel = 0) {
   const path = self ? `M${sx},${sy} C${sx + 100 + parallel},${sy - 35} ${tx + 100 + parallel},${ty + 35} ${tx},${ty}` : horizontal ? `M${sx},${sy} C${(sx + tx) / 2},${sy + parallel} ${(sx + tx) / 2},${ty + parallel} ${tx},${ty}` : `M${sx},${sy} C${sx + parallel},${(sy + ty) / 2} ${tx + parallel},${(sy + ty) / 2} ${tx},${ty}`;
   return { path, sx, sy, tx, ty, labelX: self ? sx + 90 : (sx + tx) / 2, labelY: (sy + ty) / 2 - 8 };
 }
+
+/** Arrange newly parsed cards while keeping all manually positioned cards fixed. */
+export function placeNewStructuralCards(next: StructuralDiagram, previous: StructuralDiagram): StructuralDiagram {
+  const existing = new Set(structuralProjection(previous).cards.filter((box) => !box.frame).map((box) => box.id));
+  const oldBoxes = structuralProjection(previous).cards.filter((box) => !box.frame);
+  const hasNew = structuralProjection(next).cards.some((box) => !box.frame && !existing.has(box.id));
+  if (!hasNew) return next;
+  const arranged = layoutStructural(next);
+  const candidates = new Map(structuralProjection(arranged).cards.filter((box) => !box.frame).map((box) => [box.id, box]));
+  const occupied = oldBoxes.map((box) => ({ x: box.x, y: box.y, width: box.width, height: box.height }));
+  const place = <T extends { id: string; position: { x: number; y: number } }>(cards: T[], kind: StructuralRef['kind']): T[] => cards.map((card) => {
+    const id = canvasId({ kind, id: card.id }); const box = candidates.get(id);
+    if (existing.has(id) || !box) return card;
+    let x = box.x; let y = box.y;
+    const overlap = () => occupied.some((old) => x < old.x + old.width + 40 && x + box.width + 40 > old.x && y < old.y + old.height + 40 && y + box.height + 40 > old.y);
+    if (overlap()) { x = Math.max(40, ...occupied.map((old) => old.x + old.width + 80)); y = Math.min(80, ...occupied.map((old) => old.y)); }
+    occupied.push({ x, y, width: box.width, height: box.height });
+    return { ...card, position: { x, y } };
+  });
+  return next.kind === 'er' ? { ...next, entities: place(next.entities, 'entity') } : { ...next, classes: place(next.classes, 'class'), namespaces: place(next.namespaces, 'namespace') };
+}
