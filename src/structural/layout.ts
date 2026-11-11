@@ -62,7 +62,10 @@ export function layoutStructural(diagram: StructuralDiagram, measured = new Map<
     const graph = new Dagre.graphlib.Graph({ compound, multigraph: true });
     graph.setGraph({ rankdir: diagram.direction, nodesep: 65, ranksep: 110, marginx: 60, marginy: 90 });
     graph.setDefaultEdgeLabel(() => ({}));
-    for (const box of projection.cards) graph.setNode(box.id, box.frame && compound ? {} : measured.get(box.id) ?? { width: box.width, height: box.height });
+    for (const box of projection.cards) {
+      const hasChildren = box.item.kind === 'namespace' && projection.cards.some((child) => child.item.kind === 'class' ? child.item.card.namespaceId === box.item.card.id : child.item.kind === 'namespace' && child.item.card.parentId === box.item.card.id);
+      graph.setNode(box.id, box.frame && compound && hasChildren ? {} : measured.get(box.id) ?? { width: box.width, height: box.height });
+    }
     if (compound && diagram.kind === 'class') for (const box of projection.cards) {
       const parentId = box.item.kind === 'class' ? box.item.card.namespaceId : box.item.kind === 'namespace' ? box.item.card.parentId : null;
       if (parentId && graph.hasNode(`namespace:${parentId}`)) graph.setParent(box.id, `namespace:${parentId}`);
@@ -75,7 +78,7 @@ export function layoutStructural(diagram: StructuralDiagram, measured = new Map<
   try { graph = run(true); } catch { graph = run(false); }
   const move = <T extends { id: string; position: { x: number; y: number } }>(cards: T[], kind: StructuralRef['kind']) => cards.map((card) => {
     const node = graph.node(canvasId({ kind, id: card.id }));
-    return node && Number.isFinite(node.x) && Number.isFinite(node.y) ? { ...card, position: { x: node.x - node.width / 2, y: node.y - node.height / 2 } } : card;
+    return node && Number.isFinite(node.x) && Number.isFinite(node.y) && Number.isFinite(node.width) && Number.isFinite(node.height) ? { ...card, position: { x: node.x - node.width / 2, y: node.y - node.height / 2 } } : card;
   });
   return diagram.kind === 'er' ? { ...diagram, entities: move(diagram.entities, 'entity') } : { ...diagram, classes: move(diagram.classes, 'class'), namespaces: move(diagram.namespaces, 'namespace') };
 }
