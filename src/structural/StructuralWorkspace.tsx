@@ -104,14 +104,6 @@ function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onEx
     sourceEditor.current.setSelectionRange(at, at + (lines[line]?.length ?? 0));
   }, [selected, source]);
   const fit = useCallback(() => { void flow.fitView({ padding: .2, duration: 200 }); }, [flow]);
-  const initialLayout = useRef(false);
-  useEffect(() => {
-    if (initialLayout.current || !projection.cards.length) return;
-    const allCards = diagram.kind === 'er' ? diagram.entities : diagram.classes;
-    if (!allCards.every((card, index) => card.position.x === (index % 4) * 300 && card.position.y === Math.floor(index / 4) * 240)) { initialLayout.current = true; return; }
-    const frame = requestAnimationFrame(() => { initialLayout.current = true; change(layoutStructural(diagram)); requestAnimationFrame(fit); });
-    return () => cancelAnimationFrame(frame);
-  }, [projection.cards.length, diagram, change, fit]);
   useEffect(() => {
     const route = parseRoute(hash); if (route.kind !== 'node') return;
     const box = projection.cards.find((b) => b.item.card.id === route.id);
@@ -173,7 +165,8 @@ function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onEx
     let next: StructuralDiagram = parsed.diagram;
     if (next.kind === 'er' && diagram.kind === 'er') next = { ...next, entities: preserve(next.entities, diagram.entities) };
     if (next.kind === 'class' && diagram.kind === 'class') next = { ...next, classes: preserve(next.classes, diagram.classes), namespaces: preserve(next.namespaces, diagram.namespaces) };
-    next = { ...next, relationships: next.relationships.map((relationship) => ({ ...relationship, style: diagram.relationships.find((old) => old.id === relationship.id)?.style })) };
+    if (next.kind === 'er') next = { ...next, relationships: next.relationships.map((relationship) => ({ ...relationship, style: diagram.relationships.find((old) => old.id === relationship.id)?.style })) };
+    else next = { ...next, relationships: next.relationships.map((relationship) => ({ ...relationship, style: diagram.relationships.find((old) => old.id === relationship.id)?.style })) };
     sourceRefs.current = parsed.lineRefs; lastApplied.current = emitStructural(next).text; setError(''); onChange(next);
   };
   const sourceSelect = () => { if (!sourceEditor.current) return; const line = source.slice(0, sourceEditor.current.selectionStart).split('\n').length - 1; const ref = sourceRefs.current.get(line); if (ref) select(ref); };
