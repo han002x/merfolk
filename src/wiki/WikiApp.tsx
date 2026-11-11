@@ -4,8 +4,7 @@ import { restore, startAutosave, startSync } from '../persist';
 import { toggleTheme } from '../theme';
 import { backlinks, linkableNodes, nodesOfPage, orphanPages, pathTo } from '../pages';
 import { openNode, pageHref } from '../route';
-import Editor from './Editor';
-import Preview from './Preview';
+import Document from './Document';
 import './wiki.css';
 
 export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nodeId?: string }) {
@@ -141,18 +140,19 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
               </span>)}
             </div>}
           </header>
-          <div className="wk-split">
-            <Editor
+          <div className="wk-page-content">
+            <Document
               key={page.id}
               value={page.body}
+              nodeId={node?.id}
+              onPage={toPage}
               targets={targets}
               onChange={(body) => {
                 const cur = useDiagram.getState().pages.find((p) => p.id === page.id);
                 if (cur && cur.body !== body) useDiagram.getState().updatePage(page.id, { body });
               }}
             />
-            <div className="wk-read">
-              <Preview body={page.body} nodeId={node?.id} onPage={toPage} />
+
               {linked.length > 0 && (
                 <footer className="wk-back">
                   {linked.map((p) => (
@@ -162,7 +162,6 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
                   ))}
                 </footer>
               )}
-            </div>
           </div>
         </main>
       ) : (

@@ -9,11 +9,11 @@ export type View = 'mermaid' | 'tree' | 'page';
 interface Dock {
   open: boolean;
   view: View;
-  /** page tab: raw Markdown or rendered; kept across pages */
-  mode: 'edit' | 'read';
+  /** page tab: rich text, reading, or Markdown source; kept across pages */
+  mode: 'edit' | 'read' | 'source';
   page: { selection: string | undefined; id: string } | null;
   setPage: (id: string | null) => void;
-  setMode: (mode: 'edit' | 'read') => void;
+  setMode: (mode: 'edit' | 'read' | 'source') => void;
   setOpen: (open: boolean) => void;
   setView: (view: View) => void;
 }

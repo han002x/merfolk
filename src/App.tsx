@@ -713,7 +713,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   // E: flip the page tab between Markdown and Preview
   const toggleMode = useCallback(() => {
     const { view, mode, setMode } = useDock.getState();
-    if (view === 'page') setMode(mode === 'edit' ? 'read' : 'edit');
+    if (view === 'page') setMode(mode === 'read' ? 'edit' : 'read');
   }, []);
 
   // #/node/<id> (from the wiki): unfold what hides the node, select it, frame it

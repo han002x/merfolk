@@ -54,8 +54,17 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   the links. The first linked page is the default. Opening a node with no pages
   creates one titled from the node; later node renames leave page titles alone.
   ↗ opens the current page in its own window, keeping the node context.
-  The editor is raw Markdown
-  (CodeMirror) beside a live preview. `[[Node or Page]]` links jump between
+  Both the wiki window and the canvas side panel open a rich-text editor.
+  Type `/` for headings, lists, checklists, quotes, code, dividers, tables, and
+  diagram embeds. Select text for formatting. **Edit**, **Read**, and
+  **Markdown** switch between rich text, the rendered page, and CodeMirror
+  source editing. Content continues to save as Markdown. Pages containing raw
+  HTML use source editing to preserve that content.
+  Tables have row and column handles, insertion menus, edge + buttons, and a
+  floating toolbar. Select a handle to insert, clear, or delete that row or
+  column; `Tab` moves between cells and
+  adds a row at the end, `Shift+Tab` moves back, and `Enter` adds a cell line
+  break. Merged cells and resizing are not supported. `[[Node or Page]]` links jump between
   pages (`[[Target|alias]]` supported, `[[` autocompletes), each page lists its
   backlinks, and `{{diagram}}` embeds the node's live sub-diagram. Click a node
   in it, or **Canvas** in the header, to drill back up: the canvas unfolds
@@ -106,7 +115,7 @@ simple architecture, simple design, simple implementation, no filler text.
 | `T` | Toggle theme |
 | `M` | Toggle Mermaid panel |
 | `W` | Open the selected node's default wiki page in the side panel |
-| `E` | Page tab: switch between Markdown and Preview |
+| `E` | Page tab: switch between Edit and Read |
 | `F` | Fold / unfold the selected group (or the sheet a selected node sits on) |
 | `[` / `]` | Fold / unfold one level |
 | `P` | Play / pause the flow |
@@ -124,6 +133,8 @@ shows its key in the tooltip.
 npm install
 npm run dev      # http://localhost:5173
 npm run build    # type-check + production bundle to dist/
+npx playwright install chromium # browser for end-to-end tests
+npm run test:e2e # wiki and side-panel editor browser tests
 npm test         # mermaid round-trip, fold logic, and a check against the real mermaid parser
 npm run icons    # regenerate src/icons/catalog.ts from the curated list in scripts/icons.ts
 ```
@@ -149,7 +160,7 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 | `src/route.ts` | Hash routes (`#/wiki/<id>`, `#/node/<id>`) and window helpers |
 | `src/dock.ts` | Which view the side panel shows; `showPage` opens a node's page there |
 | `src/components/PagePanel.tsx` | Page tab: edit / read the selected node's page beside the canvas |
-| `src/wiki/` | Lazy-loaded wiki window: `WikiApp`, CodeMirror `Editor`, sanitized `Preview`, `render` |
+| `src/wiki/` | Lazy-loaded wiki window: `WikiApp`, rich-text `Editor`, CodeMirror `SourceEditor`, sanitized `Preview`, `render` |
 | `src/useHotkeys.ts` | Global keyboard shortcuts, suspended while typing |
 | `src/components/MermaidPanel.tsx` | Live Mermaid text view + import/copy |
 | `src/App.tsx` | Canvas wiring, toolbar, visibility filtering |

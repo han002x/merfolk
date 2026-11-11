@@ -53,14 +53,14 @@ export default function Preview({
   }, [nodes, edges, nodeId]);
 
   useEffect(() => {
-    const host = root.current?.querySelector<HTMLElement>('[data-embed]');
-    if (!host) return;
+    const hosts = root.current?.querySelectorAll<HTMLElement>('[data-embed]');
+    if (!hosts?.length) return;
     const render = new AbortController();
     if (source) {
       void diagramSvg(source, dark).then((svg) => {
-        if (!render.signal.aborted && svg) host.innerHTML = svg;
+        if (!render.signal.aborted && svg) hosts.forEach((host) => { host.innerHTML = svg; });
       });
-    } else host.replaceChildren();
+    } else hosts.forEach((host) => host.replaceChildren());
     return () => render.abort();
   }, [html, source, dark]);
 
@@ -84,7 +84,7 @@ export default function Preview({
 
   return (
     <div
-      className="wk-preview"
+      className="wk-preview wk-prose"
       ref={root}
       onClick={onClick}
       dangerouslySetInnerHTML={{ __html: html }}

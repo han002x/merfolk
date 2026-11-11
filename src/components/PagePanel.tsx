@@ -2,8 +2,7 @@ import { useDiagram } from '../store';
 import { showPage, useDock } from '../dock';
 import { nodesOfPage, pageOf, pathTo } from '../pages';
 import { nodeHref, openWiki } from '../route';
-import Editor from '../wiki/Editor';
-import Preview from '../wiki/Preview';
+import Document from '../wiki/Document';
 import LinkedPages from './LinkedPages';
 import '../wiki/wiki.css';
 
@@ -14,7 +13,6 @@ export default function PagePanel() {
   const selected = useDiagram((s) => s.selectedNodeIds[0]);
   const mode = useDock((s) => s.mode);
   const setMode = useDock((s) => s.setMode);
-  const editing = mode === 'edit';
   const active = useDock((s) => s.page);
   const setPage = useDock((s) => s.setPage);
 
@@ -59,19 +57,6 @@ export default function PagePanel() {
               ↗
             </button>
           </div>
-          <div className="wk-seg" role="tablist" aria-label="Page mode">
-            {(['edit', 'read'] as const).map((m) => (
-              <button
-                key={m}
-                role="tab"
-                aria-selected={mode === m}
-                className={mode === m ? 'on' : ''}
-                onClick={() => setMode(m)}
-              >
-                {m === 'edit' ? 'Markdown' : 'Preview'}
-              </button>
-            ))}
-          </div>
           {crumbs.length > 0 && (
             <div className="wk-crumbs">
               {crumbs.map((n) => (
@@ -82,21 +67,20 @@ export default function PagePanel() {
             </div>
           )}
           {!pageNode && <div className="wk-crumbs">Not linked to a node</div>}
-          {editing ? (
-            <Editor
-              key={page.id}
-              value={page.body}
-              targets={() => [...new Set([...pages.map((p) => p.title), ...nodes.map((n) => n.label)].filter(Boolean))]}
-              onChange={(body) => {
-                const cur = useDiagram.getState().pages.find((p) => p.id === page.id);
-                if (cur && cur.body !== body) useDiagram.getState().updatePage(page.id, { body });
-              }}
-            />
-          ) : (
-            <div className="wk-read">
-              <Preview body={page.body} nodeId={pageNode?.id} onPage={toPage} onNode={toNode} />
-            </div>
-          )}
+          <Document
+            key={page.id}
+            value={page.body}
+            mode={mode}
+            onMode={setMode}
+            nodeId={pageNode?.id}
+            onPage={toPage}
+            onNode={toNode}
+            targets={() => [...new Set([...pages.map((p) => p.title), ...nodes.map((n) => n.label)].filter(Boolean))]}
+            onChange={(body) => {
+              const cur = useDiagram.getState().pages.find((p) => p.id === page.id);
+              if (cur && cur.body !== body) useDiagram.getState().updatePage(page.id, { body });
+            }}
+          />
         </>
       ) : <div className="wk-empty-links">Create a page or link an existing one.</div>}
     </div>
