@@ -194,6 +194,14 @@ function parseCore(src: string): CoreResult {
 
     // diagram header
     if (/^(flowchart|graph)\b/i.test(line)) continue;
+    if (/^sequenceDiagram\b/.test(line)) {
+      issues.push({
+        line: idx,
+        text: line,
+        reason: 'sequence diagrams are not supported by the canvas editor; use a flowchart or graph',
+      });
+      break;
+    }
 
     meaningfulLines++;
 

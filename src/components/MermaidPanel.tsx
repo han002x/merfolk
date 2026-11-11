@@ -18,7 +18,7 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
 }) {
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
   const resize = useRef<{ pointerId: number; x: number; width: number } | null>(null);
-  const maxWidth = Math.min(720, Math.max(280, viewportWidth - 240), viewportWidth);
+  const maxWidth = Math.min(Math.max(280, viewportWidth - 240), viewportWidth);
   const minWidth = Math.min(280, maxWidth);
   const clampWidth = (value: number) => Math.min(maxWidth, Math.max(minWidth, value));
   const panelWidth = clampWidth(width);
@@ -90,18 +90,22 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
     setHighlight(null);
   }, [setInsertion, setHighlight]);
 
-  // reverse index: element -> line number, for highlighting the editor from canvas
-  const refToLine = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const [line, ref] of lineRefs) m.set(`${ref.kind}:${ref.id}`, line);
+  // An element can have a declaration, a page link, and page metadata.
+  const refToLines = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const [line, ref] of lineRefs) {
+      const key = `${ref.kind}:${ref.id}`;
+      const mapped = m.get(key);
+      if (mapped) mapped.push(line);
+      else m.set(key, [line]);
+    }
     return m;
   }, [lineRefs]);
 
-  const activeLine = useMemo(() => {
-    if (edited || !highlight) return null;
-    const line = refToLine.get(`${highlight.kind}:${highlight.id}`);
-    return line ?? null;
-  }, [edited, highlight, refToLine]);
+  const activeLines = useMemo(() => {
+    if (edited || !highlight) return [];
+    return refToLines.get(`${highlight.kind}:${highlight.id}`) ?? [];
+  }, [edited, highlight, refToLines]);
 
   // lines for the elements selected on the canvas, so a canvas selection
   // highlights the matching editor lines (persistent, unlike the hover above).
@@ -110,15 +114,13 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
     const s = new Set<number>();
     if (edited) return s;
     for (const id of selectedNodeIds) {
-      const line = refToLine.get(`node:${id}`);
-      if (line != null) s.add(line);
+      for (const line of refToLines.get(`node:${id}`) ?? []) s.add(line);
     }
     for (const id of selectedEdgeIds) {
-      const line = refToLine.get(`edge:${id}`);
-      if (line != null) s.add(line);
+      for (const line of refToLines.get(`edge:${id}`) ?? []) s.add(line);
     }
     return s;
-  }, [edited, selectedNodeIds, selectedEdgeIds, refToLine]);
+  }, [edited, selectedNodeIds, selectedEdgeIds, refToLines]);
 
   const lines = useMemo(() => text.split('\n'), [text]);
 
@@ -441,7 +443,7 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
             {lines.map((line, i) => (
               <div
                 key={i}
-                className={`mf-mline${i === activeLine ? ' active' : ''}${
+                className={`mf-mline${activeLines.includes(i) ? ' active' : ''}${
                   selectedLines.has(i) ? ' selected' : ''
                 }${i === gapLine ? ' insert-before' : ''}`}
               >

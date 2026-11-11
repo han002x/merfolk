@@ -1,16 +1,17 @@
 // Base URL for exported wiki links (see setPageBase in mermaid/io.ts).
-// Kept per browser; empty means relative `#/wiki/<id>` links.
+// Browser overrides take precedence over the build-time default.
 
 import { create } from 'zustand';
 import { setPageBase } from './mermaid/io';
 
 const KEY = 'merfolk.pageBase';
+const DEFAULT_BASE = import.meta.env.VITE_PAGE_BASE_URL?.trim() ?? '';
 
 const read = () => {
   try {
-    return localStorage.getItem(KEY) ?? '';
+    return localStorage.getItem(KEY) ?? DEFAULT_BASE;
   } catch {
-    return '';
+    return DEFAULT_BASE;
   }
 };
 
@@ -20,9 +21,10 @@ interface PageBase {
 }
 
 export const usePageBase = create<PageBase>((set) => {
-  setPageBase(read());
+  const base = read();
+  setPageBase(base);
   return {
-    base: read(),
+    base,
     set: (base) => {
       setPageBase(base);
       try {

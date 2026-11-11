@@ -65,7 +65,11 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   Unlinking or deleting a node keeps its pages. Pages become orphans only when
   no nodes link them. Deleting a page removes its links from every node.
   The default page exports as `click A href "#/wiki/<id>"`; set a **Base URL** beside Copy in the
-  Mermaid tab to export absolute links (`https://host/app/#/wiki/<id>`). Import
+  Mermaid tab to export absolute links (`https://host/app/#/wiki/<id>`).
+  Set `VITE_PAGE_BASE_URL` in `.env.local` (see `.env.example`) to provide the
+  default Base URL. Restart the dev server or rebuild after changing it.
+  A saved browser setting overrides this default, including an empty value
+  for relative links. Import
   reads the page id from any base. `%% merfolk-pages A ["page1","page2"]`
   comments preserve all links and their order when importing Mermaid back into
   merfolk. Other Mermaid renderers ignore these comments. Mermaid stores page
