@@ -1,3 +1,5 @@
+import { layoutStructural, placeNewStructuralCards } from './structural/layout.ts';
+import { equivalent } from './equivalent.ts';
 import { walkEvents } from './sequence/io.ts';
 import { entitiesOf, mapPageEntities } from './entities.ts';
 import { emitDiagram, parseDiagram } from './mermaid/document.ts';
@@ -648,6 +650,7 @@ export const useDiagram = create<State>((set, get) => {
     if (!result.ok) return result;
     const current = get().diagram;
     let next = reconcileDiagram(result.diagram, current);
+    if (next.kind === 'er' || next.kind === 'class') next = current.kind === next.kind && (current.kind === 'er' || current.kind === 'class') ? placeNewStructuralCards(next, current) : layoutStructural(next);
     if (next.kind === 'flowchart') {
       const old = flowchartOf(get());
       const curIds = new Set(old.nodes.map((n) => n.id));
@@ -656,7 +659,7 @@ export const useDiagram = create<State>((set, get) => {
         next = { ...next, nodes: next.nodes.map((n) => !curIds.has(n.id) && positions[n.id] ? { ...n, position: positions[n.id] } : n) };
       }
     }
-    if (JSON.stringify(next) === JSON.stringify(current)) return { ok: true };
+    if (equivalent(next, current)) return { ok: true };
     const hist = syncing && get().history.length ? null : snapshot();
     syncing = true;
     set({ ...hist, diagram: next, selectedNodeIds: current.kind === next.kind ? get().selectedNodeIds : [], selectedEdgeIds: current.kind === next.kind ? get().selectedEdgeIds : [] });
@@ -668,7 +671,7 @@ export const useDiagram = create<State>((set, get) => {
     set((s) => {
       const pages = mergePages(s.pages, d.pages ?? []);
       const diagram: Diagram = { kind: 'flowchart', nodes: d.nodes, edges: d.edges };
-      if (JSON.stringify(s.diagram) === JSON.stringify(diagram) && pages === s.pages) return s;
+      if (equivalent(s.diagram, diagram) && pages === s.pages) return s;
       return { diagram, pages };
     });
   },

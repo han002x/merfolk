@@ -1,3 +1,8 @@
+import { layoutStructural } from './structural/layout';
+import StructuralWorkspace from './structural/StructuralWorkspace';
+import { sampleStructural } from './structural/io';
+import DiagramMenu from './components/DiagramMenu';
+import type { Diagram } from './types';
 import SequenceWorkspace from './sequence/SequenceWorkspace';
 import { sampleSequence } from './sequence/io';
 import { openWiki } from './route';
@@ -22,7 +27,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import { splitEdgeFor, useDiagram } from './store';
+import { splitEdgeFor, useDiagram, flowchartOf } from './store';
 import { DiagramNode, NodeImg, type NodeData } from './components/DiagramNode';
 import { GhostNode, type GhostData } from './components/GhostNode';
 import { SheetNode, type SheetData } from './components/SheetNode';
@@ -70,6 +75,11 @@ import type { DiagramNode as DNode } from './types';
 import { SAMPLE } from './sample';
 import { hasOutline, shapeDef } from './shapes';
 import './App.css';
+
+function newDiagram(kind: Diagram['kind']) {
+  const diagram: Diagram = kind === 'flowchart' ? { ...SAMPLE, kind } : kind === 'sequence' ? sampleSequence() : layoutStructural(sampleStructural(kind));
+  useDiagram.getState().setDiagram(diagram);
+}
 
 const GHOST_ID = '__mf_ghost__';
 const nodeTypes: NodeTypes = { diagram: DiagramNode, ghost: GhostNode, sheet: SheetNode };
@@ -128,8 +138,8 @@ function ToolButton({
 }
 
 function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
-  const nodes = useDiagram((s) => s.nodes);
-  const edges = useDiagram((s) => s.edges);
+  const nodes = useDiagram((s) => flowchartOf(s).nodes);
+  const edges = useDiagram((s) => flowchartOf(s).edges);
   const addNode = useDiagram((s) => s.addNode);
   const moveNode = useDiagram((s) => s.moveNode);
   const removeNode = useDiagram((s) => s.removeNode);
@@ -234,7 +244,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     // wait a frame for the fit + deselect to paint before capturing
     await new Promise((r) => window.requestAnimationFrame(() => r(null)));
     try {
-      const { nodes: ns, edges: es } = useDiagram.getState();
+      const { nodes: ns, edges: es } = flowchartOf(useDiagram.getState());
       // a sequence that is playing or stepped into is recorded as one loop,
       // each frame taken at a fixed clock reading
       const { steps, speed, playing: wasPlaying, lit: wasLit } = usePlayer.getState();
@@ -574,7 +584,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         if ('id' in c && c.id.startsWith(SHEET_PREFIX)) {
           if (c.type === 'position' && c.position) {
             const sheet = sheetNodes.find((n) => n.id === c.id);
-            const current = useDiagram.getState().nodes;
+            const current = flowchartOf(useDiagram.getState()).nodes;
             const groupId = c.id.slice(SHEET_PREFIX.length);
             const origin = groupOrigin(groupId, current, childrenOf(current));
             if (sheet && origin) {
@@ -670,7 +680,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   // F: fold the selected groups (or the sheet a selected node sits on);
   // unfold them instead when they are all already folded
   const foldSelection = useCallback(() => {
-    const { nodes: all, selectedNodeIds } = useDiagram.getState();
+    const { nodes: all } = flowchartOf(useDiagram.getState());
+    const { selectedNodeIds } = useDiagram.getState();
     const kids = childrenOf(all);
     const byId = new Map(all.map((n) => [n.id, n]));
     const targets = new Set<string>();
@@ -699,7 +710,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   // [ / ]: fold or unfold the whole diagram one crease at a time, then frame it
   const foldLevel = useCallback(
     (dir: 'fold' | 'unfold') => {
-      const all = useDiagram.getState().nodes;
+      const all = flowchartOf(useDiagram.getState()).nodes;
       const ids = dir === 'fold' ? nextFoldLevel(all) : nextUnfoldLevel(all);
       if (ids.length === 0) return;
       if (dir === 'fold') fold(ids);
@@ -727,7 +738,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
       const route = parseRoute(window.location.hash);
       if (route.kind !== 'node') return;
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      const { nodes: all } = useDiagram.getState();
+      const { nodes: all } = flowchartOf(useDiagram.getState());
       const node = all.find((n) => n.id === route.id);
       if (!node) return;
       const closed = foldedAncestors(all, node.id);
@@ -793,7 +804,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   useEffect(() => {
     const onCopy = (e: ClipboardEvent) => {
       if (isTyping(document.activeElement) || window.getSelection()?.toString()) return;
-      const { nodes: all, selectedNodeIds, selectedEdgeIds } = useDiagram.getState();
+      const { nodes: all } = flowchartOf(useDiagram.getState());
+      const { selectedNodeIds, selectedEdgeIds } = useDiagram.getState();
       if (selectedNodeIds.length !== 1 || selectedEdgeIds.length > 0) return;
       const node = all.find((n) => n.id === selectedNodeIds[0]);
       if (node?.image) copyImageNode(e, node.image, node.label);
@@ -845,7 +857,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     >
       <div className="mf-toolbar">
         <span className="mf-brand">merfolk</span>
-        <button className="mf-btn" onClick={() => useDiagram.getState().setSequence(sampleSequence())}>New sequence</button>
+        <DiagramMenu onNew={newDiagram} />
         <div className="mf-group-btns">
           <ToolButton label="Select" hotkey="V" active={!pending} onClick={cancelPending}>
             <Icon name="cursor" />
@@ -1068,7 +1080,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 export default function App() {
   const panelOpen = useDock((s) => s.open);
   const setPanelOpen = useDock((s) => s.setOpen);
-  const sequence = useDiagram((s) => s.sequence);
+  const diagram = useDiagram((s) => s.diagram);
   const canUndo = useDiagram((s) => s.history.length > 0);
   const sequenceImport = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState('');
@@ -1078,7 +1090,7 @@ export default function App() {
   // on first mount: restore the saved diagram, or seed the sample; then
   // begin autosaving every change back to localStorage
   useEffect(() => {
-    if (!useDiagram.getState().sequence && useDiagram.getState().nodes.length === 0 && !restore()) {
+    if (useDiagram.getState().diagram.kind === 'flowchart' && flowchartOf(useDiagram.getState()).nodes.length === 0 && !restore()) {
       load(SAMPLE);
     }
     nameCanvasWindow();
@@ -1086,15 +1098,21 @@ export default function App() {
     return () => stops.forEach((stop) => stop());
   }, [load]);
 
-  if (sequence) return <>
-    <SequenceWorkspace diagram={sequence}
-      onChange={(next) => useDiagram.getState().setSequence(next)}
-      onFlowchart={() => useDiagram.getState().setSequence(null)}
-      onOpenPage={(id) => { const page = useDiagram.getState().openPage(id); if (page) { write(currentDocument()); openWiki(page, id); } }}
-      onImportFile={() => sequenceImport.current?.click()}
-      onExportFile={exportFile}
-      onSourceFlowchart={(source) => useDiagram.getState().syncMermaid(source)}
+  const openPage = (id: string) => { const page = useDiagram.getState().openPage(id); if (page) { write(currentDocument()); openWiki(page, id); } };
+  if (diagram.kind !== 'flowchart') return <>
+    {diagram.kind === 'sequence' ? <SequenceWorkspace diagram={diagram}
+      onChange={(next) => useDiagram.getState().setDiagram(next)}
+      onNewDiagram={newDiagram}
+      onOpenPage={openPage}
+      onImportFile={() => sequenceImport.current?.click()} onExportFile={exportFile}
+      onSource={(source) => useDiagram.getState().syncMermaid(source)}
       onUndo={() => useDiagram.getState().undo()} canUndo={canUndo} />
+    : <StructuralWorkspace diagram={diagram}
+      onChange={(next) => useDiagram.getState().setDiagram(next)}
+      onNewDiagram={newDiagram} onOpenPage={openPage}
+      onImportFile={() => sequenceImport.current?.click()} onExportFile={exportFile}
+      onSource={(source) => useDiagram.getState().syncMermaid(source)}
+      onUndo={() => useDiagram.getState().undo()} canUndo={canUndo} />}
     <input hidden type="file" accept=".json,application/json" ref={sequenceImport} onChange={async (event) => {
       const file = event.target.files?.[0]; if (!file) return;
       try { await importFile(file); setImportError(''); } catch (error) { setImportError(error instanceof Error ? error.message : 'Import failed'); }

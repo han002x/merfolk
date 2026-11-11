@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/flow.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/rough.ts && node --experimental-strip-types scripts/mermaid-compat.ts && node --experimental-strip-types scripts/pages.ts && node --experimental-strip-types scripts/editor.ts && node --experimental-strip-types scripts/sequence.ts && node --experimental-strip-types scripts/documents.ts",
+    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/flow.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/rough.ts && node --experimental-strip-types scripts/mermaid-compat.ts && node --experimental-strip-types scripts/pages.ts && node --experimental-strip-types scripts/editor.ts && node --experimental-strip-types scripts/sequence.ts && node --experimental-strip-types scripts/documents.ts && node --experimental-strip-types scripts/structural.ts && node --experimental-strip-types scripts/structural-documents.ts",
     "icons": "node --experimental-strip-types scripts/icons.ts",
     "preview": "vite preview",
     "test:e2e": "playwright test"

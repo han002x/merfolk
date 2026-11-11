@@ -10,6 +10,7 @@ const test = base.extend<{ errors: string[] }>({
 });
 async function start(page: import('@playwright/test').Page) {
   await page.goto('/');
+  await page.getByText('New diagram', { exact: true }).click();
   await page.getByRole('button', { name: 'New sequence', exact: true }).click();
   await expect(page.getByLabel('Sequence Mermaid source')).toBeVisible();
 }
@@ -72,7 +73,8 @@ test('participant wiki pages sync, embed and navigate to canvas', async ({ page,
 test('changing source switches document kinds and narrow dark sequence stays usable', async ({ page }) => {
   await start(page);
   await page.getByLabel('Sequence Mermaid source').fill('flowchart TD\nA[Start]\nA --> B[End]');
-  await expect(page.getByRole('button', { name: 'New sequence', exact: true })).toBeVisible();
+  await expect(page.locator('.mf-canvas')).toBeVisible();
+  await page.getByText('New diagram', { exact: true }).click();
   await page.getByRole('button', { name: 'New sequence', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Toggle theme', exact: true }).click();

@@ -1,3 +1,4 @@
+import { equivalent } from './equivalent.ts';
 // FlowchartDiagram persistence: autosave to localStorage, restore on load, and
 // file-based export/import. Keeps the "open and build, come back later"
 // promise — nothing is lost on refresh.
@@ -60,7 +61,7 @@ export function write(document: FlowchartDiagram | WorkspaceDocument) {
 export function loadDocument(document: WorkspaceDocument, remote = false) {
   const state = useDiagram.getState();
   const pages = remote ? mergePages(state.pages, document.pages) : document.pages;
-  if (remote && JSON.stringify(currentDocument().diagram) === JSON.stringify(document.diagram)) {
+  if (remote && equivalent(currentDocument().diagram, document.diagram)) {
     if (pages !== state.pages) useDiagram.setState({ pages });
     return;
   }

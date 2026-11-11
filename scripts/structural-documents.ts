@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import { JSDOM } from 'jsdom';
+import { sampleStructural, emitStructural } from '../src/structural/io.ts';
+import { embedStructural } from '../src/structural/embed.ts';
+const dom = new JSDOM('', { url: 'https://merfolk.test/' });
+Object.assign(globalThis, { window: dom.window, document: dom.window.document, localStorage: dom.window.localStorage });
+const { useDiagram } = await import('../src/store.ts');
+const { decodeDocument, currentDocument, write, readDocument, loadDocument } = await import('../src/persist.ts');
+for (const kind of ['er', 'class'] as const) {
+  const diagram = sampleStructural(kind);
+  useDiagram.getState().setDiagram(diagram);
+  const card = diagram.kind === 'er' ? diagram.entities[0] : diagram.classes[0];
+  const pageId = useDiagram.getState().openPage(card.id);
+  assert.ok(pageId);
+  useDiagram.getState().updatePage(pageId, { body: 'Details\n\n{{diagram}}' });
+  const before = currentDocument();
+  write(before);
+  assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 3);
+  assert.deepEqual(readDocument(), before);
+  loadDocument(decodeDocument(JSON.parse(localStorage.getItem('merfolk.diagram')!)));
+  assert.deepEqual(currentDocument(), before);
+  const history = useDiagram.getState().history;
+  let notifications = 0;
+  const stop = useDiagram.subscribe(() => notifications++);
+  loadDocument(before, true);
+  assert.equal(notifications, 0);
+  stop();
+  assert.equal(useDiagram.getState().history, history);
+  const invalid = useDiagram.getState().syncMermaid(`${kind === 'er' ? 'erDiagram' : 'classDiagram'}\nunsupported nonsense !!!`);
+  assert.equal(invalid.ok, false);
+  assert.deepEqual(currentDocument(), before);
+  const source = emitStructural(diagram).text;
+  assert.equal(useDiagram.getState().syncMermaid(source).ok, true);
+  assert.equal(useDiagram.getState().diagram.kind, kind);
+  const embed = embedStructural(diagram, card.id);
+  assert.ok(embed.kind === 'er' ? embed.entities.some((e) => e.id === card.id) : embed.classes.some((e) => e.id === card.id));
+}
+useDiagram.getState().load({nodes:[{id:'a',label:'A',shape:'rect',parentId:null,collapsed:false,position:{x:0,y:0}},{id:'b',label:'B',shape:'rect',parentId:null,collapsed:false,position:{x:100,y:0}}],edges:[]});
+useDiagram.getState().connect('a','b');
+const unchangedHistory = useDiagram.getState().history;
+assert.equal(useDiagram.getState().syncMermaid(useDiagram.getState().exportMermaid()).ok, true);
+assert.equal(useDiagram.getState().history, unchangedHistory, 'unchanged flowchart source preserves connection IDs and history');
+console.log('PASS: ER/class document saves, shared wiki pages, source diagnostics and embeds');
+dom.window.close();
+const { layoutStructural, structuralProjection } = await import('../src/structural/layout.ts');
+const parsed = (await import('../src/structural/io.ts')).parseStructural('classDiagram\nnamespace Domain {\nclass A\nclass B\n}\nclass Outside\nA --> Outside: one\nB ..> Outside: two');
+assert.ok(parsed.ok);
+if (parsed.ok && parsed.diagram.kind === 'class') {
+  const folded = { ...parsed.diagram, namespaces: parsed.diagram.namespaces.map((n) => ({ ...n, collapsed: true })) };
+  const projected = structuralProjection(folded);
+  assert.equal(projected.cards.filter((c) => c.item.kind === 'class').length, 1);
+  assert.equal(projected.relationships.length, 1);
+  assert.equal(projected.relationships[0].originalIds.length, 2);
+  assert.equal(projected.relationships[0].sourceMarker, 'none');
+  const withEmpty = { ...parsed.diagram, namespaces: [...parsed.diagram.namespaces, { id: 'Empty', label: 'Empty', parentId: null, position: { x: 0, y: 0 }, collapsed: false }] };
+  const arranged = layoutStructural(withEmpty);
+  if (arranged.kind === 'class') assert.ok(arranged.namespaces.every((n) => Number.isFinite(n.position.x) && Number.isFinite(n.position.y)));
+}

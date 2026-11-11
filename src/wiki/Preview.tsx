@@ -1,3 +1,6 @@
+import { StructuralDrawing } from '../structural/StructuralDrawing';
+import { embedStructural } from '../structural/embed';
+import { flowchartOf } from '../store';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SequenceDrawing } from '../sequence/SequenceWorkspace';
 import { usePageEntities } from '../entities';
@@ -43,23 +46,29 @@ export default function Preview({
   onNode?: (nodeId: string) => void;
 }) {
   const nodes = usePageEntities();
-  const sequence = useDiagram((s) => s.sequence);
-  const graphNodes = useDiagram((s) => s.nodes);
-  const edges = useDiagram((s) => s.edges);
+  const diagram = useDiagram((s) => s.diagram);
+  const sequence = diagram.kind === 'sequence' ? diagram : null;
+  const graphNodes = useDiagram((s) => flowchartOf(s).nodes);
+  const edges = useDiagram((s) => flowchartOf(s).edges);
   const pages = useDiagram((s) => s.pages);
   const dark = useTheme() === 'dark';
   const root = useRef<HTMLDivElement>(null);
 
   const html = useMemo(() => renderPage(body, { nodes, pages }), [body, nodes, pages]);
   const source = useMemo(() => {
-    if (!nodeId || sequence) return '';
+    if (!nodeId || diagram.kind !== 'flowchart') return '';
     const sub = embedDiagram({ nodes: graphNodes, edges }, nodeId);
     return sub.nodes.length ? toMermaid(sub) : '';
-  }, [graphNodes, edges, nodeId, sequence]);
+  }, [graphNodes, edges, nodeId, diagram.kind]);
 
   useEffect(() => {
     const hosts = root.current?.querySelectorAll<HTMLElement>('[data-embed]');
     if (!hosts?.length) return;
+    if ((diagram.kind === 'er' || diagram.kind === 'class') && nodeId) {
+      const svg = renderToStaticMarkup(<StructuralDrawing diagram={embedStructural(diagram, nodeId)} />);
+      hosts.forEach((host) => { host.innerHTML = svg; });
+      return;
+    }
     if (sequence && nodeId) {
       const svg = renderToStaticMarkup(<SequenceDrawing diagram={sequence} />);
       hosts.forEach((host) => { host.innerHTML = svg; });
@@ -72,7 +81,7 @@ export default function Preview({
       });
     } else hosts.forEach((host) => host.replaceChildren());
     return () => render.abort();
-  }, [html, source, dark, sequence, nodeId]);
+  }, [html, source, dark, sequence, nodeId, diagram]);
 
   const onClick = (e: React.MouseEvent) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !(e.target instanceof Element)) return;
@@ -88,6 +97,8 @@ export default function Preview({
       if (id) onPage(id);
       return;
     }
+    const structural = t.closest<SVGElement>('[data-diagram-element]')?.dataset.diagramElement;
+    if (structural) { onNode(structural); return; }
     const participant = t.closest<SVGElement>('[data-sequence-participant]')?.dataset.sequenceParticipant;
     if (participant) { onNode(participant); return; }
     const hit = /^flowchart-(.+)-\d+$/.exec(t.closest('[data-embed] .node')?.id ?? '');

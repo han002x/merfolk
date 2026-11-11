@@ -364,7 +364,7 @@ export function mergeDiagram(parsed: FlowchartDiagram, current: FlowchartDiagram
   const edges: DiagramEdge[] = parsed.edges.map((p) => {
     const prev = curEdges.get(`${p.source}\u0000${p.target}`);
     if (!prev) return p;
-    return { ...p, style: prev.style, ...(prev.order != null && { order: prev.order }) };
+    return { ...p, id: prev.id, style: prev.style, ...(prev.order != null && { order: prev.order }) };
   });
 
   return { nodes, edges };

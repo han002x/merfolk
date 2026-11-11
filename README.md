@@ -20,7 +20,7 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   with expandable groups and a connection list. Select nodes or connections in
   the tree, or double-click their labels to rename them; changes update the
   canvas and Mermaid source. **Copy** exports the source for other renderers.
-- **Sequence diagrams** — choose **New sequence** or paste `sequenceDiagram` into
+- **Sequence diagrams** — choose **New diagram → New sequence** or paste `sequenceDiagram` into
   the Mermaid panel. Edit participants, actors, messages, self-calls, notes,
   activations, and nested `alt` / `opt` / `loop` / `par` blocks on a dedicated
   canvas. Drag participants to reorder columns and messages to reorder events
@@ -30,6 +30,16 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   sequence. Play or step through messages in source order. Unsupported syntax
   reports an error and keeps the last valid canvas. Each document contains one
   diagram kind.
+- **ER and class diagrams** — the **New diagram** menu creates flowchart,
+  sequence, ER, or class documents. Paste `erDiagram` or `classDiagram` in any
+  source editor to switch kinds. ER cards have editable attributes, keys,
+  comments, cardinalities, and identifying relationships. Class cards support
+  member signatures, visibility, generics, annotations, namespaces, notes,
+  relationship markers, and multiplicities. Fold card details or whole class
+  namespaces; all underlying content remains in Mermaid exports. Drag cards,
+  connect relationships, or use Tidy to arrange them. Entities, classes, and
+  namespaces can link wiki pages. Their embeds show the selected neighborhood
+  or namespace subtree. ER and class diagrams are static.
 - **Auto-layout (dagre)** — **Tidy ↓** / **Tidy →** re-flow the diagram top-down
   or left-right. Only visible nodes are laid out, so collapsing a group re-flows
   the rest. Mermaid imports are tidied automatically.

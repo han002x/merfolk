@@ -1,3 +1,5 @@
+import DiagramMenu from '../components/DiagramMenu';
+import type { Diagram } from '../types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Background, Controls, ReactFlow, ReactFlowProvider, ViewportPortal, useReactFlow, useStore } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -15,13 +17,13 @@ export { SequenceDrawing } from './SequenceDrawing';
 export interface SequenceWorkspaceProps {
   diagram: SequenceDiagram;
   onChange: (next: SequenceDiagram) => void;
-  onFlowchart: () => void;
+  onNewDiagram: (kind: Diagram['kind']) => void;
   onOpenPage: (participantId: string) => void;
   onImportFile: () => void;
   onExportFile: () => void;
   onUndo?: () => void;
   canUndo?: boolean;
-  onSourceFlowchart?: (source: string) => { ok: true } | { ok: false; error: string };
+  onSource?: (source: string) => { ok: true } | { ok: false; error: string };
 }
 
 function updateEvents(events: SequenceEvent[], update: (event: SequenceEvent) => SequenceEvent | null): SequenceEvent[] {
@@ -60,7 +62,7 @@ function eventTitle(e: SequenceEvent): string {
 export default function SequenceWorkspace(props: SequenceWorkspaceProps) {
   return <ReactFlowProvider><Workspace {...props} /></ReactFlowProvider>;
 }
-function Workspace({ diagram, onChange, onFlowchart, onOpenPage, onImportFile, onExportFile, onUndo, canUndo, onSourceFlowchart }: SequenceWorkspaceProps) {
+function Workspace({ diagram, onChange, onNewDiagram, onOpenPage, onImportFile, onExportFile, onUndo, canUndo, onSource }: SequenceWorkspaceProps) {
   const generated = useMemo(() => emitSequence(diagram), [diagram]);
   const [source, setSource] = useState(generated.text);
   const lastApplied = useRef(generated.text);
@@ -167,8 +169,8 @@ function Workspace({ diagram, onChange, onFlowchart, onOpenPage, onImportFile, o
   };
   const editSource = (value: string) => {
     setSource(value);
-    if (/^\s*(?:%%[^\n]*\n\s*)*(?:flowchart|graph)\b/.test(value) && onSourceFlowchart) {
-      const result = onSourceFlowchart(value);
+    if (/^\s*(?:%%[^\n]*\n\s*)*(?:flowchart|graph|erDiagram|classDiagram)\b/.test(value) && onSource) {
+      const result = onSource(value);
       setError(result.ok ? '' : result.error);
       return;
     }
@@ -204,7 +206,7 @@ function Workspace({ diagram, onChange, onFlowchart, onOpenPage, onImportFile, o
   }}>
     <section className="sq-canvas" aria-label="Sequence canvas">
       <div className="sq-toolbar">
-        <button onClick={onFlowchart}>Flowchart</button><span className="sq-toolbar-title">Sequence</span><span className="sq-toolbar-rule" />
+        <DiagramMenu onNew={onNewDiagram} /><span className="sq-toolbar-title">Sequence</span><span className="sq-toolbar-rule" />
         <button onClick={addParticipant}>+ Participant</button><button disabled={!diagram.participants.length} onClick={() => add('message')}>+ Message</button>
         <button disabled={!canUndo} onClick={onUndo} title="Undo · Ctrl/⌘Z">↶</button>
         <button onClick={toggleTheme} aria-label="Toggle theme">{theme === 'dark' ? '☀' : '☾'}</button>

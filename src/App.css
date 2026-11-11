@@ -2002,3 +2002,9 @@ body,
   outline: 0;
   border-color: var(--mf-accent);
 }
+.mf-diagram-menu { position:relative; font:12px var(--mf-sans); color:var(--mf-text); }
+.mf-diagram-menu summary { cursor:pointer; padding:7px 10px; list-style:none; border-radius:5px; }
+.mf-diagram-menu summary:hover { background:var(--mf-group); }
+.mf-diagram-menu > div { position:absolute; left:0; top:100%; z-index:20; display:flex; flex-direction:column; min-width:150px; padding:5px; background:var(--mf-panel); border:1px solid var(--mf-border); border-radius:6px; box-shadow:var(--mf-lift); }
+.mf-diagram-menu button { color:var(--mf-text); font:inherit; border:0; background:transparent; text-align:left; padding:8px; cursor:pointer; }
+.mf-diagram-menu button:hover { background:var(--mf-group); }
