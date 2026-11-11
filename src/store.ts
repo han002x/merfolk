@@ -5,9 +5,11 @@ import type {
   DiagramNode,
   ElementStyle,
   NodeShape,
+  Page,
 } from './types';
 import { fromMermaid, mergeDiagram, parseMermaid, toMermaid } from './mermaid/io';
 import { layout, type Direction } from './layout';
+import { createPageFor, mergePages, newPageId, retitle } from './pages';
 import {
   childrenOf,
   descendants,
@@ -115,6 +117,8 @@ interface Snapshot {
 interface State {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
+  /** wiki pages; not part of undo history */
+  pages: Page[];
 
   /** element currently hovered/focused anywhere (canvas or mermaid editor) */
   highlight: Highlight | null;
@@ -152,6 +156,17 @@ interface State {
   // selection
   setSelection: (nodeIds: string[], edgeIds: string[]) => void;
 
+  // wiki
+  /** the node's page id, creating the page on first call */
+  openPage: (nodeId: string) => string | null;
+  /** a free-standing page (no node yet) */
+  createPage: (title: string) => string;
+  /** drop a page and unlink any node that pointed at it */
+  deletePage: (id: string) => void;
+  /** attach a (usually orphaned) page to a node that has none */
+  linkPage: (pageId: string, nodeId: string) => void;
+  updatePage: (id: string, patch: Partial<Pick<Page, 'title' | 'body'>>) => void;
+
   // mutations
   addNode: (shape: NodeShape, position: { x: number; y: number }, icon?: string) => string;
   updateLabel: (id: string, label: string) => void;
@@ -183,6 +198,11 @@ interface State {
   syncMermaid: (src: string) => { ok: true } | { ok: false; error: string };
   exportMermaid: () => string;
   load: (d: Diagram) => void;
+  /**
+   * Take on another window's saved diagram without touching undo history or
+   * selection. Pages merge by `updatedAt`; a no-op when nothing differs.
+   */
+  applyRemote: (d: Diagram) => void;
 }
 
 const HISTORY_LIMIT = 100;
@@ -227,6 +247,7 @@ export const useDiagram = create<State>((set, get) => {
   return {
   nodes: [],
   edges: [],
+  pages: [],
   highlight: null,
   insertion: null,
   ghostAt: null,
@@ -358,9 +379,56 @@ export const useDiagram = create<State>((set, get) => {
   },
 
   updateLabel: (id, label) =>
+    set((s) => {
+      const nodes = s.nodes.map((n) => (n.id === id ? { ...n, label } : n));
+      const node = nodes.find((n) => n.id === id);
+      return {
+        ...snapshot(),
+        nodes,
+        pages: node ? retitle(s.pages, node) : s.pages,
+      };
+    }),
+
+  openPage: (nodeId) => {
+    const { nodes, pages } = get();
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return null;
+    const page = createPageFor(node, pages);
+    if (page) {
+      set({
+        pages: [...pages, page],
+        nodes: nodes.map((n) => (n.id === nodeId ? { ...n, pageId: page.id } : n)),
+      });
+    }
+    return page?.id ?? node.pageId ?? null;
+  },
+
+  createPage: (title) => {
+    const id = newPageId(get().pages);
+    set((s) => ({ pages: [...s.pages, { id, title, body: '', updatedAt: Date.now() }] }));
+    return id;
+  },
+
+  deletePage: (id) =>
     set((s) => ({
-      ...snapshot(),
-      nodes: s.nodes.map((n) => (n.id === id ? { ...n, label } : n)),
+      pages: s.pages.filter((p) => p.id !== id),
+      nodes: s.nodes.map((n) => {
+        if (n.pageId !== id) return n;
+        const { pageId: _gone, ...rest } = n;
+        return rest;
+      }),
+    })),
+
+  linkPage: (pageId, nodeId) =>
+    set((s) => {
+      const node = s.nodes.find((n) => n.id === nodeId);
+      if (!node || node.pageId || !s.pages.some((p) => p.id === pageId)) return s;
+      return { nodes: s.nodes.map((n) => (n.id === nodeId ? { ...n, pageId } : n)) };
+    }),
+
+  updatePage: (id, patch) =>
+    set((s) => ({
+      pages: s.pages.map((p) => (p.id === id ? { ...p, ...patch, updatedAt: Date.now() } : p)),
     })),
 
   updateNodeStyle: (ids, patch) =>
@@ -589,6 +657,14 @@ export const useDiagram = create<State>((set, get) => {
 
   exportMermaid: () => toMermaid({ nodes: get().nodes, edges: get().edges }),
 
+  applyRemote: (d) =>
+    set((s) => {
+      const pages = mergePages(s.pages, d.pages ?? []);
+      const same = JSON.stringify([s.nodes, s.edges]) === JSON.stringify([d.nodes, d.edges]);
+      if (same && pages === s.pages) return s;
+      return same ? { pages } : { nodes: d.nodes, edges: d.edges, pages };
+    }),
+
   // Loading a whole new document (startup restore, file import, clear) starts
   // a fresh editing session — reset undo history rather than making it undoable.
   load: (d) => {
@@ -598,6 +674,7 @@ export const useDiagram = create<State>((set, get) => {
       history: [],
       nodes: d.nodes,
       edges: d.edges,
+      pages: d.pages ?? [],
       selectedNodeIds: [],
       selectedEdgeIds: [],
     });

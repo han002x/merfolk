@@ -40,6 +40,17 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   `A@{ icon: "simple-icons:github", form: "square", label: "GitHub" }`; a
   renderer that hasn't registered that Iconify pack shows a placeholder glyph
   beside the label.
+- **Wiki pages** — every node can own a Markdown page. Press `W` (or the page
+  button on a node) to open it in the side panel's **Page** tab, which follows the
+  selection; ↗ pops it out into its own window at `#/wiki/<id>`. The page is
+  created on first open, titled from the node. The editor is raw Markdown
+  (CodeMirror) beside a live preview. `[[Node or Page]]` links jump between
+  pages (`[[Target|alias]]` supported, `[[` autocompletes), each page lists its
+  backlinks, and `{{diagram}}` embeds the node's live sub-diagram. Click a node
+  in it, or **Canvas** in the header, to drill back up: the canvas unfolds
+  whatever hides the node and frames it. Both windows share one save, so edits
+  and renames show up in the other instantly. Deleting a node keeps its page as
+  an orphan you can re-link or delete. Pages export as `click A href "#/wiki/<id>"`.
 - **Persistence** — the diagram autosaves to `localStorage` and restores on
   reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
   or clear the canvas, from the toolbar.
@@ -63,6 +74,7 @@ simple architecture, simple design, simple implementation, no filler text.
 | `⇧L` | Tidy left-right |
 | `T` | Toggle theme |
 | `M` | Toggle Mermaid panel |
+| `W` | Open the selected node's wiki page in the side panel |
 | `F` | Fold / unfold the selected group (or the sheet a selected node sits on) |
 | `[` / `]` | Fold / unfold one level |
 | `⌫` / `Del` | Delete selected node(s) |
@@ -95,6 +107,11 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 | `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, folded-card tab |
 | `src/components/SheetNode.tsx` | Paper sheet behind an unfolded group, with the dog-ear fold control |
 | `src/components/Icon.tsx` | Inline-SVG icon set (currentColor, theme-aware) |
+| `src/pages.ts` | Pure wiki logic: lazy pages, retitle, wikilinks, backlinks, orphans, embed subtree, cross-window merge |
+| `src/route.ts` | Hash routes (`#/wiki/<id>`, `#/node/<id>`) and window helpers |
+| `src/dock.ts` | Which view the side panel shows; `showPage` opens a node's page there |
+| `src/components/PagePanel.tsx` | Page tab: edit / read the selected node's page beside the canvas |
+| `src/wiki/` | Lazy-loaded wiki window: `WikiApp`, CodeMirror `Editor`, sanitized `Preview`, `render` |
 | `src/useHotkeys.ts` | Global keyboard shortcuts, suspended while typing |
 | `src/components/MermaidPanel.tsx` | Live Mermaid text view + import/copy |
 | `src/App.tsx` | Canvas wiring, toolbar, visibility filtering |
@@ -105,7 +122,7 @@ Parses the common `flowchart` / `graph` subset: node declarations in all 14
 classic bracket shapes (`[]` `()` `([])` `[[]]` `[()]` `(())` `((()))` `{}`
 `{{}}` `[//]` `[\\]` `[/\]` `[\/]` `>]`), v11 `@{ shape: … }` / `@{ icon: … }`
 metadata, `-->` / `---` edges with optional `|labels|`, and `subgraph … end`
-blocks (which become collapsible group nodes). v11 shapes merfolk doesn't draw
+blocks (which become collapsible group nodes), and `click <id> href "#/wiki/<pageId>"` page links. v11 shapes merfolk doesn't draw
 yet import as rectangles. It round-trips everything merfolk itself produces,
 and `scripts/mermaid-compat.ts` feeds that output to the real `mermaid` parser
 to confirm it reads every shape, icon, edge and subgraph the same way.

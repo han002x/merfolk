@@ -45,8 +45,12 @@ import { ShapePicker, type Placement } from './components/ShapePicker';
 import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
 import { toggleTheme, useTheme } from './theme';
 import { useHotkeys } from './useHotkeys';
+import { foldedAncestors } from './pages.ts';
+import { nameCanvasWindow, parseRoute } from './route';
+import { showPage, useDock } from './dock';
 import {
   startAutosave,
+  startSync,
   restore,
   exportFile,
   importFile,
@@ -637,6 +641,46 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     [fold, unfold, fitView],
   );
 
+  // W: drill down into the selected node's page
+  const openSelectedPage = useCallback(() => {
+    const id = useDiagram.getState().selectedNodeIds[0];
+    if (id) showPage(id);
+  }, []);
+
+  // #/node/<id> (from the wiki): unfold what hides the node, select it, frame it
+  useEffect(() => {
+    const goto = () => {
+      const route = parseRoute(window.location.hash);
+      if (route.kind !== 'node') return;
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      const { nodes: all } = useDiagram.getState();
+      const node = all.find((n) => n.id === route.id);
+      if (!node) return;
+      const closed = foldedAncestors(all, node.id);
+      if (closed.length) unfold(closed);
+      setSelection([node.id], []);
+      const sheet = !node.collapsed && all.some((n) => n.parentId === node.id);
+      const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.setTimeout(
+        () =>
+          fitView({
+            nodes: [{ id: sheet ? `${SHEET_PREFIX}${node.id}` : node.id }],
+            padding: 0.6,
+            maxZoom: 1.2,
+            duration: calm ? 0 : 400,
+          }),
+        closed.length ? 320 : 60,
+      );
+    };
+    // after App's mount effect has restored the saved diagram
+    const first = window.setTimeout(goto, 0);
+    window.addEventListener('hashchange', goto);
+    return () => {
+      window.clearTimeout(first);
+      window.removeEventListener('hashchange', goto);
+    };
+  }, [unfold, setSelection, fitView]);
+
   useHotkeys(
     useMemo(
       () => [
@@ -651,6 +695,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'l', shift: true, run: () => tidy('LR') },
         { key: 't', run: () => toggleTheme() },
         { key: 'f', run: foldSelection },
+        { key: 'w', run: openSelectedPage },
         { key: '[', run: () => foldLevel('fold') },
         { key: ']', run: () => foldLevel('unfold') },
         { key: 'm', run: onTogglePanel },
@@ -660,7 +705,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'backspace', run: deleteSelected },
         { key: 'delete', run: deleteSelected },
       ],
-      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection],
+      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection, openSelectedPage],
     ),
   );
 
@@ -865,7 +910,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 }
 
 export default function App() {
-  const [panelOpen, setPanelOpen] = useState(true);
+  const panelOpen = useDock((s) => s.open);
+  const setPanelOpen = useDock((s) => s.setOpen);
   const load = useDiagram((s) => s.load);
 
   // on first mount: restore the saved diagram, or seed the sample; then
@@ -874,14 +920,15 @@ export default function App() {
     if (useDiagram.getState().nodes.length === 0 && !restore()) {
       load(SAMPLE);
     }
-    const stop = startAutosave();
-    return stop;
+    nameCanvasWindow();
+    const stops = [startAutosave(), startSync()];
+    return () => stops.forEach((stop) => stop());
   }, [load]);
 
   return (
     <ReactFlowProvider>
       <div className="mf-app">
-        <Canvas onTogglePanel={() => setPanelOpen((v) => !v)} />
+        <Canvas onTogglePanel={() => setPanelOpen(!useDock.getState().open)} />
         {panelOpen ? (
           <MermaidPanel onClose={() => setPanelOpen(false)} />
         ) : (

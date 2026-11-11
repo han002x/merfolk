@@ -23,9 +23,16 @@ type IconName =
   | 'group'
   | 'unfold'
   | 'more'
-  | 'shapes';
+  | 'shapes'
+  | 'page';
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  page: (
+    <>
+      <path d="M7 3h7l4 4v14H7Z" />
+      <path d="M14 3v4h4M10 12h5M10 16h5" />
+    </>
+  ),
   rect: <rect x="3" y="6" width="18" height="12" rx="2" />,
   round: <rect x="3" y="6" width="18" height="12" rx="6" />,
   diamond: <path d="M12 3 21 12 12 21 3 12Z" />,

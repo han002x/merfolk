@@ -317,6 +317,7 @@ body,
 
 /* nodes */
 .mf-node {
+  position: relative;
   background: var(--mf-node);
   border: 1px solid var(--mf-border);
   color: var(--mf-text);
@@ -1663,3 +1664,56 @@ body,
   font-weight: 500;
 }
 .mf-tree-empty { color: var(--mf-muted); font-size: 13px; padding: 10px; }
+
+/* wiki page button: always on once a page exists, otherwise on hover/select */
+.mf-page {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--mf-border);
+  background: var(--mf-panel);
+  color: var(--mf-muted);
+  cursor: pointer;
+  pointer-events: all;
+  opacity: 0;
+  transition:
+    opacity 130ms ease,
+    color 130ms ease,
+    transform 130ms ease;
+}
+.mf-page.has-page,
+.mf-node:hover > .mf-page,
+.mf-node.selected > .mf-page,
+.mf-sheet:hover > .mf-page {
+  opacity: 1;
+}
+.mf-page.has-page {
+  color: var(--mf-accent);
+  border-color: color-mix(in srgb, var(--mf-accent) 45%, transparent);
+}
+.mf-page:hover {
+  color: var(--mf-accent);
+  transform: scale(1.1);
+}
+.mf-sheet > .mf-page {
+  right: calc(var(--ear) + 6px);
+  top: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mf-page {
+    transition: none;
+  }
+}
+.mf-shape-diamond > .mf-page {
+  transform: rotate(-45deg);
+}
+.mf-shape-diamond > .mf-page:hover {
+  transform: rotate(-45deg) scale(1.1);
+}

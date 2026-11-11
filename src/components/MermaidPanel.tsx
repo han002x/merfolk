@@ -1,10 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useDiagram } from '../store';
 import { toMermaidWithMap } from '../mermaid/io';
 import { Icon } from './Icon';
 import { TreePanel } from './TreePanel';
+import { useDock, type View } from '../dock';
 
-const views: ('mermaid' | 'tree')[] = ['mermaid', 'tree'];
+const PagePanel = lazy(() => import('./PagePanel'));
+
+const views: View[] = ['mermaid', 'tree', 'page'];
+const titles: Record<View, string> = { mermaid: 'Mermaid', tree: 'Tree', page: 'Page' };
 
 export function MermaidPanel({ onClose }: { onClose: () => void }) {
   const autoLayout = useDiagram((s) => s.autoLayout);
@@ -17,7 +21,8 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
 
-  const [tab, setTab] = useState<'mermaid' | 'tree'>('mermaid');
+  const tab = useDock((s) => s.view);
+  const setTab = useDock((s) => s.setView);
   const [text, setText] = useState('');
   // line map is only valid while the textarea matches the live diagram; while
   // a parse error stands we null the mapping so stale highlights don't point at
@@ -319,7 +324,11 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
               onKeyDown={(event) => {
                 if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
                 event.preventDefault();
-                const next = event.key === 'Home' ? 'mermaid' : event.key === 'End' ? 'tree' : view === 'mermaid' ? 'tree' : 'mermaid';
+                const at = views.indexOf(view);
+                const next =
+                  event.key === 'Home' ? views[0]
+                  : event.key === 'End' ? views[views.length - 1]
+                  : views[(at + (event.key === 'ArrowRight' ? 1 : views.length - 1)) % views.length];
                 document.getElementById(`mf-tab-${next}`)?.click();
                 document.getElementById(`mf-tab-${next}`)?.focus();
               }}
@@ -334,7 +343,7 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
                 setInsertion(null);
                 setTab(view);
               }}>
-              {view === 'mermaid' ? 'Mermaid' : 'Tree'}
+              {titles[view]}
             </button>
           ))}
         </div>
@@ -348,6 +357,14 @@ export function MermaidPanel({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
+      <div className="mf-panel-body" role="tabpanel" id="mf-view-page"
+        aria-labelledby="mf-tab-page" hidden={tab !== 'page'}>
+        {tab === 'page' && (
+          <Suspense fallback={null}>
+            <PagePanel />
+          </Suspense>
+        )}
+      </div>
       <div className="mf-panel-body" role="tabpanel" id="mf-view-tree"
         aria-labelledby="mf-tab-tree" hidden={tab !== 'tree'}>
         <TreePanel />

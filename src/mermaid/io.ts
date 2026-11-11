@@ -40,6 +40,10 @@ const SHAPE_PATTERNS: Array<{ re: RegExp; shape: NodeShape }> = [...SHAPES]
 const META_RE = /^([A-Za-z0-9_]+)\s*@\{(.*)\}$/;
 const META_PAIR_RE = /([A-Za-z]+)\s*:\s*("(?:[^"\\]|\\.)*"|[^,]*)/g;
 
+/** Where a node's wiki page lives; shared by the `click` emitter and parser. */
+export const PAGE_HREF = '#/wiki/';
+const CLICK_RE = /^click\s+([A-Za-z0-9_]+)\s+href\s+"#\/wiki\/([^"]+)"/;
+
 function stripQuotes(s: string): string {
   const t = s.trim();
   if (t.startsWith('"') && t.endsWith('"')) return t.slice(1, -1);
@@ -112,6 +116,7 @@ function parseCore(src: string): CoreResult {
   const edges: DiagramEdge[] = [];
   const subgraphStack: string[] = [];
   const issues: ParseIssue[] = [];
+  const pageIds = new Map<string, string>();
   let edgeSeq = 0;
   let meaningfulLines = 0;
 
@@ -170,6 +175,13 @@ function parseCore(src: string): CoreResult {
       ? subgraphStack[subgraphStack.length - 1]
       : null;
 
+    // wiki link: `click A href "#/wiki/<pageId>"`
+    const ck = line.match(CLICK_RE);
+    if (ck) {
+      pageIds.set(ck[1], ck[2]);
+      continue;
+    }
+
     // edge line
     const em = line.match(EDGE_RE);
     if (em) {
@@ -216,6 +228,7 @@ function parseCore(src: string): CoreResult {
     collapsed: false,
     position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
     ...(n.icon && { icon: n.icon }),
+    ...(pageIds.has(n.id) && { pageId: pageIds.get(n.id) }),
   }));
 
   return { diagram: { nodes, edges }, issues, meaningfulLines };
@@ -272,6 +285,7 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
       position: prev.position,
       collapsed: prev.collapsed,
       style: prev.style,
+      ...((p.pageId ?? prev.pageId) && { pageId: p.pageId ?? prev.pageId }),
     };
   });
 
@@ -354,6 +368,12 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
     const arrow = e.label ? `-->|${e.label}|` : '-->';
     lineRefs.set(out.length, { kind: 'edge', id: e.id });
     out.push(`  ${e.source} ${arrow} ${e.target}`);
+  }
+
+  for (const n of nodes) {
+    if (!n.pageId) continue;
+    lineRefs.set(out.length, { kind: 'node', id: n.id });
+    out.push(`  click ${n.id} href "${PAGE_HREF}${n.pageId}"`);
   }
 
   return { text: out.join('\n'), lineRefs };

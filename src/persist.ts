@@ -13,19 +13,24 @@ interface Saved {
   diagram: Diagram;
 }
 
+/** Older saves have no pages; a malformed field counts as none. */
+function withPages(d: Diagram): Diagram {
+  return { ...d, pages: Array.isArray(d.pages) ? d.pages : [] };
+}
+
 export function readSaved(): Diagram | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Saved;
     if (parsed.version !== VERSION || !parsed.diagram) return null;
-    return parsed.diagram;
+    return withPages(parsed.diagram);
   } catch {
     return null;
   }
 }
 
-function write(diagram: Diagram) {
+export function write(diagram: Diagram) {
   try {
     localStorage.setItem(KEY, JSON.stringify({ version: VERSION, diagram }));
   } catch {
@@ -39,16 +44,27 @@ export function startAutosave(debounceMs = 400): () => void {
   return useDiagram.subscribe((state) => {
     window.clearTimeout(timer);
     timer = window.setTimeout(
-      () => write({ nodes: state.nodes, edges: state.edges }),
+      () => write({ nodes: state.nodes, edges: state.edges, pages: state.pages }),
       debounceMs,
     );
   });
 }
 
+/** Follow the other window's saves. Call once at startup. */
+export function startSync(): () => void {
+  const onStorage = (e: StorageEvent) => {
+    if (e.key !== KEY) return;
+    const saved = readSaved();
+    if (saved) useDiagram.getState().applyRemote(saved);
+  };
+  window.addEventListener('storage', onStorage);
+  return () => window.removeEventListener('storage', onStorage);
+}
+
 /** Restore the saved diagram into the store. Returns true if anything loaded. */
 export function restore(): boolean {
   const saved = readSaved();
-  if (!saved || saved.nodes.length === 0) return false;
+  if (!saved || (saved.nodes.length === 0 && !saved.pages?.length)) return false;
   useDiagram.getState().load(saved);
   return true;
 }
@@ -59,8 +75,8 @@ export function clearSaved() {
 
 /** Download the current diagram as a .merfolk.json file. */
 export function exportFile() {
-  const { nodes, edges } = useDiagram.getState();
-  const payload: Saved = { version: VERSION, diagram: { nodes, edges } };
+  const { nodes, edges, pages } = useDiagram.getState();
+  const payload: Saved = { version: VERSION, diagram: { nodes, edges, pages } };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: 'application/json',
   });
@@ -80,5 +96,5 @@ export async function importFile(file: File): Promise<void> {
   if (!Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) {
     throw new Error('Not a merfolk diagram file');
   }
-  useDiagram.getState().load(diagram);
+  useDiagram.getState().load(withPages(diagram));
 }

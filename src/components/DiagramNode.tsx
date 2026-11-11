@@ -5,6 +5,7 @@ import { useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
 import { STYLE_DEFAULTS, animationClass, flowDash, fontFamilyCss } from '../style';
 import { CatalogIcon, ShapeOutline } from './ShapeOutline';
+import { PageButton } from './PageButton';
 import { hasOutline, iconTileCss, shapeCss } from '../shapes';
 
 export interface NodeData {
@@ -177,6 +178,7 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
           </button>
         )}
       </div>
+      <PageButton nodeId={id} />
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

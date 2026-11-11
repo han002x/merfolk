@@ -42,7 +42,8 @@ const node = (id: string, shape: NodeShape, label: string, extra: Partial<Diagra
 const nodes: DiagramNode[] = [
   node('grp', 'rect', 'Stack'),
   ...SHAPES.map((d, i) => node(`s${i}`, d.shape, `${d.name} (${i})`, { parentId: 'grp' })),
-  node('i0', 'rect', 'GitHub', { icon: 'simple-icons:github' }),
+  node('i0', 'rect', 'GitHub', { icon: 'simple-icons:github', pageId: 'pg1' }),
+  node('p0', 'diamond', 'Linked', { pageId: 'pg2' }),
   node('i1', 'round', 'Database', { icon: 'lucide:database' }),
   node('i2', 'circle', 'User', { icon: 'lucide:user' }),
   node('i3', 'rect', '', { icon: 'lucide:cloud' }),
@@ -84,6 +85,8 @@ try {
     } else if (v.type !== MERMAID_TYPE[n.shape]) {
       fails.push(`${n.id} (${n.shape}): mermaid read it as ${v.type}`);
     }
+    if (n.pageId && (v as { link?: string }).link !== `#/wiki/${n.pageId}`)
+      fails.push(`${n.id}: wiki link ${(v as { link?: string }).link}`);
     if ((v.text ?? '') !== n.label) fails.push(`${n.id}: label ${JSON.stringify(v.text)}`);
   }
   const edges = db.getEdges();

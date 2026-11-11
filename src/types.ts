@@ -86,8 +86,20 @@ export interface DiagramNode {
    * then only picks the tile's corners (round => rounded, circle => circle)
    */
   icon?: string;
+  /** wiki page attached to this node; created on first drill-in */
+  pageId?: string;
   /** optional per-node visual overrides */
   style?: ElementStyle;
+}
+
+/** A Markdown wiki page. Nodes point at pages; pages outlive their nodes. */
+export interface Page {
+  id: string;
+  title: string;
+  /** Markdown source */
+  body: string;
+  /** epoch ms of the last edit; the newer copy wins when windows sync */
+  updatedAt: number;
 }
 
 export interface DiagramEdge {
@@ -102,4 +114,6 @@ export interface DiagramEdge {
 export interface Diagram {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
+  /** wiki pages; absent in diagrams saved before the wiki existed */
+  pages?: Page[];
 }
