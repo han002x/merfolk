@@ -91,3 +91,16 @@ assert.equal(namespaceRoundtrip.kind, 'class');
 if (namespaceRoundtrip.kind === 'class') assert.deepEqual(namespaceRoundtrip.namespaces.map((n) => [n.id,n.parentId,n.pageIds]), [['root',null,undefined],['opaque_child','root',['p']]]);
 assert.deepEqual(decodeStructural(namespaceInput), namespaceInput);
 await mermaid.parse(emitStructural(namespaceInput).text);
+
+for (const source of ['classDiagram\nA --> B : #hashtag', 'classDiagram\nA : +String #34;encoded', 'classDiagram\nclass A {\n#String protected\n+String #34;quoted#34;\n}']) {
+ const d = parse(source);
+ const emitted = emitStructural(d);
+ const roundtrip = parse(emitted.text);
+ assert.deepEqual(emitStructural(roundtrip), emitted, source);
+ await mermaid.parse(emitted.text);
+ if (d.kind === 'class' && d.classes[0]?.members[0]?.signature.startsWith('#')) {
+  const oracle = await mermaid.mermaidAPI.getDiagramFromText(emitted.text);
+  assert.equal(oracle.db.getClasses().get('A').members[0].visibility, '#');
+ }
+}
+console.log('PASS: structural escaped labels, quoted member signatures and protected visibility');

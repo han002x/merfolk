@@ -7,7 +7,8 @@ const unquote = (value: string): string => { if (!value.startsWith('"')) return 
 const quote = (value: string) => JSON.stringify(value);
 const name = (value: string) => /^[A-Za-z_][A-Za-z0-9_.-]*$/.test(value) ? value : quote(value);
 const decodeText = (value: string) => value.replace(/#(34|35|59);/g, (_m, n: string) => String.fromCharCode(Number(n))).replace(/<br\s*\/?\s*>/gi, '\n');
-const encodeText = (value: string) => value.replace(/#/g, '#35;').replace(/"/g, '#34;').replace(/\r?\n/g, '<br/>');
+const encodeText = (value: string) => value.replace(/[#";]/g, (character) => character === '#' ? '#35;' : character === '"' ? '#34;' : '#59;').replace(/\r?\n/g, '<br/>');
+const encodeMember = (value: string) => value.startsWith('#') ? `#${encodeText(value.slice(1))}` : encodeText(value);
 const card = (id: string, index: number): StructuralCard => ({ id, label: id, position: { x: (index % 4) * 300, y: Math.floor(index / 4) * 240 }, collapsed: false });
 const leftCards: Record<string, Cardinality> = { '||': 'one', '|o': 'zero-or-one', '}|': 'one-or-more', '}o': 'zero-or-more', 'o|': 'zero-or-one' };
 const rightCards: Record<string, Cardinality> = { '||': 'one', 'o|': 'zero-or-one', '|{': 'one-or-more', 'o{': 'zero-or-more', '|o': 'zero-or-one' };
@@ -21,7 +22,7 @@ function statements(source: string, er: boolean): { text: string; line: number }
     let part = ''; let quoted = false; let escaped = false;
     for (const ch of text) {
       if (ch === '"' && !escaped) quoted = !quoted;
-      if (!quoted && (ch === '{' || ch === '}' || ch === ';')) {
+      if (!quoted && (ch === '{' || ch === '}' || (ch === ';' && !/#(?:[0-9]+|[A-Za-z]+)$/.test(part)))) {
         if (part.trim()) result.push({ text: part.trim(), line });
         if (ch !== ';') result.push({ text: ch, line });
         part = '';
@@ -163,7 +164,7 @@ export function emitStructural(diagram: StructuralDiagram): StructuralSource {
     const emitClass = (c: ClassCard, pad: string) => {
       add(`${pad}class ${c.id}${c.generics ? `~${c.generics}~` : ''}${c.label !== c.id ? `[${quote(encodeText(c.label))}]` : ''} {`, 'class', c.id);
       for (const annotation of c.annotations) add(`${pad}  <<${annotation}>>`, 'class', c.id);
-      for (const member of c.members) { id(member.id, `${pad}  `); add(`${pad}  ${member.signature.replace(/\r?\n/g, '<br/>')}`, 'member', member.id); }
+      for (const member of c.members) { id(member.id, `${pad}  `); add(`${pad}  ${encodeMember(member.signature)}`, 'member', member.id); }
       add(`${pad}}`, 'class', c.id); pages(c, pad);
     };
     const hasContent = (nsId: string, seen = new Set<string>()): boolean => {
