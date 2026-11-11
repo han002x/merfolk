@@ -104,3 +104,28 @@ for (const source of ['classDiagram\nA --> B : #hashtag', 'classDiagram\nA : +St
  }
 }
 console.log('PASS: structural escaped labels, quoted member signatures and protected visibility');
+
+const dotted = parse('classDiagram\nnamespace A.B {\nclass C\n}');
+assert.equal(dotted.kind, 'class');
+if (dotted.kind === 'class') {
+ assert.deepEqual(dotted.namespaces.map((n) => [n.id,n.label,n.parentId]), [['A','A',null],['A.B','B','A']]);
+ assert.equal(dotted.classes[0].namespaceId,'A.B');
+ await mermaid.parse(emitStructural(dotted).text);
+ const oracle = await mermaid.mermaidAPI.getDiagramFromText(emitStructural(dotted).text);
+ assert.deepEqual([...oracle.db.getNamespaces().values()].map((n: {id:string,parent?:string}) => [n.id,n.parent ?? null]), [['A',null],['A.B','A']]);
+ assert.deepEqual(emitStructural(parse(emitStructural(dotted).text)),emitStructural(dotted));
+}
+const genericEndpoints = parse('classDiagram\nclass Foo~T~\nFoo~T~ --> Bar : has { many }');
+assert.equal(genericEndpoints.kind,'class');
+if (genericEndpoints.kind === 'class') {
+ assert.equal(genericEndpoints.classes[0].generics,'T');
+ assert.equal(genericEndpoints.relationships[0].source,'Foo');
+ assert.equal(genericEndpoints.relationships[0].label,'has { many }');
+ const text = emitStructural(genericEndpoints).text;
+ assert.deepEqual(emitStructural(parse(text)),emitStructural(genericEndpoints));
+ await mermaid.parse(text);
+ const oracle = await mermaid.mermaidAPI.getDiagramFromText(text);
+ assert.equal(oracle.db.getRelations()[0].id1,'Foo');
+ assert.equal(oracle.db.getRelations()[0].title,'has { many }');
+}
+console.log('PASS: dotted namespaces, generic endpoints and literal relationship label braces');

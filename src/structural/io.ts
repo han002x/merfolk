@@ -2,6 +2,7 @@ import type { Cardinality, ClassCard, ClassDiagram, ClassMarker, ClassNamespace,
 
 let sequence = 0;
 export const makeStructuralId = () => `r${Date.now().toString(36)}${(sequence++).toString(36)}`;
+const CLASS_NAME = '("(?:[^"\\\\]|\\\\.)*"|[A-Za-z_][A-Za-z0-9_.-]*(?:~[^~]+~)?)';
 const NAME = '("(?:[^"\\\\]|\\\\.)*"|[A-Za-z_][A-Za-z0-9_.-]*)';
 const unquote = (value: string): string => { if (!value.startsWith('"')) return value; const result: unknown = JSON.parse(value); if (typeof result !== 'string') throw new Error('Expected quoted text'); return result; };
 const quote = (value: string) => JSON.stringify(value);
@@ -19,10 +20,11 @@ function statements(source: string, er: boolean): { text: string; line: number }
   source.replace(/\r\n/g, '\n').split('\n').forEach((raw, line) => {
     const text = raw.trim();
     if (!text || text.startsWith('%%') || (er && /--|\.\./.test(text))) { if (text) result.push({ text, line }); return; }
-    let part = ''; let quoted = false; let escaped = false;
+    let part = ''; let quoted = false; let escaped = false; let relationshipPayload = false;
     for (const ch of text) {
       if (ch === '"' && !escaped) quoted = !quoted;
-      if (!quoted && (ch === '{' || ch === '}' || (ch === ';' && !/#(?:[0-9]+|[A-Za-z]+)$/.test(part)))) {
+      if (ch === ':' && !quoted && /--|\.\./.test(part)) relationshipPayload = true;
+      if (!relationshipPayload && !quoted && (ch === '{' || ch === '}' || (ch === ';' && !/#(?:[0-9]+|[A-Za-z]+)$/.test(part)))) {
         if (part.trim()) result.push({ text: part.trim(), line });
         if (ch !== ';') result.push({ text: ch, line });
         part = '';
@@ -112,14 +114,33 @@ export function parseStructural(source: string): StructuralParseResult {
         if (owner?.kind === 'class') { member(ensureClass(owner.id), line); continue; }
         const ns = /^namespace\s+([A-Za-z_][A-Za-z0-9_.-]*)(?:\s*\[\s*(.*?)\s*\])?$/.exec(line);
         if (ns) {
-          const parentId = namespace(); const id = pending ?? (parentId && !ns[1].startsWith(`${parentId}.`) ? `${parentId}.${ns[1]}` : ns[1]); pending = null;
-          if (ids.has(id)) fail(`Duplicate namespace ${id}`); ids.add(id);
-          const n: ClassNamespace = { ...card(id, classes.namespaces.length), label: ns[2] ? decodeText(unquote(ns[2])) : ns[1], parentId };
-          classes.namespaces.push(n); ref('namespace', id); waiting = { kind: 'namespace', id }; continue;
+          let parentId = namespace();
+          const explicitId = pending; pending = null;
+          const localName = parentId && ns[1].startsWith(`${parentId}.`) ? ns[1].slice(parentId.length + 1) : ns[1];
+          const parts = explicitId ? [localName] : localName.split('.');
+          let finalId = '';
+          for (const [index, local] of parts.entries()) {
+            const id = explicitId ?? (parentId ? `${parentId}.${local}` : local);
+            let n = classes.namespaces.find((entry) => entry.id === id);
+            if (!n) {
+              if (ids.has(id)) fail(`Conflicting namespace ID ${id}`);
+              ids.add(id); n = { ...card(id, classes.namespaces.length), label: local, parentId }; classes.namespaces.push(n);
+            } else if (n.parentId !== parentId) fail(`Namespace ${id} has a conflicting parent`);
+            if (index === parts.length - 1 && ns[2]) n.label = decodeText(unquote(ns[2]));
+            finalId = id; parentId = id;
+          }
+          ref('namespace', finalId); waiting = { kind: 'namespace', id: finalId }; continue;
         }
-        const relation = new RegExp(`^${NAME}(?:\\s+"([^"]*)")?\\s*(<\\||\\|>|[<>*o])?(--|\\.\\.)(<\\||\\|>|[<>*o])?\\s*(?:"([^"]*)"\\s+)?${NAME}(?:\\s*:\\s*(.*))?$`).exec(line);
+        const relation = new RegExp(`^${CLASS_NAME}(?:\\s+"([^"]*)")?\\s*(<\\||\\|>|[<>*o])?(--|\\.\\.)(<\\||\\|>|[<>*o])?\\s*(?:"([^"]*)"\\s+)?${CLASS_NAME}(?:\\s*:\\s*(.*))?$`).exec(line);
         if (relation) {
-          const a = unquote(relation[1]); const b = unquote(relation[7]); ensureClass(a); ensureClass(b);
+          const endpoint = (token: string): string => {
+            const full = unquote(token); const generic = /^([^~]+)(?:~([^~]+)~)?$/.exec(full);
+            if (!generic) fail('Malformed generic class endpoint');
+            const c = ensureClass(generic[1]);
+            if (generic[2]) { if (c.generics && c.generics !== generic[2]) fail(`Conflicting generic parameters for ${c.id}`); c.generics = generic[2]; }
+            return c.id;
+          };
+          const a = endpoint(relation[1]); const b = endpoint(relation[7]);
           const id = newId(); classes.relationships.push({ id, source: a, target: b, label: decodeText(relation[8] ?? ''), sourceMarker: marker(relation[3] ?? ''), targetMarker: marker(relation[5] ?? ''), lineStyle: relation[4] === '--' ? 'solid' : 'dashed', sourceMultiplicity: relation[2] ?? '', targetMultiplicity: relation[6] ?? '' }); ref('relationship', id); continue;
         }
         const annotation = /^<<([^<>]+)>>\s+([A-Za-z_][A-Za-z0-9_.-]*)$/.exec(line);
