@@ -136,7 +136,7 @@ export function parseSequence(source: string): SequenceParseResult {
       if (message) {
         ensure(message[1]); ensure(message[4]);
         push({ kind: 'message', id: eventId(), from: message[1], to: message[4], arrow: message[2], text: decode(message[5]) });
-        if (message[3]) targetEvents().push({ kind: 'activation', id: makeSequenceId(), participant: message[4], active: message[3] === '+' });
+        if (message[3]) targetEvents().push({ kind: 'activation', id: makeSequenceId(), participant: message[3] === '+' ? message[4] : message[1], active: message[3] === '+' });
         continue;
       }
       fail(`Unsupported or malformed sequence statement: ${line}`);

@@ -65,7 +65,8 @@ for (const source of [
   'sequenceDiagram\ndeactivate A',
 ]) assert.equal(parseSequence(source).ok, false, source);
 assert.equal(parseSequence('sequenceDiagram').ok, true);
-assert.equal(parseSequence('sequenceDiagram\nA->>+B: request\nB-->>-A: reply').ok, false);
+const compact = parse('sequenceDiagram\nA->>+B: request\nB-->>-A: reply');
+assert.deepEqual(compact.diagram.events.filter((event) => event.kind === 'activation').map((event) => [event.participant, event.active]), [['B', true], ['B', false]]);
 assert.equal(parseSequence('sequenceDiagram\nA->>+B: request\nB-->>A: reply\ndeactivate B').ok, true);
 
 for (const bad of [null, {}, { ...sample, participants: [{ id: 'a', kind: 'database', label: 'a' }] }, { ...sample, events: [{ id: 'x', kind: 'message', from: 'missing', to: 'API', text: '', arrow: '->>' }] }, { ...sample, events: [{ id: 'x', kind: 'fragment', operator: 'loop', branches: [], collapsed: true }] }]) {
@@ -76,6 +77,6 @@ const dom = new JSDOM('<!doctype html><html><body></body></html>');
 Object.assign(globalThis, { window: dom.window, document: dom.window.document });
 const { default: mermaid } = await import('mermaid');
 mermaid.initialize({ startOnLoad: false });
-for (const diagram of [sample, repeated.diagram, nested.diagram, special.diagram, linked.diagram]) await mermaid.parse(emitSequence(diagram).text);
+for (const diagram of [sample, repeated.diagram, nested.diagram, special.diagram, linked.diagram, compact.diagram]) await mermaid.parse(emitSequence(diagram).text);
 for (const arrow of SEQUENCE_ARROWS) await mermaid.parse(emitSequence(parse(`sequenceDiagram\nA${arrow}B: message`).diagram).text);
 console.log('PASS: sequence parsing, ordered identity, nesting, metadata, JSON validation and real Mermaid compatibility');
