@@ -73,7 +73,7 @@ export function parseStructural(source: string): StructuralParseResult {
     for (const item of statements(source, diagram.kind === 'er')) {
       currentLine = item.line; const line = item.text;
       if (line === header) continue;
-      const meta = /^%%\s+merfolk-id\s+([A-Za-z0-9_-]+)$/.exec(line);
+      const meta = /^%%\s+merfolk-id\s+([A-Za-z0-9_.-]+)$/.exec(line);
       if (meta) { if (pending) fail('ID metadata must precede an element'); pending = meta[1]; continue; }
       const page = new RegExp(`^%%\\s+merfolk-pages\\s+${NAME}\\s+(.+)$`).exec(line);
       if (page) { const raw: unknown = JSON.parse(page[2]); if (!Array.isArray(raw) || !raw.every((v: unknown) => typeof v === 'string' && v.length)) fail('Invalid page IDs'); pages.set(unquote(page[1]), [...new Set<string>(raw)]); continue; }
@@ -104,7 +104,7 @@ export function parseStructural(source: string): StructuralParseResult {
         if (owner?.kind === 'class') { member(ensureClass(owner.id), line); continue; }
         const ns = /^namespace\s+([A-Za-z_][A-Za-z0-9_.-]*)(?:\s*\[\s*(.*?)\s*\])?$/.exec(line);
         if (ns) {
-          const parentId = namespace(); const id = parentId && !ns[1].startsWith(`${parentId}.`) ? `${parentId}.${ns[1]}` : ns[1];
+          const parentId = namespace(); const id = pending ?? (parentId && !ns[1].startsWith(`${parentId}.`) ? `${parentId}.${ns[1]}` : ns[1]); pending = null;
           if (ids.has(id)) fail(`Duplicate namespace ${id}`); ids.add(id);
           const n: ClassNamespace = { ...card(id, classes.namespaces.length), label: ns[2] ? decodeText(unquote(ns[2])) : ns[1], parentId };
           classes.namespaces.push(n); ref('namespace', id); waiting = { kind: 'namespace', id }; continue;
@@ -162,6 +162,7 @@ export function emitStructural(diagram: StructuralDiagram): StructuralSource {
     const emitNamespace = (parentId: string | null, pad: string) => {
       for (const ns of diagram.namespaces.filter((n) => n.parentId === parentId)) {
         const local = parentId && ns.id.startsWith(`${parentId}.`) ? ns.id.slice(parentId.length + 1) : ns.id;
+        id(ns.id, pad);
         add(`${pad}namespace ${local}${ns.label !== local ? `[${quote(encodeText(ns.label))}]` : ''} {`, 'namespace', ns.id);
         for (const c of diagram.classes.filter((c) => c.namespaceId === ns.id)) emitClass(c, `${pad}  `);
         emitNamespace(ns.id, `${pad}  `); add(`${pad}}`, 'namespace', ns.id); pages(ns, pad);

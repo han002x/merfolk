@@ -84,3 +84,10 @@ const badNamespace: ClassDiagram = { kind: 'class', direction: 'TB', classes: []
 assert.throws(() => decodeStructural(badNamespace), /hierarchy/);
 console.log('PASS: ER/class round-trip, cardinalities, UML endpoints, members, namespaces, metadata and JSON validation');
 dom.window.close();
+
+const namespaceInput: ClassDiagram = { kind:'class', direction:'TB', classes:[], relationships:[],notes:[],namespaces:[{id:'root',label:'Root',position:{x:0,y:0},collapsed:false,parentId:null},{id:'opaque_child',label:'Child',position:{x:20,y:40},collapsed:false,parentId:'root',pageIds:['p']}]};
+const namespaceRoundtrip = parse(emitStructural(namespaceInput).text);
+assert.equal(namespaceRoundtrip.kind, 'class');
+if (namespaceRoundtrip.kind === 'class') assert.deepEqual(namespaceRoundtrip.namespaces.map((n) => [n.id,n.parentId,n.pageIds]), [['root',null,undefined],['opaque_child','root',['p']]]);
+assert.deepEqual(decodeStructural(namespaceInput), namespaceInput);
+await mermaid.parse(emitStructural(namespaceInput).text);
