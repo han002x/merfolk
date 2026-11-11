@@ -28,6 +28,13 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   animated **join preview** while you drag a new edge — the hovered node pulses
   as the drop target and handles enlarge. All motion respects
   `prefers-reduced-motion`.
+- **Sequenced flow** — **P** plays a pulse along the connections in order: start
+  nodes (no incoming edge) first, branches together, each node lighting as the
+  pulse lands. `,` / `.` step back and forward, and the speed button cycles
+  ½× / 1× / 2×. Select a connection and set its **Flow step** to override the
+  order (saved in `.merfolk.json`, not in Mermaid). Folded cards take the pulse
+  on their crease edges. **Export GIF** records one loop of a running or
+  stepped sequence.
 - **Shapes** — rectangle, rounded, diamond and circle on the toolbar; stadium,
   subroutine, cylinder, double circle, hexagon, parallelograms, trapezoids and
   flag in the **S** picker. Each maps to Mermaid's classic bracket syntax, so
@@ -72,6 +79,8 @@ simple architecture, simple design, simple implementation, no filler text.
 | `M` | Toggle Mermaid panel |
 | `F` | Fold / unfold the selected group (or the sheet a selected node sits on) |
 | `[` / `]` | Fold / unfold one level |
+| `P` | Play / pause the flow |
+| `,` / `.` | Step the flow back / forward |
 | `⌫` / `Del` | Delete selected node(s) |
 | `Ctrl/⌘V` | Paste an image (screenshot, copied web image, image URL) as an image node at the pointer |
 | `Ctrl/⌘C` | Copy the selected image node (pastes back with its size and label; other apps get the picture) |
@@ -97,6 +106,8 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 | `src/store.ts` | Zustand store + mutations; `hiddenNodeIds()` derives what a collapse hides |
 | `src/mermaid/io.ts` | `fromMermaid` / `toMermaid` — pragmatic flowchart parser + emitter (subgraphs ↔ groups) |
 | `src/fold.ts` | Pure fold logic: hidden set, edge creases, fold levels, sheet geometry |
+| `src/flow.ts` | Pure flow schedule: which step each visible connection plays in |
+| `src/flowPlayer.ts` | Flow clock (`--mf-flow-t`), play / pause / step / speed |
 | `src/foldMotion.ts` | Fold / unfold choreography; commits one undo step per fold |
 | `src/layout.ts` | Dagre auto-layout over the visible graph; unfolded groups are clusters so sheets don't overlap |
 | `src/theme.ts` | Theme store: OS default, `localStorage` persistence, `<html data-theme>` flip |

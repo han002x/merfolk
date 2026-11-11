@@ -114,6 +114,8 @@ export interface DiagramEdge {
   source: string;
   target: string;
   label?: string;
+  /** 1-based step in the flow sequence; missing => follows the graph */
+  order?: number;
   /** optional per-edge visual overrides */
   style?: ElementStyle;
 }

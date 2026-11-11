@@ -1874,3 +1874,41 @@ body,
   font-weight: 500;
 }
 .mf-tree-empty { color: var(--mf-muted); font-size: 13px; padding: 10px; }
+
+/* ---- sequenced flow ----
+   The player writes one clock, --mf-flow-t (in steps), on <html>. An edge
+   draws its accent trace as the clock passes its step; a node glows once the
+   clock reaches it. Below zero nothing shows. No motion of its own, so it
+   follows the player (which hops step to step under reduced motion). */
+.mf-flow-trace,
+.mf-flow-arrow {
+  fill: none;
+  stroke: var(--mf-accent);
+  stroke-linecap: butt;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px var(--mf-glow));
+}
+.mf-flow-trace {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: calc(1 - clamp(0, var(--mf-flow-t, -1) - var(--mf-flow-s), 1));
+}
+.mf-flow-arrow {
+  stroke-linecap: round;
+  opacity: clamp(0, (var(--mf-flow-t, -1) - var(--mf-flow-s) - 0.85) * 8, 1);
+}
+.mf-flow-node {
+  --mf-flow-p: clamp(0, var(--mf-flow-t, -1) - var(--mf-flow-at), 1);
+  filter: drop-shadow(
+    0 0 calc(var(--mf-flow-p) * 7px)
+      color-mix(in srgb, var(--mf-accent) calc(var(--mf-flow-p) * 100%), transparent)
+  );
+}
+.mf-tool:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.mf-speed {
+  min-width: 1.6em;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}

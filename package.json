@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/rough.ts && node --experimental-strip-types scripts/mermaid-compat.ts",
+    "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/flow.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/rough.ts && node --experimental-strip-types scripts/mermaid-compat.ts",
     "icons": "node --experimental-strip-types scripts/icons.ts",
     "preview": "vite preview"
   },
