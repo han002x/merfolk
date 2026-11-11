@@ -21,7 +21,7 @@ function measure(editor: Editor): Geometry | null {
   if (!table) return null;
   const dom = editor.view.nodeDOM(table.pos);
   const element = dom instanceof HTMLTableElement ? dom : dom instanceof Element ? dom.querySelector('table') : null;
-  const root = editor.view.dom.closest('.wk-rich-editor');
+  const root = editor.view.dom.closest('.wk-page-content') ?? editor.view.dom.closest('.wk-rich-editor');
   if (!element || !root) return null;
   const rect = element.getBoundingClientRect();
   const bounds = root.getBoundingClientRect();

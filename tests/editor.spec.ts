@@ -232,3 +232,23 @@ test('narrow table menus stay visible through horizontal scroll', async ({ page 
   expect(toolbar && toolbar.x >= 0 && toolbar.x + toolbar.width <= 375).toBeTruthy();
   await page.screenshot({ path: '/tmp/merfolk-confluence-narrow.png' });
 });
+
+test('page links are managed from the node menu and the dock title menu', async ({ page }) => {
+  await seed(page);
+  await page.getByRole('button', { name: 'Linked to API', exact: true }).click();
+  await page.getByRole('button', { name: 'Unlink from API', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Link to node', exact: true })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'API', exact: true }).click();
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Linked to API', exact: true })).toBeVisible();
+
+  await page.goto('/#/node/a');
+  await page.getByRole('button', { name: 'Open page', exact: true }).click();
+  await page.getByRole('button', { name: 'Pages on this node', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Other', exact: true }).click();
+  await expect(page.getByLabel('Page title')).toHaveValue('Other');
+  await page.getByRole('button', { name: 'Pages on this node', exact: true }).click();
+  await expect(page.getByRole('menuitemradio')).toHaveCount(2);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Pages on this node', exact: true })).toBeFocused();
+});

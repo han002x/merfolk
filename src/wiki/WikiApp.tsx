@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDiagram } from '../store';
 import { restore, startAutosave, startSync } from '../persist';
-import { toggleTheme } from '../theme';
+import { toggleTheme, useTheme } from '../theme';
 import { backlinks, linkableNodes, nodesOfPage, pathTo } from '../pages';
 import { openNode, pageHref } from '../route';
-import Document from './Document';
+import { Icon } from '../components/Icon';
+import Document, { ModeSwitch, type PageMode } from './Document';
+import Menu from './Menu';
 import Navigation from './Navigation';
 import './wiki.css';
 
@@ -22,6 +24,13 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
   const pageNodes = page ? nodesOfPage(nodes, page.id) : [];
   const node = pageNodes.find((n) => n.id === nodeId) ?? pageNodes[0];
   const linked = page ? backlinks(page, nodes, pages) : [];
+  const linkable = page ? linkableNodes(nodes, page.id) : [];
+  const theme = useTheme();
+  const [mode, setMode] = useState<PageMode>('edit');
+  // the narrow-screen index closes itself once a page is chosen
+  const [index, setIndex] = useState<{ at: string | null } | null>(null);
+  const indexOpen = index !== null && index.at === pageId;
+  const where = (id: string) => pathTo(nodes, id).map((n) => n.label || 'Untitled').join(' › ');
 
   useEffect(() => {
     document.title = page ? `${page.title || 'Untitled'} · merfolk` : 'Wiki · merfolk';
@@ -50,86 +59,82 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
   };
 
   return (
-    <div className="wk">
+    <div className={`wk${indexOpen ? ' nav-open' : ''}`}>
       <aside className="wk-index">
         <div className="wk-index-head">
           <a className="wk-brand" href="#/wiki">Wiki</a>
-          <button className="wk-btn" onClick={create} title="New page" aria-label="New page">+</button>
+          <button className="wk-icon" onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />
+          </button>
+          <button className="wk-icon" onClick={create} title="New page" aria-label="New page">
+            <Icon name="plus" size={15} />
+          </button>
         </div>
         <Navigation nodes={nodes} pages={pages} pageId={pageId} nodeId={node?.id} />
-        <button className="wk-btn wk-theme" onClick={toggleTheme} title="Toggle theme">◐</button>
       </aside>
+      <button className="wk-scrim" aria-label="Close pages" onClick={() => setIndex(null)} />
 
-      {page ? (
-        <main className="wk-main">
-          <header className="wk-head">
-            <div className="wk-crumbs">
-              {node &&
-                pathTo(nodes, node.id)
-                  .slice(0, -1)
-                  .map((n) => (
-                    <button key={n.id} className="wk-crumb" onClick={() => openNode(n.id)}>
-                      {n.label || 'Group'}
-                    </button>
-                  ))}
-            </div>
-            <div className="wk-title-row">
-              <input
-                className="wk-title"
-                aria-label="Page title"
-                value={page.title}
-                placeholder="Untitled"
-                onChange={(e) => useDiagram.getState().updatePage(page.id, { title: e.target.value })}
-              />
-              {node ? (
-                <button className="wk-btn" onClick={() => openNode(node.id)} title="Show on canvas">
-                  Canvas
-                </button>
-              ) : null}
-              <button className="wk-btn" onClick={remove} title="Delete page">
-                Delete
+      <main className="wk-main">
+        <header className="wk-bar">
+          <button className="wk-btn wk-nav-toggle" aria-expanded={indexOpen}
+            onClick={() => setIndex(indexOpen ? null : { at: pageId })}>
+            Pages
+          </button>
+          <nav className="wk-crumbs" aria-label="Linked nodes">
+            {page && node && pathTo(nodes, node.id).slice(0, -1).map((n) => (
+              <button key={n.id} className="wk-crumb" title="Show on canvas" onClick={() => openNode(n.id)}>
+                {n.label || 'Group'}
               </button>
-            </div>
-            <div className="wk-page-nodes" aria-label="Page nodes">
-              {node ? (
-                <select className="wk-btn" aria-label="Linked nodes" value={node.id}
-                  onChange={(e) => { window.location.hash = pageHref(page.id, e.target.value); }}>
-                  {pageNodes.map((n) => <option key={n.id} value={n.id}>
-                    {pathTo(nodes, n.id).map((p) => p.label || 'Untitled').join(' › ')}
-                  </option>)}
-                </select>
-              ) : <span className="wk-empty-links">Not linked to a node</span>}
-              <select
-                className="wk-btn"
-                value=""
-                aria-label="Link to node"
-                disabled={linkableNodes(nodes, page.id).length === 0}
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  useDiagram.getState().linkPage(page.id, e.target.value);
-                  window.location.hash = pageHref(page.id, e.target.value);
-                }}
-              >
-                <option value="">Link to node</option>
-                {linkableNodes(nodes, page.id).map((n) => (
-                  <option key={n.id} value={n.id}>
-                    {pathTo(nodes, n.id).map((p) => p.label || 'Group').join(' › ')}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {pageNodes.length > 0 && <div className="wk-node-links">
-              {pageNodes.map((n) => <span key={n.id} className="wk-chip">
-                <a href={pageHref(page.id, n.id)}>{n.label || 'Untitled'}</a>
-                <button aria-label={`Unlink from ${n.label || 'Untitled'}`} title="Unlink from node"
+            ))}
+            {page && <Menu className="wk-crumb" label={node ? `Linked to ${node.label || 'Untitled'}` : 'Link to node'}
+              button={<>
+                {node ? node.label || 'Untitled' : 'Link to node'}
+                {pageNodes.length > 1 && <small>+{pageNodes.length - 1}</small>}
+                <span aria-hidden="true">⌄</span>
+              </>}>
+              {pageNodes.map((n) => <div key={n.id} className="wk-menu-row">
+                <button role="menuitemradio" aria-checked={n.id === node?.id}
+                  onClick={() => { window.location.hash = pageHref(page.id, n.id); }}>
+                  <span>{where(n.id)}</span>
+                </button>
+                <button aria-label={`Unlink from ${n.label || 'Untitled'}`} title="Unlink"
                   onClick={() => useDiagram.getState().unlinkPage(page.id, n.id)}>×</button>
-              </span>)}
-            </div>}
-          </header>
+              </div>)}
+              {pageNodes.length > 0 && linkable.length > 0 && <>
+                <hr />
+                <div className="wk-menu-label">Link to node</div>
+              </>}
+              {linkable.map((n) => <button key={n.id} role="menuitem" onClick={() => {
+                useDiagram.getState().linkPage(page.id, n.id);
+                window.location.hash = pageHref(page.id, n.id);
+              }}>
+                <span>{where(n.id)}</span>
+              </button>)}
+              {pageNodes.length + linkable.length === 0 && <div className="wk-menu-label">No nodes on the canvas</div>}
+            </Menu>}
+          </nav>
+          {page && <>
+            <ModeSwitch value={page.body} mode={mode} onMode={setMode} />
+            <Menu className="wk-icon" align="end" label="Page actions" button={<Icon name="more" size={16} />}>
+              {node && <button role="menuitem" onClick={() => openNode(node.id)}>Show on canvas</button>}
+              <button role="menuitem" className="danger" onClick={remove}>Delete page</button>
+            </Menu>
+          </>}
+        </header>
+
+        {page ? (
           <div className="wk-page-content">
+            <input
+              className="wk-title"
+              aria-label="Page title"
+              value={page.title}
+              placeholder="Untitled"
+              onChange={(e) => useDiagram.getState().updatePage(page.id, { title: e.target.value })}
+            />
             <Document
               key={page.id}
               value={page.body}
+              mode={mode}
               nodeId={node?.id}
               onPage={toPage}
               targets={targets}
@@ -138,21 +143,37 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
                 if (cur && cur.body !== body) useDiagram.getState().updatePage(page.id, { body });
               }}
             />
-
-              {linked.length > 0 && (
-                <footer className="wk-back">
-                  {linked.map((p) => (
-                    <a key={p.id} href={pageHref(p.id)} className="wk-chip">
-                      {p.title || 'Untitled'}
-                    </a>
-                  ))}
-                </footer>
-              )}
+            {linked.length > 0 && (
+              <footer className="wk-back">
+                <h2>Linked from</h2>
+                {linked.map((p) => (
+                  <a key={p.id} href={pageHref(p.id)}>{p.title || 'Untitled'}</a>
+                ))}
+              </footer>
+            )}
           </div>
-        </main>
-      ) : (
-        <main className="wk-main wk-empty" />
-      )}
+        ) : (
+          <div className="wk-page-content">
+            <div className="wk-list">
+              <div className="wk-list-head">
+                <h1>Pages</h1>
+                <button className="wk-btn" onClick={create}>New page</button>
+              </div>
+              <ul>
+                {[...pages].sort((a, b) => b.updatedAt - a.updatedAt).map((p) => {
+                  const home = nodesOfPage(nodes, p.id)[0];
+                  return <li key={p.id}>
+                    <a href={pageHref(p.id, home?.id)}>
+                      <span>{p.title || 'Untitled'}</span>
+                      {home && <span>{where(home.id)}</span>}
+                    </a>
+                  </li>;
+                })}
+              </ul>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

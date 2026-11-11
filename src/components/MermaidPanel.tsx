@@ -481,7 +481,7 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
 
         {err && <div className="mf-err">{err}</div>}
         <div className="mf-panel-actions">
-          <button className="mf-primary" onClick={tidy}>
+          <button onClick={tidy}>
             Tidy
           </button>
           <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>

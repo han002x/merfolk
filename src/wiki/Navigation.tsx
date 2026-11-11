@@ -4,11 +4,14 @@ import { orphanPages, pathTo } from '../pages';
 import { pageHref } from '../route';
 import type { DiagramNode, Page } from '../types';
 
-export default function Navigation({ nodes, pages, pageId, nodeId }: {
+export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty = 'No pages yet' }: {
   nodes: DiagramNode[];
   pages: Page[];
   pageId: string | null;
   nodeId: string | undefined;
+  /** open a page here instead of following its wiki link */
+  onPage?: (pageId: string, nodeId?: string) => void;
+  empty?: string;
 }) {
   const [branches, setBranches] = useState(() => ({ nodes, pageId, nodeId, closed: new Set<string>() }));
   if (branches.nodes !== nodes || branches.pageId !== pageId || branches.nodeId !== nodeId) {
@@ -39,12 +42,24 @@ export default function Navigation({ nodes, pages, pageId, nodeId }: {
     };
   }, [nodes, pages]);
 
+  const toggle = (id: string) => setBranches((previous) => {
+    const closed = new Set(previous.closed);
+    if (closed.has(id)) closed.delete(id);
+    else closed.add(id);
+    return { ...previous, closed };
+  });
+
   const pageLink = (page: Page, context?: string) => (
     <a
       href={pageHref(page.id, context)}
       className={`wk-item${page.id === pageId && context === nodeId ? ' on' : ''}`}
       aria-current={page.id === pageId && context === nodeId ? 'page' : undefined}
       title={page.title || 'Untitled'}
+      onClick={onPage && ((event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        onPage(page.id, context);
+      })}
     >
       <Icon name="page" size={14} />
       <span>{page.title || 'Untitled'}</span>
@@ -55,28 +70,28 @@ export default function Navigation({ nodes, pages, pageId, nodeId }: {
     <ul className="wk-tree-list">
       {(children.get(parentId) ?? []).map((node) => {
         const expanded = !branches.closed.has(node.id);
+        const name = node.label || node.id;
+        const own = (node.pageIds ?? []).flatMap((id) => pagesById.get(id) ?? []);
+        // a node whose only page carries its name is one row, not two
+        const solo = own.length === 1 && own[0].title === node.label ? own[0] : null;
+        const nested = children.has(node.id);
+        const chevron = <span className={`wk-tree-chevron${expanded ? ' expanded' : ''}`} aria-hidden="true">›</span>;
+        const state = { 'aria-expanded': expanded, 'aria-label': `${expanded ? 'Collapse' : 'Expand'} ${name}` };
         return (
           <li key={node.id}>
-            <button className="wk-tree-node" aria-expanded={expanded}
-              aria-label={`${expanded ? 'Collapse' : 'Expand'} ${node.label || node.id}`}
-              title={node.label || node.id}
-              onClick={() => setBranches((previous) => {
-                const closed = new Set(previous.closed);
-                if (closed.has(node.id)) closed.delete(node.id);
-                else closed.add(node.id);
-                return { ...previous, closed };
-              })}>
-              <span className={`wk-tree-chevron${expanded ? ' expanded' : ''}`} aria-hidden="true">›</span>
-              <Icon name={children.has(node.id) ? 'group' : 'rect'} size={14} />
-              <span className="wk-tree-label">{node.label || node.id}</span>
-            </button>
-            {expanded && <div className="wk-tree-children">
-              <ul className="wk-tree-list">
-                {(node.pageIds ?? []).map((id) => {
-                  const page = pagesById.get(id);
-                  return page ? <li key={id}>{pageLink(page, node.id)}</li> : null;
-                })}
-              </ul>
+            {solo ? <div className="wk-tree-solo">
+              {nested ? <button className="wk-tree-toggle" {...state} onClick={() => toggle(node.id)}>{chevron}</button>
+                : <span className="wk-tree-toggle" />}
+              {pageLink(solo, node.id)}
+            </div> : <button className="wk-tree-node" {...state} title={name} onClick={() => toggle(node.id)}>
+              {chevron}
+              <Icon name={nested ? 'group' : 'rect'} size={14} />
+              <span className="wk-tree-label">{name}</span>
+            </button>}
+            {expanded && (nested || !solo) && <div className="wk-tree-children">
+              {!solo && <ul className="wk-tree-list">
+                {own.map((page) => <li key={page.id}>{pageLink(page, node.id)}</li>)}
+              </ul>}
               {renderNodes(node.id)}
             </div>}
           </li>
@@ -87,11 +102,10 @@ export default function Navigation({ nodes, pages, pageId, nodeId }: {
 
   return (
     <nav className="wk-navigation" aria-label="Wiki pages">
-      <div className="wk-index-heading">Pages <span>{pages.length}</span></div>
-      {pages.length === 0 && <p className="wk-index-empty">No pages yet</p>}
+      {pages.length === 0 && <p className="wk-index-empty">{empty}</p>}
       {renderNodes(null)}
       {unlinked.length > 0 && <section className="wk-unlinked" aria-label="Unlinked pages">
-        <h2 className="wk-index-heading">Unlinked <span>{unlinked.length}</span></h2>
+        <h2 className="wk-index-heading">Unlinked</h2>
         <ul className="wk-tree-list">
           {unlinked.map((page) => <li key={page.id}>{pageLink(page)}</li>)}
         </ul>
