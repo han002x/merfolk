@@ -3,6 +3,7 @@ const test = base.extend<{ errors: string[] }>({
   errors: [async ({ page }, use) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
+    page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
     await use(errors);
     expect(errors).toEqual([]);
   }, { auto: true }],

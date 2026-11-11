@@ -51,7 +51,7 @@ export function SequenceDrawing({ diagram, selected, onSelect, onParticipant, on
     element.addEventListener('pointerup', finish);
   };
   const participant = (p: Participant, index: number) => <g key={p.id} data-sequence-participant={p.id} role="button" tabIndex={0} aria-label={`Participant ${p.label}`} className={`sq-participant nopan ${selected === p.id ? 'is-selected' : ''}`} onClick={() => onSelect?.(p.id)} onDoubleClick={() => onParticipant?.(p.id)} onKeyDown={(e) => { if (e.key === 'Enter') onParticipant?.(p.id); }} onPointerDown={(e) => drag(e, p.id, true)}>
-    <title>{p.label}{p.pageIds?.length ? ' · Open page' : ''}</title>
+    <title>{`${p.label}${p.pageIds?.length ? ' · Open page' : ''}`}</title>
     {p.kind === 'actor' ? <g transform={`translate(${participantX(index)},26)`}><circle r="9" /><path d="M0 9V35 M-17 21H17 M0 35L-15 48 M0 35L15 48" /><Label text={p.label} x={0} y={69} max={20} /></g> : <><rect x={participantX(index) - 72} y="26" width="144" height="54" rx="5" /><Label text={p.label} x={participantX(index)} y={50} max={18} /></>}
   </g>;
   return <svg xmlns="http://www.w3.org/2000/svg" className={`sq-drawing ${interactive ? 'is-interactive' : ''}`} width={geometry.width} height={geometry.height} viewBox={`0 0 ${geometry.width} ${geometry.height}`} role="img" aria-label="Sequence diagram">
@@ -73,7 +73,7 @@ export function SequenceDrawing({ diagram, selected, onSelect, onParticipant, on
         <text x={138 + row.depth * 8} y={row.y + 3}>{row.label ? `[${row.label}]` : ''}{e.collapsed ? `  · ${countEvents(e.branches.flatMap((b) => b.events))} events` : ''}</text>
         {row.branch === 0 && onFold && <g role="button" tabIndex={0} aria-label={`${e.collapsed ? 'Unfold' : 'Fold'} ${e.operator}`} onClick={(event) => { event.stopPropagation(); onFold(e.id); }} onKeyDown={(event) => { if (event.key === 'Enter') onFold(e.id); }}><rect className="sq-fold-hit" x={geometry.width - 72} y={row.y - 16} width="30" height="28" /><text x={geometry.width - 62} y={row.y + 3}>{e.collapsed ? '+' : '−'}</text></g>}
       </g>;
-      if (e.kind === 'activation') return interactive ? <g key={row.id} className={cls} onClick={() => onSelect?.(e.id)}><circle cx={x(e.participant)} cy={row.y + 20} r="5" className="sq-activation-handle" /><title>{e.active ? 'Activate' : 'Deactivate'} {e.participant}</title></g> : null;
+      if (e.kind === 'activation') return interactive ? <g key={row.id} className={cls} onClick={() => onSelect?.(e.id)}><circle cx={x(e.participant)} cy={row.y + 20} r="5" className="sq-activation-handle" /><title>{`${e.active ? 'Activate' : 'Deactivate'} ${e.participant}`}</title></g> : null;
       if (e.kind === 'note') {
         const positions = e.participants.map(x);
         let center = (Math.min(...positions) + Math.max(...positions)) / 2;
