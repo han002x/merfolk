@@ -4,6 +4,7 @@ import { toMermaidWithMap } from '../mermaid/io';
 import { Icon } from './Icon';
 import { TreePanel } from './TreePanel';
 import { useDock, type View } from '../dock';
+import { usePageBase } from '../pageBase';
 
 const PagePanel = lazy(() => import('./PagePanel'));
 
@@ -38,6 +39,8 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
 
+  const base = usePageBase((s) => s.base);
+  const setBase = usePageBase((s) => s.set);
   const tab = useDock((s) => s.view);
   const setTab = useDock((s) => s.setView);
   const [text, setText] = useState('');
@@ -78,7 +81,8 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
       setText(t);
       setErr(null);
     }
-  }, [nodes, edges, edited]);
+    // `base` is read by toMermaidWithMap through io.ts; listing it re-derives the text
+  }, [nodes, edges, edited, base]);
 
   // never leave a preview caret/ghost behind when the panel closes
   useEffect(() => () => {
@@ -479,6 +483,14 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
             Tidy
           </button>
           <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+          <input
+            className="mf-base"
+            value={base}
+            onChange={(e) => setBase(e.target.value)}
+            placeholder="Base URL"
+            aria-label="Base URL for page links"
+            spellCheck={false}
+          />
         </div>
       </div>
     </aside>

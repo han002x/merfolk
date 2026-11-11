@@ -8,16 +8,16 @@ import type {
   NodeShape,
   Page,
 } from './types';
-import { fromMermaid, mergeDiagram, parseMermaid, toMermaid } from './mermaid/io';
-import { layout, type Direction } from './layout';
-import { createPageFor, mergePages, newPageId, retitle } from './pages';
+import { fromMermaid, mergeDiagram, parseMermaid, toMermaid } from './mermaid/io.ts';
+import { layout, type Direction } from './layout.ts';
+import { createPageFor, mergePages, newPageId, normalizeDiagram } from './pages.ts';
 import {
   childrenOf,
   descendants,
   groupOrigin,
   groupPlan,
   hiddenIds as computeHidden,
-} from './fold';
+} from './fold.ts';
 
 let idSeq = 0;
 const nextId = (prefix: string) => `${prefix}${Date.now().toString(36)}${idSeq++}`;
@@ -49,6 +49,7 @@ function unchanged(a: Diagram, b: Diagram): boolean {
       x.label !== y.label ||
       x.shape !== y.shape ||
       x.icon !== y.icon ||
+      JSON.stringify(x.pageIds ?? []) !== JSON.stringify(y.pageIds ?? []) ||
       imageKey(x.image) !== imageKey(y.image) ||
       x.parentId !== y.parentId ||
       x.position.x !== y.position.x ||
@@ -162,14 +163,17 @@ interface State {
   setSelection: (nodeIds: string[], edgeIds: string[]) => void;
 
   // wiki
-  /** the node's page id, creating the page on first call */
-  openPage: (nodeId: string) => string | null;
+  /** Open a linked page or the default, creating missing content on first call. */
+  openPage: (nodeId: string, pageId?: string) => string | null;
+  createPageForNode: (nodeId: string) => string | null;
   /** a free-standing page (no node yet) */
   createPage: (title: string) => string;
   /** drop a page and unlink any node that pointed at it */
   deletePage: (id: string) => void;
-  /** attach a (usually orphaned) page to a node that has none */
+  /** Attach an existing page without changing its other links. */
   linkPage: (pageId: string, nodeId: string) => void;
+  unlinkPage: (pageId: string, nodeId: string) => void;
+  makeDefaultPage: (pageId: string, nodeId: string) => void;
   updatePage: (id: string, patch: Partial<Pick<Page, 'title' | 'body'>>) => void;
 
   // mutations
@@ -395,26 +399,38 @@ export const useDiagram = create<State>((set, get) => {
   updateLabel: (id, label) =>
     set((s) => {
       const nodes = s.nodes.map((n) => (n.id === id ? { ...n, label } : n));
-      const node = nodes.find((n) => n.id === id);
       return {
         ...snapshot(),
         nodes,
-        pages: node ? retitle(s.pages, node) : s.pages,
       };
     }),
 
-  openPage: (nodeId) => {
+  openPage: (nodeId, pageId) => {
     const { nodes, pages } = get();
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return null;
-    const page = createPageFor(node, pages);
+    if (pageId && !node.pageIds?.includes(pageId)) return null;
+    const target = pageId ? { ...node, pageIds: [pageId] } : node;
+    const page = createPageFor(target, pages);
     if (page) {
       set({
         pages: [...pages, page],
-        nodes: nodes.map((n) => (n.id === nodeId ? { ...n, pageId: page.id } : n)),
+        nodes: nodes.map((n) => (n.id === nodeId && !n.pageIds?.length ? { ...n, pageIds: [page.id] } : n)),
       });
     }
-    return page?.id ?? node.pageId ?? null;
+    return page?.id ?? target.pageIds?.[0] ?? null;
+  },
+
+  createPageForNode: (nodeId) => {
+    const { nodes, pages } = get();
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return null;
+    const id = newPageId(pages);
+    set({
+      pages: [...pages, { id, title: node.label, body: '', updatedAt: Date.now() }],
+      nodes: nodes.map((n) => n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), id] } : n),
+    });
+    return id;
   },
 
   createPage: (title) => {
@@ -426,19 +442,27 @@ export const useDiagram = create<State>((set, get) => {
   deletePage: (id) =>
     set((s) => ({
       pages: s.pages.filter((p) => p.id !== id),
-      nodes: s.nodes.map((n) => {
-        if (n.pageId !== id) return n;
-        const { pageId: _gone, ...rest } = n;
-        return rest;
-      }),
+      nodes: s.nodes.map((n) => n.pageIds?.includes(id)
+        ? { ...n, pageIds: n.pageIds.filter((p) => p !== id) } : n),
+      // Undo can restore deleted nodes, but must not revive links to deleted pages.
+      history: s.history.map((h) => ({ ...h, nodes: h.nodes.map((n) => n.pageIds?.includes(id)
+        ? { ...n, pageIds: n.pageIds.filter((p) => p !== id) } : n) })),
     })),
 
   linkPage: (pageId, nodeId) =>
     set((s) => {
       const node = s.nodes.find((n) => n.id === nodeId);
-      if (!node || node.pageId || !s.pages.some((p) => p.id === pageId)) return s;
-      return { nodes: s.nodes.map((n) => (n.id === nodeId ? { ...n, pageId } : n)) };
+      if (!node || node.pageIds?.includes(pageId) || !s.pages.some((p) => p.id === pageId)) return s;
+      return { nodes: s.nodes.map((n) => (n.id === nodeId ? { ...n, pageIds: [...(n.pageIds ?? []), pageId] } : n)) };
     }),
+
+  unlinkPage: (pageId, nodeId) =>
+    set((s) => ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
+      ? { ...n, pageIds: n.pageIds.filter((id) => id !== pageId) } : n) })),
+
+  makeDefaultPage: (pageId, nodeId) =>
+    set((s) => ({ nodes: s.nodes.map((n) => n.id === nodeId && n.pageIds?.includes(pageId)
+      ? { ...n, pageIds: [pageId, ...n.pageIds.filter((id) => id !== pageId)] } : n) })),
 
   updatePage: (id, patch) =>
     set((s) => ({
@@ -709,17 +733,20 @@ export const useDiagram = create<State>((set, get) => {
 
   exportMermaid: () => toMermaid({ nodes: get().nodes, edges: get().edges }),
 
-  applyRemote: (d) =>
+  applyRemote: (incoming) => {
+    const d = normalizeDiagram(incoming);
     set((s) => {
       const pages = mergePages(s.pages, d.pages ?? []);
       const same = JSON.stringify([s.nodes, s.edges]) === JSON.stringify([d.nodes, d.edges]);
       if (same && pages === s.pages) return s;
       return same ? { pages } : { nodes: d.nodes, edges: d.edges, pages };
-    }),
+    });
+  },
 
   // Loading a whole new document (startup restore, file import, clear) starts
   // a fresh editing session — reset undo history rather than making it undoable.
-  load: (d) => {
+  load: (incoming) => {
+    const d = normalizeDiagram(incoming);
     lastMoveId = null;
     lastStyleKey = null;
     set({

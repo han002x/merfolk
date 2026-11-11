@@ -710,6 +710,12 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     if (id) showPage(id);
   }, []);
 
+  // E: flip the page tab between Markdown and Preview
+  const toggleMode = useCallback(() => {
+    const { view, mode, setMode } = useDock.getState();
+    if (view === 'page') setMode(mode === 'edit' ? 'read' : 'edit');
+  }, []);
+
   // #/node/<id> (from the wiki): unfold what hides the node, select it, frame it
   useEffect(() => {
     const goto = () => {
@@ -759,6 +765,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 't', run: () => toggleTheme() },
         { key: 'f', run: foldSelection },
         { key: 'w', run: openSelectedPage },
+        { key: 'e', run: toggleMode },
         { key: '[', run: () => foldLevel('fold') },
         { key: ']', run: () => foldLevel('unfold') },
         { key: 'p', run: togglePlay },
@@ -771,7 +778,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'backspace', run: deleteSelected },
         { key: 'delete', run: deleteSelected },
       ],
-      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection, openSelectedPage, togglePlay, stepFlow],
+      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection, openSelectedPage, toggleMode, togglePlay, stepFlow],
     ),
   );
 

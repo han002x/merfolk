@@ -2,9 +2,9 @@ import { useDiagram } from '../store';
 import { showPage } from '../dock';
 import { Icon } from './Icon';
 
-/** Drill down: open the node's wiki page in its own window, creating it first. */
+/** Open the node's default page in the side panel. */
 export function PageButton({ nodeId }: { nodeId: string }) {
-  const has = useDiagram((s) => !!s.nodes.find((n) => n.id === nodeId)?.pageId);
+  const has = useDiagram((s) => !!s.nodes.find((n) => n.id === nodeId)?.pageIds?.length);
   return (
     <button
       className={`mf-page nodrag nopan${has ? ' has-page' : ''}`}

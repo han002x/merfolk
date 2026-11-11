@@ -1966,3 +1966,18 @@ body,
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+
+.mf-base {
+  flex: 1;
+  min-width: 0;
+  background: var(--mf-input);
+  border: 1px solid var(--mf-border);
+  border-radius: 7px;
+  color: var(--mf-text);
+  font: 12px var(--mf-mono);
+  padding: 4px 8px;
+}
+.mf-base:focus {
+  outline: 0;
+  border-color: var(--mf-accent);
+}

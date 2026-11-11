@@ -10,7 +10,7 @@ export default function Root() {
   if (route.kind !== 'wiki') return <App />
   return (
     <Suspense fallback={null}>
-      <WikiApp pageId={route.id} />
+      <WikiApp pageId={route.id} nodeId={route.nodeId} />
     </Suspense>
   )
 }

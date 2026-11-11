@@ -8,17 +8,21 @@ import { useSyncExternalStore } from 'react';
 export type Route =
   | { kind: 'canvas' }
   | { kind: 'node'; id: string }
-  | { kind: 'wiki'; id: string | null };
+  | { kind: 'wiki'; id: string | null; nodeId?: string };
 
 export function parseRoute(hash: string): Route {
   const [, kind, id] = hash.match(/^#\/(wiki|node)(?:\/([^/?]+))?/) ?? [];
   const decoded = id ? decodeURIComponent(id) : null;
-  if (kind === 'wiki') return { kind: 'wiki', id: decoded };
+  if (kind === 'wiki') {
+    const nodeId = new URLSearchParams(hash.split('?')[1]).get('node');
+    return { kind: 'wiki', id: decoded, ...(nodeId && { nodeId }) };
+  }
   if (kind === 'node' && decoded) return { kind: 'node', id: decoded };
   return { kind: 'canvas' };
 }
 
-export const pageHref = (pageId: string) => `#/wiki/${encodeURIComponent(pageId)}`;
+export const pageHref = (pageId: string, nodeId?: string) =>
+  `#/wiki/${encodeURIComponent(pageId)}${nodeId ? `?node=${encodeURIComponent(nodeId)}` : ''}`;
 export const nodeHref = (nodeId: string) => `#/node/${encodeURIComponent(nodeId)}`;
 
 const subscribe = (cb: () => void) => {
@@ -39,8 +43,8 @@ export function nameCanvasWindow() {
 }
 
 /** Open (or reuse) the wiki window at a page. */
-export function openWiki(pageId: string) {
-  window.open(pageHref(pageId), WIKI)?.focus();
+export function openWiki(pageId: string, nodeId?: string) {
+  window.open(pageHref(pageId, nodeId), WIKI)?.focus();
 }
 
 /** Open (or reuse) the canvas window focused on a node. */

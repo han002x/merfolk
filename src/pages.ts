@@ -1,7 +1,29 @@
-// Pure wiki logic: pages hang off nodes by `pageId` and outlive them.
+// Pure wiki logic: pages link to any number of nodes and outlive them.
 // No store or DOM here, so scripts/pages.ts can exercise it directly.
 
 import type { Diagram, DiagramNode, Page } from './types';
+
+/** Validate page references at JSON and Mermaid boundaries. */
+export function parsePageIds(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.every((id: unknown) => typeof id === 'string' && id.length > 0))
+    throw new Error('Page links must be an array of nonempty page IDs');
+  return [...new Set<string>(value)];
+}
+
+/** Read old single-page diagrams without retaining a second source of truth. */
+export function normalizeDiagram(diagram: Diagram): Diagram {
+  return {
+    ...diagram,
+    pages: Array.isArray(diagram.pages) ? diagram.pages : [],
+    nodes: diagram.nodes.map((node) => {
+      const legacy = 'pageId' in node ? node.pageId : undefined;
+      const clean = { ...node };
+      if ('pageId' in clean) delete clean.pageId;
+      if (node.pageIds !== undefined) return { ...clean, pageIds: parsePageIds(node.pageIds) };
+      return typeof legacy === 'string' && legacy ? { ...clean, pageIds: [legacy] } : clean;
+    }),
+  };
+}
 
 export function newPageId(pages: Page[]): string {
   let id: string;
@@ -11,9 +33,9 @@ export function newPageId(pages: Page[]): string {
   return id;
 }
 
-/** The page a node points at, if it exists. */
+/** The default page of a node, if it exists. */
 export function pageOf(node: DiagramNode | undefined, pages: Page[]): Page | undefined {
-  return node?.pageId ? pages.find((p) => p.id === node.pageId) : undefined;
+  return pages.find((p) => p.id === node?.pageIds?.[0]);
 }
 
 /**
@@ -22,22 +44,15 @@ export function pageOf(node: DiagramNode | undefined, pages: Page[]): Page | und
  */
 export function createPageFor(node: DiagramNode, pages: Page[], now = Date.now()): Page | null {
   if (pageOf(node, pages)) return null;
-  // a pageId whose page is gone (e.g. pasted Mermaid) is reused rather than orphaned
-  const id = node.pageId ?? newPageId(pages);
+  // A reference imported from Mermaid may not have page content yet.
+  const id = node.pageIds?.[0] ?? newPageId(pages);
   return { id, title: node.label, body: '', updatedAt: now };
 }
 
 /** Pages no node points at. */
 export function orphanPages(nodes: DiagramNode[], pages: Page[]): Page[] {
-  const used = new Set(nodes.map((n) => n.pageId));
+  const used = new Set(nodes.flatMap((n) => n.pageIds ?? []));
   return pages.filter((p) => !used.has(p.id));
-}
-
-/** Rename the page behind a node (one way: node label -> page title). */
-export function retitle(pages: Page[], node: DiagramNode, now = Date.now()): Page[] {
-  const page = pageOf(node, pages);
-  if (!page || page.title === node.label) return pages;
-  return pages.map((p) => (p === page ? { ...p, title: node.label, updatedAt: now } : p));
 }
 
 /** How long a page only we have counts as "not saved yet" rather than deleted. */
@@ -73,9 +88,9 @@ export function mergePages(local: Page[], remote: Page[], now = Date.now()): Pag
   return changed ? kept : local;
 }
 
-/** Unlinked nodes a page could be re-attached to. */
-export function linkableNodes(nodes: DiagramNode[]): DiagramNode[] {
-  return nodes.filter((n) => !n.pageId);
+/** Nodes not yet linked to this page. */
+export function linkableNodes(nodes: DiagramNode[], pageId: string): DiagramNode[] {
+  return nodes.filter((n) => !n.pageIds?.includes(pageId));
 }
 
 // ---- wikilinks -------------------------------------------------------------
@@ -105,9 +120,9 @@ export function resolveLink(target: string, nodes: DiagramNode[], pages: Page[])
   return linked ? { kind: 'page', page: linked } : { kind: 'node', node };
 }
 
-/** The node a page hangs off, if any. */
-export function nodeOfPage(nodes: DiagramNode[], pageId: string): DiagramNode | undefined {
-  return nodes.find((n) => n.pageId === pageId);
+/** All nodes linked to a page, in diagram order. */
+export function nodesOfPage(nodes: DiagramNode[], pageId: string): DiagramNode[] {
+  return nodes.filter((n) => n.pageIds?.includes(pageId));
 }
 
 /** Pages whose body links to `page` (by title, or by its node's label). */
@@ -118,7 +133,7 @@ export function backlinks(page: Page, nodes: DiagramNode[], pages: Page[]): Page
       extractLinks(other.body).some((t) => {
         const r = resolveLink(t, nodes, pages);
         if (r.kind === 'page') return r.page.id === page.id;
-        return r.kind === 'node' && r.node.pageId === page.id;
+        return r.kind === 'node' && r.node.pageIds?.[0] === page.id;
       }),
   );
 }
@@ -169,7 +184,7 @@ export function embedDiagram(d: Diagram, nodeId: string): Diagram {
   }
   const nodes = d.nodes
     .filter((n) => keep.has(n.id))
-    .map(({ pageId: _drop, ...n }) => ({
+    .map(({ pageIds: _drop, ...n }) => ({
       ...n,
       parentId: n.parentId && keep.has(n.parentId) ? n.parentId : null,
     }));

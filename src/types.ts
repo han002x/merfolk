@@ -100,8 +100,8 @@ export interface DiagramNode {
    * then only picks the tile's corners (round => rounded, circle => circle)
    */
   icon?: string;
-  /** wiki page attached to this node; created on first drill-in */
-  pageId?: string;
+  /** linked wiki pages in order; the first is the default */
+  pageIds?: string[];
   /**
    * Mermaid's `@{ img: ... }` image node. Set, the node shows the picture with
    * its label above (`pos: 't'`) or below (default) it; wins over `icon`

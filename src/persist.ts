@@ -3,19 +3,15 @@
 // promise — nothing is lost on refresh.
 
 import type { Diagram } from './types';
-import { useDiagram } from './store';
+import { useDiagram } from './store.ts';
+import { normalizeDiagram } from './pages.ts';
 
 const KEY = 'merfolk.diagram';
-const VERSION = 1;
+const VERSION = 2;
 
 interface Saved {
   version: number;
   diagram: Diagram;
-}
-
-/** Older saves have no pages; a malformed field counts as none. */
-function withPages(d: Diagram): Diagram {
-  return { ...d, pages: Array.isArray(d.pages) ? d.pages : [] };
 }
 
 export function readSaved(): Diagram | null {
@@ -23,8 +19,8 @@ export function readSaved(): Diagram | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Saved;
-    if (parsed.version !== VERSION || !parsed.diagram) return null;
-    return withPages(parsed.diagram);
+    if (![1, VERSION].includes(parsed.version) || !parsed.diagram) return null;
+    return normalizeDiagram(parsed.diagram);
   } catch {
     return null;
   }
@@ -32,7 +28,7 @@ export function readSaved(): Diagram | null {
 
 export function write(diagram: Diagram) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ version: VERSION, diagram }));
+    localStorage.setItem(KEY, JSON.stringify({ version: VERSION, diagram: normalizeDiagram(diagram) }));
   } catch {
     // storage full or disabled — autosave is best-effort, never fatal
   }
@@ -96,5 +92,5 @@ export async function importFile(file: File): Promise<void> {
   if (!Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) {
     throw new Error('Not a merfolk diagram file');
   }
-  useDiagram.getState().load(withPages(diagram));
+  useDiagram.getState().load(diagram);
 }

@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDiagram } from '../store';
 import { restore, startAutosave, startSync } from '../persist';
 import { toggleTheme } from '../theme';
-import { backlinks, linkableNodes, nodeOfPage, orphanPages, pathTo } from '../pages';
+import { backlinks, linkableNodes, nodesOfPage, orphanPages, pathTo } from '../pages';
 import { openNode, pageHref } from '../route';
 import Editor from './Editor';
 import Preview from './Preview';
 import './wiki.css';
 
-export default function WikiApp({ pageId }: { pageId: string | null }) {
+export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nodeId?: string }) {
   // load the saved diagram before the first paint, then follow the canvas window
   useState(() => restore());
   useEffect(() => {
@@ -19,7 +19,8 @@ export default function WikiApp({ pageId }: { pageId: string | null }) {
   const nodes = useDiagram((s) => s.nodes);
   const pages = useDiagram((s) => s.pages);
   const page = pages.find((p) => p.id === pageId);
-  const node = page ? nodeOfPage(nodes, page.id) : undefined;
+  const pageNodes = page ? nodesOfPage(nodes, page.id) : [];
+  const node = pageNodes.find((n) => n.id === nodeId) ?? pageNodes[0];
   const orphans = useMemo(() => new Set(orphanPages(nodes, pages).map((p) => p.id)), [nodes, pages]);
   const sorted = useMemo(
     () => [...pages].sort((a, b) => a.title.localeCompare(b.title)),
@@ -48,6 +49,11 @@ export default function WikiApp({ pageId }: { pageId: string | null }) {
     window.location.hash = pageHref(useDiagram.getState().createPage(''));
   };
 
+  const toPage = (id: string) => {
+    const context = useDiagram.getState().nodes.find((n) => n.id === node?.id && n.pageIds?.includes(id));
+    window.location.hash = pageHref(id, context?.id);
+  };
+
   return (
     <div className="wk">
       <aside className="wk-index">
@@ -59,7 +65,7 @@ export default function WikiApp({ pageId }: { pageId: string | null }) {
           {sorted.map((p) => (
             <a
               key={p.id}
-              href={pageHref(p.id)}
+              href={pageHref(p.id, node?.pageIds?.includes(p.id) ? node.id : undefined)}
               className={`wk-item${p.id === pageId ? ' on' : ''}${orphans.has(p.id) ? ' orphan' : ''}`}
             >
               {p.title || 'Untitled'}
@@ -85,6 +91,7 @@ export default function WikiApp({ pageId }: { pageId: string | null }) {
             <div className="wk-title-row">
               <input
                 className="wk-title"
+                aria-label="Page title"
                 value={page.title}
                 placeholder="Untitled"
                 onChange={(e) => useDiagram.getState().updatePage(page.id, { title: e.target.value })}
@@ -93,25 +100,46 @@ export default function WikiApp({ pageId }: { pageId: string | null }) {
                 <button className="wk-btn" onClick={() => openNode(node.id)} title="Show on canvas">
                   Canvas
                 </button>
-              ) : (
-                <select
-                  className="wk-btn"
-                  value=""
-                  aria-label="Link to node"
-                  onChange={(e) => e.target.value && useDiagram.getState().linkPage(page.id, e.target.value)}
-                >
-                  <option value="">Link to node</option>
-                  {linkableNodes(nodes).map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {pathTo(nodes, n.id).map((p) => p.label || 'Group').join(' › ')}
-                    </option>
-                  ))}
-                </select>
-              )}
+              ) : null}
               <button className="wk-btn" onClick={remove} title="Delete page">
                 Delete
               </button>
             </div>
+            <div className="wk-page-nodes" aria-label="Page nodes">
+              {node ? (
+                <select className="wk-btn" aria-label="Linked nodes" value={node.id}
+                  onChange={(e) => { window.location.hash = pageHref(page.id, e.target.value); }}>
+                  {pageNodes.map((n) => <option key={n.id} value={n.id}>
+                    {pathTo(nodes, n.id).map((p) => p.label || 'Untitled').join(' › ')}
+                  </option>)}
+                </select>
+              ) : <span className="wk-empty-links">Not linked to a node</span>}
+              <select
+                className="wk-btn"
+                value=""
+                aria-label="Link to node"
+                disabled={linkableNodes(nodes, page.id).length === 0}
+                onChange={(e) => {
+                  if (!e.target.value) return;
+                  useDiagram.getState().linkPage(page.id, e.target.value);
+                  window.location.hash = pageHref(page.id, e.target.value);
+                }}
+              >
+                <option value="">Link to node</option>
+                {linkableNodes(nodes, page.id).map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {pathTo(nodes, n.id).map((p) => p.label || 'Group').join(' › ')}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {pageNodes.length > 0 && <div className="wk-node-links">
+              {pageNodes.map((n) => <span key={n.id} className="wk-chip">
+                <a href={pageHref(page.id, n.id)}>{n.label || 'Untitled'}</a>
+                <button aria-label={`Unlink from ${n.label || 'Untitled'}`} title="Unlink from node"
+                  onClick={() => useDiagram.getState().unlinkPage(page.id, n.id)}>×</button>
+              </span>)}
+            </div>}
           </header>
           <div className="wk-split">
             <Editor
@@ -124,7 +152,7 @@ export default function WikiApp({ pageId }: { pageId: string | null }) {
               }}
             />
             <div className="wk-read">
-              <Preview body={page.body} nodeId={node?.id} />
+              <Preview body={page.body} nodeId={node?.id} onPage={toPage} />
               {linked.length > 0 && (
                 <footer className="wk-back">
                   {linked.map((p) => (

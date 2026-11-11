@@ -3,14 +3,13 @@ import { useDiagram } from '../store';
 import { useTheme } from '../theme';
 import { toMermaid } from '../mermaid/io';
 import { embedDiagram } from '../pages';
-import { openNode, pageHref } from '../route';
+import { openNode, pageHref, parseRoute } from '../route';
 import { renderPage } from './render';
 
 const svgCache = new Map<string, string>();
 let seq = 0;
 
-/** Draw `source` into `host`; the previous picture stays until the new one is ready. */
-async function draw(host: HTMLElement, source: string, dark: boolean) {
+async function diagramSvg(source: string, dark: boolean) {
   const key = `${dark}\u0000${source}`;
   let svg = svgCache.get(key);
   if (!svg) {
@@ -23,8 +22,7 @@ async function draw(host: HTMLElement, source: string, dark: boolean) {
     }
     svgCache.set(key, svg);
   }
-  if (!host.isConnected) return;
-  host.innerHTML = svg;
+  return svg;
 }
 
 /** Rendered page. Wikilinks navigate; embedded diagram nodes jump to the canvas. */
@@ -56,16 +54,27 @@ export default function Preview({
 
   useEffect(() => {
     const host = root.current?.querySelector<HTMLElement>('[data-embed]');
-    if (host && source) void draw(host, source, dark);
+    if (!host) return;
+    const render = new AbortController();
+    if (source) {
+      void diagramSvg(source, dark).then((svg) => {
+        if (!render.signal.aborted && svg) host.innerHTML = svg;
+      });
+    } else host.replaceChildren();
+    return () => render.abort();
   }, [html, source, dark]);
 
   const onClick = (e: React.MouseEvent) => {
-    const t = e.target as HTMLElement;
-    const link = t.closest<HTMLElement>('a[data-node], a[data-create]');
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !(e.target instanceof Element)) return;
+    const t = e.target;
+    const link = t.closest<HTMLAnchorElement>('a.wl');
     if (link) {
       e.preventDefault();
       const st = useDiagram.getState();
-      const id = link.dataset.node ? st.openPage(link.dataset.node) : st.createPage(link.dataset.create!);
+      const route = parseRoute(link.getAttribute('href') ?? '');
+      const id = link.dataset.node ? st.openPage(link.dataset.node)
+        : link.dataset.create ? st.createPage(link.dataset.create)
+        : route.kind === 'wiki' ? route.id : null;
       if (id) onPage(id);
       return;
     }

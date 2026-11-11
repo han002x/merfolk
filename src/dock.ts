@@ -2,13 +2,18 @@
 // W key can bring up its page from anywhere on the canvas.
 
 import { create } from 'zustand';
-import { useDiagram } from './store';
+import { useDiagram } from './store.ts';
 
 export type View = 'mermaid' | 'tree' | 'page';
 
 interface Dock {
   open: boolean;
   view: View;
+  /** page tab: raw Markdown or rendered; kept across pages */
+  mode: 'edit' | 'read';
+  page: { selection: string | undefined; id: string } | null;
+  setPage: (id: string | null) => void;
+  setMode: (mode: 'edit' | 'read') => void;
   setOpen: (open: boolean) => void;
   setView: (view: View) => void;
 }
@@ -16,14 +21,23 @@ interface Dock {
 export const useDock = create<Dock>((set) => ({
   open: true,
   view: 'mermaid',
+  mode: 'edit',
+  page: null,
+  setPage: (id) => set({ page: id ? { selection: useDiagram.getState().selectedNodeIds[0], id } : null }),
+  setMode: (mode) => set({ mode }),
   setOpen: (open) => set({ open }),
   setView: (view) => set({ view }),
 }));
 
+useDiagram.subscribe((state, previous) => {
+  if (state.selectedNodeIds[0] !== previous.selectedNodeIds[0]) useDock.setState({ page: null });
+});
+
 /** Select a node and show its page in the panel, creating the page first. */
-export function showPage(nodeId: string) {
+export function showPage(nodeId: string, pageId?: string) {
   const st = useDiagram.getState();
-  if (!st.openPage(nodeId)) return;
+  const id = st.openPage(nodeId, pageId);
+  if (!id) return;
   st.setSelection([nodeId], []);
-  useDock.setState({ open: true, view: 'page' });
+  useDock.setState({ open: true, view: 'page', page: { selection: nodeId, id } });
 }

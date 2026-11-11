@@ -47,20 +47,33 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   `A@{ icon: "simple-icons:github", form: "square", label: "GitHub" }`; a
   renderer that hasn't registered that Iconify pack shows a placeholder glyph
   beside the label.
-- **Wiki pages** — every node can own a Markdown page. Press `W` (or the page
-  button on a node) to open it in the side panel's **Page** tab, which follows the
-  selection; ↗ pops it out into its own window at `#/wiki/<id>`. The page is
-  created on first open, titled from the node. The editor is raw Markdown
+- **Wiki pages** — every node can link multiple Markdown pages, and pages can
+  be shared across nodes. Press `W` (or the page button on a node) to open its
+  default page in the side panel's **Page** tab. The picker switches pages;
+  **New page**, **Link existing page**, **Unlink**, and **Make default** manage
+  the links. The first linked page is the default. Opening a node with no pages
+  creates one titled from the node; later node renames leave page titles alone.
+  ↗ opens the current page in its own window, keeping the node context.
+  The editor is raw Markdown
   (CodeMirror) beside a live preview. `[[Node or Page]]` links jump between
   pages (`[[Target|alias]]` supported, `[[` autocompletes), each page lists its
   backlinks, and `{{diagram}}` embeds the node's live sub-diagram. Click a node
   in it, or **Canvas** in the header, to drill back up: the canvas unfolds
   whatever hides the node and frames it. Both windows share one save, so edits
-  and renames show up in the other instantly. Deleting a node keeps its page as
-  an orphan you can re-link or delete. Pages export as `click A href "#/wiki/<id>"`.
+  and renames show up in the other instantly. The wiki lists a page's linked
+  nodes; choosing one controls the diagram embed and **Canvas** destination.
+  Unlinking or deleting a node keeps its pages. Pages become orphans only when
+  no nodes link them. Deleting a page removes its links from every node.
+  The default page exports as `click A href "#/wiki/<id>"`; set a **Base URL** beside Copy in the
+  Mermaid tab to export absolute links (`https://host/app/#/wiki/<id>`). Import
+  reads the page id from any base. `%% merfolk-pages A ["page1","page2"]`
+  comments preserve all links and their order when importing Mermaid back into
+  merfolk. Other Mermaid renderers ignore these comments. Mermaid stores page
+  references; use `.merfolk.json` to include page content.
 - **Persistence** — the diagram autosaves to `localStorage` and restores on
   reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
-  or clear the canvas, from the toolbar.
+  or clear the canvas, from the toolbar. Older single-page saves and JSON files
+  migrate automatically; new saves use version 2.
 - **Paper and ink** — one look throughout: a grained paper desk, card-stock
   panels, crisp kraft sheets for unfolded groups, and diagrams drawn in
   hand-drawn ink (roughjs, seeded per element so the wobble never changes)
@@ -88,7 +101,8 @@ simple architecture, simple design, simple implementation, no filler text.
 | `⇧L` | Tidy left-right |
 | `T` | Toggle theme |
 | `M` | Toggle Mermaid panel |
-| `W` | Open the selected node's wiki page in the side panel |
+| `W` | Open the selected node's default wiki page in the side panel |
+| `E` | Page tab: switch between Markdown and Preview |
 | `F` | Fold / unfold the selected group (or the sheet a selected node sits on) |
 | `[` / `]` | Fold / unfold one level |
 | `P` | Play / pause the flow |
@@ -127,7 +141,7 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 | `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, folded-card tab |
 | `src/components/SheetNode.tsx` | Paper sheet behind an unfolded group, with the dog-ear fold control |
 | `src/components/Icon.tsx` | Inline-SVG icon set (currentColor, theme-aware) |
-| `src/pages.ts` | Pure wiki logic: lazy pages, retitle, wikilinks, backlinks, orphans, embed subtree, cross-window merge |
+| `src/pages.ts` | Pure wiki logic: lazy pages, shared links, migration, wikilinks, backlinks, orphans, embed subtree, cross-window merge |
 | `src/route.ts` | Hash routes (`#/wiki/<id>`, `#/node/<id>`) and window helpers |
 | `src/dock.ts` | Which view the side panel shows; `showPage` opens a node's page there |
 | `src/components/PagePanel.tsx` | Page tab: edit / read the selected node's page beside the canvas |
