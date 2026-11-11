@@ -1858,6 +1858,27 @@ body,
   line-height: 30px;
 }
 .mf-tree-id { color: var(--mf-muted); font: 10px var(--mf-mono); }
+.mf-panel .mf-tree-page {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mf-muted);
+  font: 12px var(--mf-sans);
+  text-align: left;
+  cursor: pointer;
+}
+.mf-panel .mf-tree-page:hover {
+  color: var(--mf-text);
+  background: color-mix(in srgb, var(--mf-accent) 12%, transparent);
+}
+.mf-tree-page > svg { flex-shrink: 0; }
+.mf-tree-page > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mf-tree-edit {
   width: 100%;
   box-sizing: border-box;

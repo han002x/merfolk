@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDiagram } from '../store';
 import { restore, startAutosave, startSync } from '../persist';
 import { toggleTheme } from '../theme';
-import { backlinks, linkableNodes, nodesOfPage, orphanPages, pathTo } from '../pages';
+import { backlinks, linkableNodes, nodesOfPage, pathTo } from '../pages';
 import { openNode, pageHref } from '../route';
 import Document from './Document';
+import Navigation from './Navigation';
 import './wiki.css';
 
 export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nodeId?: string }) {
@@ -20,11 +21,6 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
   const page = pages.find((p) => p.id === pageId);
   const pageNodes = page ? nodesOfPage(nodes, page.id) : [];
   const node = pageNodes.find((n) => n.id === nodeId) ?? pageNodes[0];
-  const orphans = useMemo(() => new Set(orphanPages(nodes, pages).map((p) => p.id)), [nodes, pages]);
-  const sorted = useMemo(
-    () => [...pages].sort((a, b) => a.title.localeCompare(b.title)),
-    [pages],
-  );
   const linked = page ? backlinks(page, nodes, pages) : [];
 
   useEffect(() => {
@@ -58,19 +54,9 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
       <aside className="wk-index">
         <div className="wk-index-head">
           <a className="wk-brand" href="#/wiki">Wiki</a>
-          <button className="wk-btn" onClick={create} title="New page">+</button>
+          <button className="wk-btn" onClick={create} title="New page" aria-label="New page">+</button>
         </div>
-        <nav>
-          {sorted.map((p) => (
-            <a
-              key={p.id}
-              href={pageHref(p.id, node?.pageIds?.includes(p.id) ? node.id : undefined)}
-              className={`wk-item${p.id === pageId ? ' on' : ''}${orphans.has(p.id) ? ' orphan' : ''}`}
-            >
-              {p.title || 'Untitled'}
-            </a>
-          ))}
-        </nav>
+        <Navigation nodes={nodes} pages={pages} pageId={pageId} nodeId={node?.id} />
         <button className="wk-btn wk-theme" onClick={toggleTheme} title="Toggle theme">◐</button>
       </aside>
 

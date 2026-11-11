@@ -54,6 +54,9 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   the links. The first linked page is the default. Opening a node with no pages
   creates one titled from the node; later node renames leave page titles alone.
   ↗ opens the current page in its own window, keeping the node context.
+  Pages appear beneath their linked nodes in the canvas tree and the wiki's
+  collapsible sidebar. The wiki follows the diagram's group hierarchy and
+  lists unlinked pages in a separate section.
   Both the wiki window and the canvas side panel open a rich-text editor.
   Type `/` for headings, lists, checklists, quotes, code, dividers, tables, and
   diagram embeds. Select text for formatting. **Edit**, **Read**, and
