@@ -1,3 +1,4 @@
+import { entitiesOf } from './entities.ts';
 import { equivalent } from './equivalent.ts';
 // FlowchartDiagram persistence: autosave to localStorage, restore on load, and
 // file-based export/import. Keeps the "open and build, come back later"
@@ -65,9 +66,19 @@ export function loadDocument(document: WorkspaceDocument, remote = false) {
     if (pages !== state.pages) useDiagram.setState({ pages });
     return;
   }
+  const preserve = remote && state.diagram.kind === document.diagram.kind;
+  const nodeIds = new Set(entitiesOf(document.diagram).map((entity) => entity.id));
+  const edges = document.diagram.kind === 'flowchart' ? document.diagram.edges
+    : document.diagram.kind === 'er' || document.diagram.kind === 'class' ? document.diagram.relationships : [];
+  const edgeIds = new Set(edges.map((edge) => edge.id));
+  const selectedNodeIds = preserve ? state.selectedNodeIds.filter((id) => nodeIds.has(id)) : [];
+  const selectedEdgeIds = preserve ? state.selectedEdgeIds.filter((id) => edgeIds.has(id)) : [];
+  const highlight = preserve && state.highlight && (state.highlight.kind === 'node' ? nodeIds : edgeIds).has(state.highlight.id) ? state.highlight : null;
+  const insertion = preserve && document.diagram.kind === 'flowchart' && state.insertion
+    && [state.insertion.afterNodeId, state.insertion.beforeNodeId, state.insertion.parentId].every((id) => id === null || nodeIds.has(id))
+    && (!state.insertion.edgeId || edgeIds.has(state.insertion.edgeId)) ? state.insertion : null;
   useDiagram.setState({ diagram: document.diagram, pages,
-    history: remote && state.diagram.kind === document.diagram.kind ? state.history : [],
-    selectedNodeIds: [], selectedEdgeIds: [], highlight: null, insertion: null });
+    history: preserve ? state.history : [], selectedNodeIds, selectedEdgeIds, highlight, insertion });
 }
 
 /** Subscribe the store to localStorage with a debounce. Call once at startup. */

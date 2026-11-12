@@ -1,3 +1,4 @@
+import { retainStructuralSourceIds, remapSourceRefs } from '../sourceIdentity';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Background, BaseEdge, Controls, EdgeLabelRenderer, Handle, MiniMap, Position, ReactFlow, ReactFlowProvider, ViewportPortal, applyNodeChanges, getBezierPath, useReactFlow, type Edge, type EdgeProps, type Node, type NodeProps, type NodeTypes, type EdgeTypes } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -13,6 +14,7 @@ import './structural.css';
 export interface StructuralWorkspaceProps {
   diagram: StructuralDiagram;
   onChange: (next: StructuralDiagram) => void;
+  onSourceChange: (next: StructuralDiagram) => void;
   onSource: (source: string) => { ok: true } | { ok: false; error: string };
   onOpenPage: (id: string) => void;
   onImportFile: () => void;
@@ -54,7 +56,7 @@ function Relationship({ id, data, sourceX, sourceY, targetX, targetY, sourcePosi
 const nodeTypes: NodeTypes = { card: Card };
 const edgeTypes: EdgeTypes = { relationship: Relationship };
 export default function StructuralWorkspace(props: StructuralWorkspaceProps) { return <ReactFlowProvider><Workspace {...props} /></ReactFlowProvider>; }
-function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onExportFile, onUndo, canUndo, onNewDiagram }: StructuralWorkspaceProps) {
+function Workspace({ diagram, onChange, onSourceChange, onSource, onOpenPage, onImportFile, onExportFile, onUndo, canUndo, onNewDiagram }: StructuralWorkspaceProps) {
   const generated = useMemo(() => emitStructural(diagram), [diagram]);
   const [source, setSource] = useState(generated.text);
   const lastApplied = useRef(generated.text);
@@ -105,12 +107,25 @@ function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onEx
   }, [selected, source]);
   const fit = useCallback(() => { void flow.fitView({ padding: .2, duration: 200 }); }, [flow]);
   useEffect(() => {
-    const route = parseRoute(hash); if (route.kind !== 'node') return;
+    const route = parseRoute(window.location.hash); if (route.kind !== 'node') return;
+    if (diagram.kind === 'class') {
+      let ancestor = diagram.classes.find((card) => card.id === route.id)?.namespaceId
+        ?? diagram.namespaces.find((namespace) => namespace.id === route.id)?.parentId;
+      const ancestors = new Set<string>();
+      while (ancestor && !ancestors.has(ancestor)) {
+        ancestors.add(ancestor);
+        ancestor = diagram.namespaces.find((namespace) => namespace.id === ancestor)?.parentId;
+      }
+      if (diagram.namespaces.some((namespace) => ancestors.has(namespace.id) && namespace.collapsed)) {
+        onChange({ ...diagram, namespaces: diagram.namespaces.map((namespace) => ancestors.has(namespace.id) ? { ...namespace, collapsed: false } : namespace) });
+        return;
+      }
+    }
     const box = projection.cards.find((b) => b.item.card.id === route.id);
     if (!box) return;
-    const frame = requestAnimationFrame(() => { setSelected(box.ref); void flow.fitBounds({ x: box.x, y: box.y, width: box.width, height: box.height }, { padding: .5, duration: 200 }); });
+    const frame = requestAnimationFrame(() => { window.history.replaceState(null, '', window.location.pathname + window.location.search); setSelected(box.ref); void flow.fitBounds({ x: box.x, y: box.y, width: box.width, height: box.height }, { padding: .5, duration: 200 }); });
     return () => cancelAnimationFrame(frame);
-  }, [hash, projection.cards, flow]);
+  }, [hash, projection.cards, flow, diagram, onChange]);
   const cards = diagram.kind === 'er' ? diagram.entities : diagram.classes;
   const cardOptions = cards.map((c) => <option key={c.id} value={c.id}>{c.label}</option>);
   const tidy = (direction = diagram.direction) => {
@@ -162,6 +177,9 @@ function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onEx
       sourceRefs.current = new Map(); setError(parsed.error); return;
     }
     if (parsed.diagram.kind !== diagram.kind) { const result = onSource(value); setError(result.ok ? '' : result.error); return; }
+    const identified = retainStructuralSourceIds(parsed.diagram, diagram, value);
+    parsed.diagram = identified.diagram;
+    parsed.lineRefs = remapSourceRefs(parsed.lineRefs, identified.ids);
     const preserve = <T extends { id: string; position: { x: number; y: number }; collapsed: boolean; pageIds?: string[]; style?: import('../types').ElementStyle }>(next: T[], old: T[]): T[] => next.map((c) => { const previous = old.find((p) => p.id === c.id); return previous ? { ...c, position: previous.position, collapsed: previous.collapsed, pageIds: c.pageIds ?? previous.pageIds, style: previous.style } : c; });
     let next: StructuralDiagram = parsed.diagram;
     if (next.kind === 'er' && diagram.kind === 'er') next = { ...next, entities: preserve(next.entities, diagram.entities) };
@@ -169,7 +187,7 @@ function Workspace({ diagram, onChange, onSource, onOpenPage, onImportFile, onEx
     if (next.kind === 'er') next = { ...next, relationships: next.relationships.map((relationship) => ({ ...relationship, style: diagram.relationships.find((old) => old.id === relationship.id)?.style })) };
     else next = { ...next, relationships: next.relationships.map((relationship) => ({ ...relationship, style: diagram.relationships.find((old) => old.id === relationship.id)?.style })) };
     next = placeNewStructuralCards(next, diagram);
-    sourceRefs.current = parsed.lineRefs; lastApplied.current = emitStructural(next).text; setError(''); onChange(next);
+    sourceRefs.current = parsed.lineRefs; lastApplied.current = emitStructural(next).text; setError(''); onSourceChange(next);
   };
   const sourceSelect = () => { if (!sourceEditor.current) return; const line = source.slice(0, sourceEditor.current.selectionStart).split('\n').length - 1; const ref = sourceRefs.current.get(line); if (ref) select(ref); };
   const moveMember = (offset: number) => {

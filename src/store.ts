@@ -91,6 +91,7 @@ interface Snapshot { diagram: Diagram }
 interface State {
   diagram: Diagram;
   setDiagram: (diagram: Diagram) => void;
+  commitSource: (diagram: Diagram) => void;
   /** wiki pages; not part of undo history */
   pages: Page[];
 
@@ -214,14 +215,14 @@ export const useDiagram = create<State>((set, get) => {
   /** key of the last style edit, so a slider/color drag coalesces to one undo */
   let lastStyleKey: string | null = null;
 
-  /** true while a run of live mermaid edits is coalescing into one undo step */
-  let syncing = false;
+  /** Last committed source model; another mutation ends the undo-coalescing run. */
+  let lastSourceDiagram: Diagram | null = null;
 
   /** Snapshot the current diagram onto the undo stack before a mutation. */
   const snapshot = (): Pick<State, 'history'> => {
     lastMoveId = null; // any snapshotted change ends a drag-coalescing run
     lastStyleKey = null; // ...and ends a style-coalescing run
-    syncing = false; // ...and ends a live-mermaid-sync run
+    lastSourceDiagram = null; // ...and ends a live-mermaid-sync run
     const { diagram, history } = get();
     const next = [...history, { diagram }];
     if (next.length > HISTORY_LIMIT) next.shift();
@@ -236,7 +237,7 @@ export const useDiagram = create<State>((set, get) => {
     const coalesce = lastStyleKey === key && get().history.length > 0;
     lastStyleKey = key;
     lastMoveId = null;
-    syncing = false;
+    lastSourceDiagram = null;
     if (coalesce) return null;
     const { diagram, history } = get();
     const next = [...history, { diagram }];
@@ -244,8 +245,18 @@ export const useDiagram = create<State>((set, get) => {
     return { history: next };
   };
 
+  const commitSource = (diagram: Diagram) => {
+    const current = get().diagram;
+    if (equivalent(diagram, current)) return;
+    const history = lastSourceDiagram === current && get().history.length ? null : snapshot();
+    lastSourceDiagram = diagram;
+    const sameKind = current.kind === diagram.kind;
+    set({ ...history, diagram, selectedNodeIds: sameKind ? get().selectedNodeIds : [], selectedEdgeIds: sameKind ? get().selectedEdgeIds : [] });
+  };
+
   return {
   diagram: EMPTY_FLOWCHART,
+  commitSource,
   setDiagram: (diagram) => set({ ...snapshot(), diagram, selectedNodeIds: [], selectedEdgeIds: [], highlight: null, insertion: null }),
   pages: [],
   highlight: null,
@@ -659,10 +670,7 @@ export const useDiagram = create<State>((set, get) => {
         next = { ...next, nodes: next.nodes.map((n) => !curIds.has(n.id) && positions[n.id] ? { ...n, position: positions[n.id] } : n) };
       }
     }
-    if (equivalent(next, current)) return { ok: true };
-    const hist = syncing && get().history.length ? null : snapshot();
-    syncing = true;
-    set({ ...hist, diagram: next, selectedNodeIds: current.kind === next.kind ? get().selectedNodeIds : [], selectedEdgeIds: current.kind === next.kind ? get().selectedEdgeIds : [] });
+    commitSource(next);
     return { ok: true };
   },
   exportMermaid: () => emitDiagram(get().diagram).text,

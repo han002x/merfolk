@@ -1,3 +1,4 @@
+import { retainSequenceSourceIds, remapSourceRefs } from '../sourceIdentity';
 import DiagramMenu from '../components/DiagramMenu';
 import type { Diagram } from '../types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -17,6 +18,7 @@ export { SequenceDrawing } from './SequenceDrawing';
 export interface SequenceWorkspaceProps {
   diagram: SequenceDiagram;
   onChange: (next: SequenceDiagram) => void;
+  onSourceChange: (next: SequenceDiagram) => void;
   onNewDiagram: (kind: Diagram['kind']) => void;
   onOpenPage: (participantId: string) => void;
   onImportFile: () => void;
@@ -62,7 +64,7 @@ function eventTitle(e: SequenceEvent): string {
 export default function SequenceWorkspace(props: SequenceWorkspaceProps) {
   return <ReactFlowProvider><Workspace {...props} /></ReactFlowProvider>;
 }
-function Workspace({ diagram, onChange, onNewDiagram, onOpenPage, onImportFile, onExportFile, onUndo, canUndo, onSource }: SequenceWorkspaceProps) {
+function Workspace({ diagram, onChange, onSourceChange, onNewDiagram, onOpenPage, onImportFile, onExportFile, onUndo, canUndo, onSource }: SequenceWorkspaceProps) {
   const generated = useMemo(() => emitSequence(diagram), [diagram]);
   const [source, setSource] = useState(generated.text);
   const lastApplied = useRef(generated.text);
@@ -176,6 +178,9 @@ function Workspace({ diagram, onChange, onNewDiagram, onOpenPage, onImportFile, 
     }
     const parsed = parseSequence(value);
     if (!parsed.ok) { sourceRefs.current = new Map(); setError(parsed.error); return; }
+    const identified = retainSequenceSourceIds(parsed.diagram, diagram, value);
+    parsed.diagram = identified.diagram;
+    parsed.lineRefs = remapSourceRefs(parsed.lineRefs, identified.ids);
     const previous = new Map(walkEvents(diagram.events).map((e) => [e.id, e]));
     const next = { ...parsed.diagram, participants: parsed.diagram.participants.map((p) => ({ ...p, style: diagram.participants.find((old) => old.id === p.id)?.style, pageIds: p.pageIds ?? diagram.participants.find((old) => old.id === p.id)?.pageIds })), events: updateEvents(parsed.diagram.events, (e) => {
       const old = previous.get(e.id);
@@ -183,7 +188,7 @@ function Workspace({ diagram, onChange, onNewDiagram, onOpenPage, onImportFile, 
     }) };
     sourceRefs.current = parsed.lineRefs;
     lastApplied.current = emitSequence(next).text;
-    setError(''); onChange(next);
+    setError(''); onSourceChange(next);
   };
   const sourceSelect = () => {
     if (!editor.current) return;

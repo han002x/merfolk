@@ -357,14 +357,32 @@ export function mergeDiagram(parsed: FlowchartDiagram, current: FlowchartDiagram
     };
   });
 
-  // index current edges by endpoint pair (edge ids are not stable across parses)
-  const curEdges = new Map<string, DiagramEdge>();
-  for (const e of current.edges) curEdges.set(`${e.source}\u0000${e.target}`, e);
-
-  const edges: DiagramEdge[] = parsed.edges.map((p) => {
-    const prev = curEdges.get(`${p.source}\u0000${p.target}`);
-    if (!prev) return p;
-    return { ...p, id: prev.id, style: prev.style, ...(prev.order != null && { order: prev.order }) };
+  // Match each occurrence once. Exact labels protect reordered parallel edges;
+  // remaining endpoint matches retain identity when a label is edited.
+  const matches = new Map<DiagramEdge, DiagramEdge>();
+  const consumed = new Set<DiagramEdge>();
+  for (const exact of [true, false]) {
+    for (const edge of parsed.edges) {
+      if (matches.has(edge)) continue;
+      const previous = current.edges.find((candidate) => !consumed.has(candidate)
+        && candidate.source === edge.source && candidate.target === edge.target
+        && (!exact || (candidate.label ?? '') === (edge.label ?? '')));
+      if (previous) { matches.set(edge, previous); consumed.add(previous); }
+    }
+  }
+  const reserved = new Set(current.edges.map((edge) => edge.id));
+  const assigned = new Set<string>();
+  let sequence = 0;
+  const allocate = (preferred: string) => {
+    let id = preferred;
+    while (reserved.has(id) || assigned.has(id)) id = `e${sequence++}`;
+    return id;
+  };
+  const edges = parsed.edges.map((edge): DiagramEdge => {
+    const previous = matches.get(edge);
+    const id = previous && !assigned.has(previous.id) ? previous.id : allocate(edge.id);
+    assigned.add(id);
+    return previous ? { ...edge, id, style: previous.style, ...(previous.order != null && { order: previous.order }) } : { ...edge, id };
   });
 
   return { nodes, edges };

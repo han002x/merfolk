@@ -1102,6 +1102,7 @@ export default function App() {
   if (diagram.kind !== 'flowchart') return <>
     {diagram.kind === 'sequence' ? <SequenceWorkspace diagram={diagram}
       onChange={(next) => useDiagram.getState().setDiagram(next)}
+      onSourceChange={(next) => useDiagram.getState().commitSource(next)}
       onNewDiagram={newDiagram}
       onOpenPage={openPage}
       onImportFile={() => sequenceImport.current?.click()} onExportFile={exportFile}
@@ -1109,6 +1110,7 @@ export default function App() {
       onUndo={() => useDiagram.getState().undo()} canUndo={canUndo} />
     : <StructuralWorkspace diagram={diagram}
       onChange={(next) => useDiagram.getState().setDiagram(next)}
+      onSourceChange={(next) => useDiagram.getState().commitSource(next)}
       onNewDiagram={newDiagram} onOpenPage={openPage}
       onImportFile={() => sequenceImport.current?.click()} onExportFile={exportFile}
       onSource={(source) => useDiagram.getState().syncMermaid(source)}
