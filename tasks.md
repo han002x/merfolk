@@ -7,6 +7,12 @@ highest-leverage unchecked task, executes it, and checks it off here.
 
 - [ ] _(none)_
 
+## Done — Wiki
+
+- [x] Markdown wiki pages linked to nodes: lazy create, separate editor window,
+      wikilinks + backlinks, `{{diagram}}` embed, drill down/up, cross-window
+      sync, orphan re-link/delete, `click` round trip.
+
 ## Backlog — M8 Edge editing (next up)
 
 - [x] Inline-rename an edge label (double-click the edge).

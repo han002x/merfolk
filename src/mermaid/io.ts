@@ -1,4 +1,4 @@
-// Mermaid flowchart <-> merfolk Diagram interop.
+// Mermaid flowchart <-> merfolk FlowchartDiagram interop.
 //
 // We support the common `flowchart`/`graph` subset:
 //   - node declarations in every classic bracket shape (see src/shapes.ts):
@@ -16,8 +16,9 @@
 // Everything merfolk emits is checked against the real mermaid parser by
 // scripts/mermaid-compat.ts.
 
-import type { Diagram, DiagramEdge, DiagramNode, NodeImage, NodeShape } from '../types';
+import type { FlowchartDiagram, DiagramEdge, DiagramNode, NodeImage, NodeShape } from '../types';
 import { SHAPES, SHAPE_ALIAS, iconForm, shapeDef, shapeForForm } from '../shapes.ts';
+import { parsePageIds } from '../pages.ts';
 
 interface ParsedNode {
   id: string;
@@ -41,6 +42,24 @@ const SHAPE_PATTERNS: Array<{ re: RegExp; shape: NodeShape }> = [...SHAPES]
 /** `id@{ key: value, ... }` (Mermaid v11 shape / icon metadata) */
 const META_RE = /^([A-Za-z0-9_]+)\s*@\{(.*)\}$/;
 const META_PAIR_RE = /([A-Za-z]+)\s*:\s*("(?:[^"\\]|\\.)*"|[^,]*)/g;
+
+/** Where a node's wiki page lives; shared by the `click` emitter and parser. */
+export const PAGE_HREF = '#/wiki/';
+// any base is accepted on import (relative, absolute, another host): the page
+// id is whatever follows `#/wiki/`
+const CLICK_RE = /^click\s+([A-Za-z0-9_]+)\s+href\s+"[^"#]*#\/wiki\/([^"?]+)(?:\?[^"\n]*)?"/;
+
+let pageBase = '';
+
+/**
+ * URL the exported page links hang off, e.g. `https://notes.example/app/`.
+ * Empty keeps them relative (`#/wiki/<id>`). Any fragment on it is dropped.
+ */
+export function setPageBase(base: string) {
+  pageBase = base.trim().replace(/#.*$/, '');
+}
+
+export const pageLink = (pageId: string) => `${pageBase}${PAGE_HREF}${encodeURIComponent(pageId)}`;
 
 function stripQuotes(s: string): string {
   const t = s.trim();
@@ -116,7 +135,7 @@ export interface ParseIssue {
 }
 
 interface CoreResult {
-  diagram: Diagram;
+  diagram: FlowchartDiagram;
   issues: ParseIssue[];
   /** number of non-blank, non-comment lines seen (excludes the header) */
   meaningfulLines: number;
@@ -135,6 +154,8 @@ function parseCore(src: string): CoreResult {
   const edges: DiagramEdge[] = [];
   const subgraphStack: string[] = [];
   const issues: ParseIssue[] = [];
+  const pageIds = new Map<string, string>();
+  const pageLists = new Map<string, string[]>();
   let edgeSeq = 0;
   let meaningfulLines = 0;
 
@@ -158,10 +179,29 @@ function parseCore(src: string): CoreResult {
 
   for (let idx = 0; idx < rawLines.length; idx++) {
     const line = rawLines[idx].trim();
+    if (/^%%\s+merfolk-pages\b/.test(line)) {
+      const meta = line.match(/^%%\s+merfolk-pages\s+([A-Za-z0-9_]+)\s+(.+)$/);
+      try {
+        if (!meta) throw new Error('Expected a node ID and a JSON array of page IDs');
+        const value: unknown = JSON.parse(meta[2]);
+        pageLists.set(meta[1], parsePageIds(value));
+      } catch (error) {
+        issues.push({ line: idx, text: line, reason: error instanceof Error ? error.message : 'Invalid page links' });
+      }
+      continue;
+    }
     if (line.length === 0 || line.startsWith('%%')) continue;
 
     // diagram header
     if (/^(flowchart|graph)\b/i.test(line)) continue;
+    if (/^sequenceDiagram\b/.test(line)) {
+      issues.push({
+        line: idx,
+        text: line,
+        reason: 'sequence diagrams are not supported by the canvas editor; use a flowchart or graph',
+      });
+      break;
+    }
 
     meaningfulLines++;
 
@@ -193,6 +233,17 @@ function parseCore(src: string): CoreResult {
     const parent = subgraphStack.length
       ? subgraphStack[subgraphStack.length - 1]
       : null;
+
+    // wiki link: `click A href "#/wiki/<pageId>"`
+    const ck = line.match(CLICK_RE);
+    if (ck) {
+      try {
+        pageIds.set(ck[1], decodeURIComponent(ck[2]));
+      } catch {
+        issues.push({ line: idx, text: line, reason: 'Invalid page URL encoding' });
+      }
+      continue;
+    }
 
     // edge line
     const em = line.match(EDGE_RE);
@@ -232,27 +283,32 @@ function parseCore(src: string): CoreResult {
     });
   }
 
-  const nodes: DiagramNode[] = [...nodeMap.values()].map((n, i) => ({
-    id: n.id,
-    label: n.label,
-    shape: n.shape,
-    parentId: n.parentId,
-    collapsed: false,
-    position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
-    ...(n.icon && { icon: n.icon }),
-    ...(n.image && { image: n.image }),
-  }));
+  const nodes: DiagramNode[] = [...nodeMap.values()].map((n, i) => {
+    const list = pageLists.get(n.id);
+    const linked = pageIds.get(n.id);
+    return {
+      id: n.id,
+      label: n.label,
+      shape: n.shape,
+      parentId: n.parentId,
+      collapsed: false,
+      position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
+      ...(n.icon && { icon: n.icon }),
+      ...(list !== undefined ? { pageIds: list } : linked ? { pageIds: [linked] } : {}),
+      ...(n.image && { image: n.image }),
+    };
+  });
 
   return { diagram: { nodes, edges }, issues, meaningfulLines };
 }
 
-export function fromMermaid(src: string): Diagram {
+export function fromMermaid(src: string): FlowchartDiagram {
   return parseCore(src).diagram;
 }
 
 /** Outcome of a validating parse: either a clean diagram or a readable error. */
 export type ParseResult =
-  | { ok: true; diagram: Diagram }
+  | { ok: true; diagram: FlowchartDiagram }
   | { ok: false; error: string };
 
 /**
@@ -286,7 +342,7 @@ export function parseMermaid(src: string): ParseResult {
  * carry over `style`. Elements absent from `parsed` are dropped; genuinely new
  * nodes keep the parsed (grid) position for the caller to lay out.
  */
-export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
+export function mergeDiagram(parsed: FlowchartDiagram, current: FlowchartDiagram): FlowchartDiagram {
   const curNodes = new Map(current.nodes.map((n) => [n.id, n]));
 
   const nodes: DiagramNode[] = parsed.nodes.map((p) => {
@@ -297,16 +353,36 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
       position: prev.position,
       collapsed: prev.collapsed,
       style: prev.style,
+      ...((p.pageIds ?? prev.pageIds) !== undefined && { pageIds: p.pageIds ?? prev.pageIds }),
     };
   });
 
-  // index current edges by endpoint pair (edge ids are not stable across parses)
-  const curEdges = new Map<string, DiagramEdge>();
-  for (const e of current.edges) curEdges.set(`${e.source}\u0000${e.target}`, e);
-
-  const edges: DiagramEdge[] = parsed.edges.map((p) => {
-    const prev = curEdges.get(`${p.source}\u0000${p.target}`);
-    return prev ? { ...p, style: prev.style } : p;
+  // Match each occurrence once. Exact labels protect reordered parallel edges;
+  // remaining endpoint matches retain identity when a label is edited.
+  const matches = new Map<DiagramEdge, DiagramEdge>();
+  const consumed = new Set<DiagramEdge>();
+  for (const exact of [true, false]) {
+    for (const edge of parsed.edges) {
+      if (matches.has(edge)) continue;
+      const previous = current.edges.find((candidate) => !consumed.has(candidate)
+        && candidate.source === edge.source && candidate.target === edge.target
+        && (!exact || (candidate.label ?? '') === (edge.label ?? '')));
+      if (previous) { matches.set(edge, previous); consumed.add(previous); }
+    }
+  }
+  const reserved = new Set(current.edges.map((edge) => edge.id));
+  const assigned = new Set<string>();
+  let sequence = 0;
+  const allocate = (preferred: string) => {
+    let id = preferred;
+    while (reserved.has(id) || assigned.has(id)) id = `e${sequence++}`;
+    return id;
+  };
+  const edges = parsed.edges.map((edge): DiagramEdge => {
+    const previous = matches.get(edge);
+    const id = previous && !assigned.has(previous.id) ? previous.id : allocate(edge.id);
+    assigned.add(id);
+    return previous ? { ...edge, id, style: previous.style, ...(previous.order != null && { order: previous.order }) } : { ...edge, id };
   });
 
   return { nodes, edges };
@@ -348,7 +424,7 @@ export interface MermaidResult {
  * Serialize a diagram to Mermaid, also returning a per-line map back to the
  * node/edge each line came from. Powers the editor<->canvas highlight sync.
  */
-export function toMermaidWithMap(diagram: Diagram): MermaidResult {
+export function toMermaidWithMap(diagram: FlowchartDiagram): MermaidResult {
   const { nodes, edges } = diagram;
   const children = new Map<string | null, DiagramNode[]>();
   for (const n of nodes) {
@@ -391,9 +467,19 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
     out.push(`  ${e.source} ${arrow} ${e.target}`);
   }
 
+  for (const n of nodes) {
+    if (n.pageIds === undefined) continue;
+    if (n.pageIds[0]) {
+      lineRefs.set(out.length, { kind: 'node', id: n.id });
+      out.push(`  click ${n.id} href "${pageLink(n.pageIds[0])}"`);
+    }
+    lineRefs.set(out.length, { kind: 'node', id: n.id });
+    out.push(`  %% merfolk-pages ${n.id} ${JSON.stringify(n.pageIds)}`);
+  }
+
   return { text: out.join('\n'), lineRefs };
 }
 
-export function toMermaid(diagram: Diagram): string {
+export function toMermaid(diagram: FlowchartDiagram): string {
   return toMermaidWithMap(diagram).text;
 }

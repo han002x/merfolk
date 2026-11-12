@@ -320,6 +320,7 @@ body,
 
 /* nodes */
 .mf-node {
+  position: relative;
   background: var(--mf-node);
   border: 1px solid var(--mf-border);
   color: var(--mf-text);
@@ -1857,6 +1858,27 @@ body,
   line-height: 30px;
 }
 .mf-tree-id { color: var(--mf-muted); font: 10px var(--mf-mono); }
+.mf-panel .mf-tree-page {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--mf-muted);
+  font: 12px var(--mf-sans);
+  text-align: left;
+  cursor: pointer;
+}
+.mf-panel .mf-tree-page:hover {
+  color: var(--mf-text);
+  background: color-mix(in srgb, var(--mf-accent) 12%, transparent);
+}
+.mf-tree-page > svg { flex-shrink: 0; }
+.mf-tree-page > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mf-tree-edit {
   width: 100%;
   box-sizing: border-box;
@@ -1874,3 +1896,115 @@ body,
   font-weight: 500;
 }
 .mf-tree-empty { color: var(--mf-muted); font-size: 13px; padding: 10px; }
+
+/* wiki page button: always on once a page exists, otherwise on hover/select */
+.mf-page {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--mf-border);
+  background: var(--mf-panel);
+  color: var(--mf-muted);
+  cursor: pointer;
+  pointer-events: all;
+  opacity: 0;
+  transition:
+    opacity 130ms ease,
+    color 130ms ease,
+    transform 130ms ease;
+}
+.mf-page.has-page,
+.mf-node:hover > .mf-page,
+.mf-node.selected > .mf-page,
+.mf-sheet:hover > .mf-page {
+  opacity: 1;
+}
+.mf-page.has-page {
+  color: var(--mf-accent);
+  border-color: color-mix(in srgb, var(--mf-accent) 45%, transparent);
+}
+.mf-page:hover {
+  color: var(--mf-accent);
+  transform: scale(1.1);
+}
+.mf-sheet > .mf-page {
+  right: calc(var(--ear) + 6px);
+  top: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mf-page {
+    transition: none;
+  }
+}
+.mf-shape-diamond > .mf-page {
+  transform: rotate(-45deg);
+}
+.mf-shape-diamond > .mf-page:hover {
+  transform: rotate(-45deg) scale(1.1);
+}
+
+/* ---- sequenced flow ----
+   The player writes one clock, --mf-flow-t (in steps), on <html>. An edge
+   draws its accent trace as the clock passes its step; a node glows once the
+   clock reaches it. Below zero nothing shows. No motion of its own, so it
+   follows the player (which hops step to step under reduced motion). */
+.mf-flow-trace,
+.mf-flow-arrow {
+  fill: none;
+  stroke: var(--mf-accent);
+  stroke-linecap: butt;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px var(--mf-glow));
+}
+.mf-flow-trace {
+  stroke-dasharray: 1 2;
+  stroke-dashoffset: calc(1 - clamp(0, var(--mf-flow-t, -1) - var(--mf-flow-s), 1));
+}
+.mf-flow-arrow {
+  stroke-linecap: round;
+  opacity: clamp(0, (var(--mf-flow-t, -1) - var(--mf-flow-s) - 0.85) * 8, 1);
+}
+.mf-flow-node {
+  --mf-flow-p: clamp(0, var(--mf-flow-t, -1) - var(--mf-flow-at), 1);
+  filter: drop-shadow(
+    0 0 calc(var(--mf-flow-p) * 7px)
+      color-mix(in srgb, var(--mf-accent) calc(var(--mf-flow-p) * 100%), transparent)
+  );
+}
+.mf-tool:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.mf-speed {
+  min-width: 1.6em;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mf-base {
+  flex: 1;
+  min-width: 0;
+  background: var(--mf-input);
+  border: 1px solid var(--mf-border);
+  border-radius: 7px;
+  color: var(--mf-text);
+  font: 12px var(--mf-mono);
+  padding: 4px 8px;
+}
+.mf-base:focus {
+  outline: 0;
+  border-color: var(--mf-accent);
+}
+.mf-diagram-menu { position:relative; font:12px var(--mf-sans); color:var(--mf-text); }
+.mf-diagram-menu summary { cursor:pointer; padding:7px 10px; list-style:none; border-radius:5px; }
+.mf-diagram-menu summary:hover { background:var(--mf-group); }
+.mf-diagram-menu > div { position:absolute; left:0; top:100%; z-index:20; display:flex; flex-direction:column; min-width:150px; padding:5px; background:var(--mf-panel); border:1px solid var(--mf-border); border-radius:6px; box-shadow:var(--mf-lift); }
+.mf-diagram-menu button { color:var(--mf-text); font:inherit; border:0; background:transparent; text-align:left; padding:8px; cursor:pointer; }
+.mf-diagram-menu button:hover { background:var(--mf-group); }

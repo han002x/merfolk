@@ -2,7 +2,7 @@
 // Run with: node --experimental-strip-types scripts/shapes.ts
 import { parseMermaid, toMermaid } from '../src/mermaid/io.ts';
 import { SHAPES } from '../src/shapes.ts';
-import type { Diagram, DiagramNode, NodeShape } from '../src/types.ts';
+import type { FlowchartDiagram, DiagramNode, NodeShape } from '../src/types.ts';
 
 const fails: string[] = [];
 const check = (ok: boolean, msg: string) => {
@@ -30,7 +30,7 @@ nodes.push(
   // freshly placed nodes start unlabelled
   ...SHAPES.map((d, i) => node(`b${i}`, d.shape, '')),
 );
-const d: Diagram = {
+const d: FlowchartDiagram = {
   nodes,
   edges: nodes.slice(1).map((n, i) => ({ id: `e${i}`, source: nodes[i].id, target: n.id })),
 };

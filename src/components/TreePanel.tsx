@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
-import { useDiagram } from '../store';
+import { flowchartOf, useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
 import type { DiagramNode } from '../types';
 import { Icon } from './Icon';
+import { showPage } from '../dock';
 
 function EditableLabel({ label, fallback, onSave }: {
   label: string;
@@ -48,8 +49,9 @@ function EditableLabel({ label, fallback, onSave }: {
 }
 
 export function TreePanel() {
-  const nodes = useDiagram((s) => s.nodes);
-  const edges = useDiagram((s) => s.edges);
+  const nodes = useDiagram((s) => flowchartOf(s).nodes);
+  const edges = useDiagram((s) => flowchartOf(s).edges);
+  const pages = useDiagram((s) => s.pages);
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
   const highlight = useDiagram((s) => s.highlight);
@@ -59,6 +61,7 @@ export function TreePanel() {
   const updateEdgeLabel = useDiagram((s) => s.updateEdgeLabel);
   const [closed, setClosed] = useState<Set<string>>(() => new Set());
   const byId = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
+  const pagesById = useMemo(() => new Map(pages.map((page) => [page.id, page])), [pages]);
   const children = useMemo(() => {
     const result = new Map<string | null, DiagramNode[]>();
     for (const node of nodes) {
@@ -106,13 +109,18 @@ export function TreePanel() {
     <ul className="mf-tree-list">
       {(children.get(parentId) ?? []).map((node) => {
         const count = children.get(node.id)?.length ?? 0;
+        const linkedPages = (node.pageIds ?? []).flatMap((id) => {
+          const page = pagesById.get(id);
+          return page ? [page] : [];
+        });
+        const hasChildren = count > 0 || linkedPages.length > 0;
         const expanded = !closed.has(node.id);
         return (
           <li key={node.id}>
             <div className={rowClass('node', node.id, selectedNodeIds.includes(node.id))}
               onMouseEnter={() => setHighlight({ kind: 'node', id: node.id })}
               onMouseLeave={() => setHighlight(null)}>
-              {count > 0 ? (
+              {hasChildren ? (
                 <button className="mf-tree-toggle" aria-label={`${expanded ? 'Collapse' : 'Expand'} ${node.label || node.id}`}
                   aria-expanded={expanded} onClick={() => setClosed((previous) => {
                     const next = new Set(previous);
@@ -132,7 +140,21 @@ export function TreePanel() {
               </div>
               <span className="mf-tree-id">{node.id}</span>
             </div>
-            {count > 0 && expanded && renderNodes(node.id)}
+            {hasChildren && expanded && <>
+              {linkedPages.length > 0 && <ul className="mf-tree-list">
+                {linkedPages.map((page) => <li key={page.id}>
+                  <button className="mf-tree-page" onClick={(event) => {
+                    select(event, 'node', node.id);
+                    showPage(node.id, page.id);
+                  }}
+                    title={page.title || 'Untitled'}>
+                    <Icon name="page" size={14} />
+                    <span>{page.title || 'Untitled'}</span>
+                  </button>
+                </li>)}
+              </ul>}
+              {count > 0 && renderNodes(node.id)}
+            </>}
           </li>
         );
       })}

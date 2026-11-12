@@ -1,7 +1,7 @@
-import type { Diagram } from './types';
+import type { FlowchartDiagram } from './types';
 
 // A small sample showing a collapsible group ("Backend") with children.
-export const SAMPLE: Diagram = {
+export const SAMPLE: FlowchartDiagram = {
   nodes: [
     { id: 'UI', label: 'Web UI', shape: 'rect', parentId: null, collapsed: false, position: { x: 80, y: 60 } },
     { id: 'API', label: 'API Gateway', shape: 'round', parentId: null, collapsed: false, position: { x: 80, y: 220 } },

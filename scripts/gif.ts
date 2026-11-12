@@ -10,7 +10,7 @@ import {
   gifFileName,
 } from '../src/gifMath.ts';
 import { STYLE_DEFAULTS } from '../src/style.ts';
-import type { Diagram, DiagramEdge, DiagramNode } from '../src/types.ts';
+import type { FlowchartDiagram, DiagramEdge, DiagramNode } from '../src/types.ts';
 import type { AnimationKind } from '../src/types.ts';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
@@ -39,7 +39,7 @@ const E = (
   target: 'b',
   style: animation ? { animation, animationSpeed } : undefined,
 });
-const D = (nodes: DiagramNode[], edges: DiagramEdge[] = []): Diagram => ({
+const D = (nodes: DiagramNode[], edges: DiagramEdge[] = []): FlowchartDiagram => ({
   nodes,
   edges,
 });
@@ -75,6 +75,10 @@ check(
   cycleSeconds(D([N('a', 'pulse')])) === STYLE_DEFAULTS.animationSpeed,
   cycleSeconds(D([N('a', 'pulse')])),
 );
+
+// a recorded flow sequence sets the loop when it is the longest
+check('flow sets the loop', cycleSeconds(D([N('a'), N('b')]), 4.05) === 4.05);
+check('flow yields to a slower preset', cycleSeconds(D([N('a', 'fade', 6)]), 4.05) === 6);
 
 // frameCount / frameDelayMs: follow fps, never below 1
 check('frames round to nearest', frameCount(1.6, 12) === 19, frameCount(1.6, 12));

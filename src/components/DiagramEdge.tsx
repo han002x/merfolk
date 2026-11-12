@@ -5,7 +5,7 @@ import {
   getBezierPath,
   type EdgeProps,
 } from '@xyflow/react';
-import { useDiagram } from '../store';
+import { flowchartOf, useDiagram } from '../store';
 import { Icon } from './Icon';
 import type { ElementStyle } from '../types';
 import { STYLE_DEFAULTS, animationClass, dashArray, flowDash, fontFamilyCss } from '../style';
@@ -48,7 +48,7 @@ export function DiagramEdge({
   // dashed legs A → ghost → B. The new node joins whichever group both ends
   // share (or the group one end *is*, when the edge runs group → child).
   const previewInsert = () => {
-    const byId = new Map(useDiagram.getState().nodes.map((n) => [n.id, n]));
+    const byId = new Map(flowchartOf(useDiagram.getState()).nodes.map((n) => [n.id, n]));
     const a = byId.get(source);
     const b = byId.get(target);
     let parentId: string | null = null;
@@ -146,6 +146,17 @@ export function DiagramEdge({
     [targetX, targetY, targetPosition, sloppiness, seed, strokeWidth],
   );
 
+  // the sequenced flow draws an accent trace over the line as the clock passes
+  // this edge's step (see .mf-flow-trace); one continuous pass so it can grow
+  const flowStep = !preview && typeof data?.flowStep === 'number' ? data.flowStep : null;
+  const traceD = useMemo(
+    () => (flowStep == null ? null : ink(path, { sloppiness, seed, continuous: true, pinEnds: true })),
+    [flowStep, path, sloppiness, seed],
+  );
+  const traceStyle = flowStep == null
+    ? undefined
+    : ({ '--mf-flow-s': flowStep, strokeWidth: Math.max(2.5, strokeWidth) + 0.5 } as React.CSSProperties);
+
   const edgeStyle: React.CSSProperties = (highlighted || selected) && !folded
     ? {
         ...ownStyle,
@@ -185,6 +196,12 @@ export function DiagramEdge({
           transition: EDGE_STYLE_BASE.transition,
         }}
       />
+      {traceD && (
+        <>
+          <path className="mf-flow-trace" d={traceD} pathLength={1} style={traceStyle} />
+          <path className="mf-flow-arrow" d={arrow} style={traceStyle} />
+        </>
+      )}
       <EdgeLabelRenderer>
         {inert ? (
           text && (

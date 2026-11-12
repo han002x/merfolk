@@ -7,7 +7,7 @@
 // undo step); this store holds the brief in-between.
 
 import { create } from 'zustand';
-import { useDiagram } from './store';
+import { flowchartOf, useDiagram } from './store';
 import { hiddenIds } from './fold';
 
 export type FoldPhase = 'folding' | 'unfold-start' | 'unfolding';
@@ -46,7 +46,8 @@ export const useFoldMotion = create<Motion>((set, get) => ({
 
   fold: (ids) => {
     settle();
-    const { nodes, setCollapsed } = useDiagram.getState();
+    const { setCollapsed } = useDiagram.getState();
+    const { nodes } = flowchartOf(useDiagram.getState());
     const targets = new Set(
       ids.filter((id) => nodes.some((n) => n.id === id && !n.collapsed)),
     );
@@ -75,11 +76,11 @@ export const useFoldMotion = create<Motion>((set, get) => ({
   unfold: (ids) => {
     settle();
     const { setCollapsed } = useDiagram.getState();
-    const before = hiddenIds(useDiagram.getState().nodes);
+    const before = hiddenIds(flowchartOf(useDiagram.getState()).nodes);
     setCollapsed(ids, false);
     if (reducedMotion()) return;
 
-    const nodes = useDiagram.getState().nodes;
+    const nodes = flowchartOf(useDiagram.getState()).nodes;
     const after = hiddenIds(nodes);
     const byId = new Map(nodes.map((n) => [n.id, n]));
     // each revealed node springs from the card that was hiding it
@@ -104,7 +105,7 @@ export const useFoldMotion = create<Motion>((set, get) => ({
   },
 
   toggle: (id) => {
-    const n = useDiagram.getState().nodes.find((x) => x.id === id);
+    const n = flowchartOf(useDiagram.getState()).nodes.find((x) => x.id === id);
     if (!n) return;
     if (n.collapsed) get().unfold([id]);
     else get().fold([id]);
