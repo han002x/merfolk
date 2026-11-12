@@ -4,7 +4,7 @@ import { useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
 import type { DiagramNode } from '../types';
 import { Icon } from './Icon';
-import { showPage } from '../dock';
+import { showDeck, showPage } from '../dock';
 
 function EditableLabel({ label, fallback, onSave }: {
   label: string;
@@ -52,6 +52,7 @@ export function TreePanel() {
   const nodes = useDiagram((s) => s.nodes);
   const edges = useDiagram((s) => s.edges);
   const pages = useDiagram((s) => s.pages);
+  const decks = useDiagram((s) => s.decks);
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
   const highlight = useDiagram((s) => s.highlight);
@@ -113,7 +114,8 @@ export function TreePanel() {
           const page = pagesById.get(id);
           return page ? [page] : [];
         });
-        const hasChildren = count > 0 || linkedPages.length > 0;
+        const linkedDecks = (node.deckIds ?? []).flatMap((id) => decks.find((deck) => deck.id === id) ?? []);
+        const hasChildren = count > 0 || linkedPages.length + linkedDecks.length > 0;
         const expanded = !closed.has(node.id);
         return (
           <li key={node.id}>
@@ -141,6 +143,15 @@ export function TreePanel() {
               <span className="mf-tree-id">{node.id}</span>
             </div>
             {hasChildren && expanded && <>
+              {linkedDecks.length > 0 && <ul className="mf-tree-list">
+                {linkedDecks.map((deck) => <li key={deck.id}>
+                  <button className="mf-tree-page" onClick={() => showDeck(node.id, deck.id)}
+                    title={deck.title || 'Untitled'}>
+                    <Icon name="deck" size={14} />
+                    <span>{deck.title || 'Untitled'}</span>
+                  </button>
+                </li>)}
+              </ul>}
               {linkedPages.length > 0 && <ul className="mf-tree-list">
                 {linkedPages.map((page) => <li key={page.id}>
                   <button className="mf-tree-page" onClick={(event) => {

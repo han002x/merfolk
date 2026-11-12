@@ -156,6 +156,7 @@ function parseCore(src: string): CoreResult {
   const issues: ParseIssue[] = [];
   const pageIds = new Map<string, string>();
   const pageLists = new Map<string, string[]>();
+  const deckLists = new Map<string, string[]>();
   let edgeSeq = 0;
   let meaningfulLines = 0;
 
@@ -179,12 +180,12 @@ function parseCore(src: string): CoreResult {
 
   for (let idx = 0; idx < rawLines.length; idx++) {
     const line = rawLines[idx].trim();
-    if (/^%%\s+merfolk-pages\b/.test(line)) {
-      const meta = line.match(/^%%\s+merfolk-pages\s+([A-Za-z0-9_]+)\s+(.+)$/);
+    if (/^%%\s+merfolk-(pages|decks)\b/.test(line)) {
+      const meta = line.match(/^%%\s+merfolk-(pages|decks)\s+([A-Za-z0-9_]+)\s+(.+)$/);
       try {
-        if (!meta) throw new Error('Expected a node ID and a JSON array of page IDs');
-        const value: unknown = JSON.parse(meta[2]);
-        pageLists.set(meta[1], parsePageIds(value));
+        if (!meta) throw new Error('Expected a node ID and a JSON array of IDs');
+        const value: unknown = JSON.parse(meta[3]);
+        (meta[1] === 'decks' ? deckLists : pageLists).set(meta[2], parsePageIds(value));
       } catch (error) {
         issues.push({ line: idx, text: line, reason: error instanceof Error ? error.message : 'Invalid page links' });
       }
@@ -286,6 +287,7 @@ function parseCore(src: string): CoreResult {
   const nodes: DiagramNode[] = [...nodeMap.values()].map((n, i) => {
     const list = pageLists.get(n.id);
     const linked = pageIds.get(n.id);
+    const decks = deckLists.get(n.id);
     return {
       id: n.id,
       label: n.label,
@@ -295,6 +297,7 @@ function parseCore(src: string): CoreResult {
       position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
       ...(n.icon && { icon: n.icon }),
       ...(list !== undefined ? { pageIds: list } : linked ? { pageIds: [linked] } : {}),
+      ...(decks !== undefined && { deckIds: decks }),
       ...(n.image && { image: n.image }),
     };
   });
@@ -354,6 +357,7 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
       collapsed: prev.collapsed,
       style: prev.style,
       ...((p.pageIds ?? prev.pageIds) !== undefined && { pageIds: p.pageIds ?? prev.pageIds }),
+      ...((p.deckIds ?? prev.deckIds) !== undefined && { deckIds: p.deckIds ?? prev.deckIds }),
     };
   });
 
@@ -450,6 +454,10 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
   }
 
   for (const n of nodes) {
+    if (n.deckIds !== undefined) {
+      lineRefs.set(out.length, { kind: 'node', id: n.id });
+      out.push(`  %% merfolk-decks ${n.id} ${JSON.stringify(n.deckIds)}`);
+    }
     if (n.pageIds === undefined) continue;
     if (n.pageIds[0]) {
       lineRefs.set(out.length, { kind: 'node', id: n.id });

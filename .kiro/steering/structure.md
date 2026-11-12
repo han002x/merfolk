@@ -8,4 +8,5 @@
 - `src/layout.ts` — dagre auto-layout
 - `src/shapes.ts`, `src/icons/catalog.ts`, `src/rough.ts`, `src/style.ts`, `src/theme.ts` — look and feel
 - `src/gif*.ts` — GIF export; `src/persist.ts`, `src/clipboard.ts`, `src/imageUpload.ts` — I/O
+- `src/slides.ts` — pure slide-deck logic; `src/slides/` — slides window (`SlidesApp`, `Slide`, `Present`)
 - `scripts/` — test scripts (`npm test`) and icon generator

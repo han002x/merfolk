@@ -102,6 +102,8 @@ export interface DiagramNode {
   icon?: string;
   /** linked wiki pages in order; the first is the default */
   pageIds?: string[];
+  /** linked slide decks in order; the first is the default */
+  deckIds?: string[];
   /**
    * Mermaid's `@{ img: ... }` image node. Set, the node shows the picture with
    * its label above (`pos: 't'`) or below (default) it; wins over `icon`
@@ -121,6 +123,9 @@ export interface Page {
   updatedAt: number;
 }
 
+/** A slide deck: Markdown with `---` between slides. Linked to nodes like a page. */
+export type Deck = Page;
+
 export interface DiagramEdge {
   id: string;
   source: string;
@@ -137,4 +142,6 @@ export interface Diagram {
   edges: DiagramEdge[];
   /** wiki pages; absent in diagrams saved before the wiki existed */
   pages?: Page[];
+  /** slide decks; absent in diagrams saved before slides existed */
+  decks?: Deck[];
 }

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Icon } from '../components/Icon';
-import { orphanPages, pathTo } from '../pages';
-import { pageHref } from '../route';
+import { orphanPages, pathTo, type LinkKey } from '../pages';
+import { deckHref, pageHref } from '../route';
 import type { DiagramNode, Page } from '../types';
 
-export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty = 'No pages yet' }: {
+export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty = 'No pages yet', kind = 'pageIds' }: {
   nodes: DiagramNode[];
   pages: Page[];
   pageId: string | null;
@@ -12,7 +12,11 @@ export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty
   /** open a page here instead of following its wiki link */
   onPage?: (pageId: string, nodeId?: string) => void;
   empty?: string;
+  /** which of a node's links to list: its pages, or its slide decks */
+  kind?: LinkKey;
 }) {
+  const decks = kind === 'deckIds';
+  const href = decks ? deckHref : pageHref;
   const [branches, setBranches] = useState(() => ({ nodes, pageId, nodeId, closed: new Set<string>() }));
   if (branches.nodes !== nodes || branches.pageId !== pageId || branches.nodeId !== nodeId) {
     const closed = new Set(branches.closed);
@@ -23,7 +27,7 @@ export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty
     const pagesById = new Map(pages.map((page) => [page.id, page]));
     const visible = new Set<string>();
     for (const node of nodes) {
-      if (node.pageIds?.some((id) => pagesById.has(id))) {
+      if (node[kind]?.some((id) => pagesById.has(id))) {
         for (const ancestor of pathTo(nodes, node.id)) visible.add(ancestor.id);
       }
     }
@@ -38,9 +42,9 @@ export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty
     return {
       children,
       pagesById,
-      unlinked: orphanPages(nodes, pages).sort((a, b) => a.title.localeCompare(b.title)),
+      unlinked: orphanPages(nodes, pages, kind).sort((a, b) => a.title.localeCompare(b.title)),
     };
-  }, [nodes, pages]);
+  }, [nodes, pages, kind]);
 
   const toggle = (id: string) => setBranches((previous) => {
     const closed = new Set(previous.closed);
@@ -51,7 +55,7 @@ export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty
 
   const pageLink = (page: Page, context?: string) => (
     <a
-      href={pageHref(page.id, context)}
+      href={href(page.id, context)}
       className={`wk-item${page.id === pageId && context === nodeId ? ' on' : ''}`}
       aria-current={page.id === pageId && context === nodeId ? 'page' : undefined}
       title={page.title || 'Untitled'}
@@ -61,7 +65,7 @@ export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty
         onPage(page.id, context);
       })}
     >
-      <Icon name="page" size={14} />
+      <Icon name={decks ? 'deck' : 'page'} size={14} />
       <span>{page.title || 'Untitled'}</span>
     </a>
   );
@@ -71,7 +75,7 @@ export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty
       {(children.get(parentId) ?? []).map((node) => {
         const expanded = !branches.closed.has(node.id);
         const name = node.label || node.id;
-        const own = (node.pageIds ?? []).flatMap((id) => pagesById.get(id) ?? []);
+        const own = (node[kind] ?? []).flatMap((id) => pagesById.get(id) ?? []);
         // a node whose only page carries its name is one row, not two
         const solo = own.length === 1 && own[0].title === node.label ? own[0] : null;
         const nested = children.has(node.id);
@@ -101,10 +105,10 @@ export default function Navigation({ nodes, pages, pageId, nodeId, onPage, empty
   );
 
   return (
-    <nav className="wk-navigation" aria-label="Wiki pages">
+    <nav className="wk-navigation" aria-label={decks ? 'Slide decks' : 'Wiki pages'}>
       {pages.length === 0 && <p className="wk-index-empty">{empty}</p>}
       {renderNodes(null)}
-      {unlinked.length > 0 && <section className="wk-unlinked" aria-label="Unlinked pages">
+      {unlinked.length > 0 && <section className="wk-unlinked" aria-label={decks ? 'Unlinked decks' : 'Unlinked pages'}>
         <h2 className="wk-index-heading">Unlinked</h2>
         <ul className="wk-tree-list">
           {unlinked.map((page) => <li key={page.id}>{pageLink(page)}</li>)}

@@ -1948,6 +1948,13 @@ body,
   right: calc(var(--ear) + 6px);
   top: 6px;
 }
+/* the slides button sits beside the page button */
+.mf-deck {
+  right: 17px;
+}
+.mf-sheet > .mf-deck {
+  right: calc(var(--ear) + 32px);
+}
 @media (prefers-reduced-motion: reduce) {
   .mf-page {
     transition: none;

@@ -1,4 +1,5 @@
-// Markdown -> sanitized HTML, with `[[wikilinks]]` and the `{{diagram}}` embed.
+// Markdown -> sanitized HTML, with `[[wikilinks]]`, the `{{diagram}}` embed
+// (`{{diagram:Node}}` names a node) and Mermaid fences.
 // Links are resolved against the live diagram, so renames show up on re-render.
 
 import { Marked } from 'marked';
@@ -42,19 +43,25 @@ const marked = new Marked({
     {
       name: 'embed',
       level: 'block',
-      start: (src) => src.indexOf('{{diagram}}'),
+      start: (src) => src.indexOf('{{diagram'),
       tokenizer(src) {
-        const m = /^\{\{diagram\}\}[ \t]*(?:\n|$)/.exec(src);
-        return m ? { type: 'embed', raw: m[0] } : undefined;
+        const m = /^\{\{diagram(?::([^}\n]+))?\}\}[ \t]*(?:\n|$)/.exec(src);
+        return m ? { type: 'embed', raw: m[0], target: (m[1] ?? '').trim() } : undefined;
       },
-      renderer: () => '<div class="embed" data-embed></div>\n',
+      renderer: (token) => `<div class="embed" data-embed="${esc((token as unknown as { target: string }).target)}"></div>\n`,
     },
   ],
+  renderer: {
+    // a Mermaid fence is a picture, drawn by Preview; URI-encoded because the
+    // sanitizer drops any attribute holding an arrow (`-->` closes a comment)
+    code: ({ text, lang }) =>
+      lang === 'mermaid' ? `<div class="embed" data-mermaid="${encodeURIComponent(text)}"></div>\n` : false,
+  },
 });
 
 /** Sanitized HTML for a page body. Raw HTML in the Markdown is cleaned, not trusted. */
 export function renderPage(body: string, context: RenderContext): string {
   ctx = context;
   const html = marked.parse(body, { async: false, gfm: true });
-  return DOMPurify.sanitize(html, { ADD_ATTR: ['data-node', 'data-create', 'data-embed'] });
+  return DOMPurify.sanitize(html, { ADD_ATTR: ['data-node', 'data-create', 'data-embed', 'data-mermaid'] });
 }

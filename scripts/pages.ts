@@ -241,8 +241,8 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
   const multiple: Diagram = { nodes: [node('a', 'API', { pageIds: ['p2', 'p1'] }), node('b', 'DB', { pageIds: ['p2'] })],
     edges: [], pages: [page('p1', 'First', 1), page('p2', 'Shared', 2)] };
   write(multiple);
-  assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 2);
-  assert.deepEqual(readSaved(), multiple);
+  assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 3);
+  assert.deepEqual(readSaved(), { ...multiple, decks: [] });
   await importFile(new File([JSON.stringify({ version: 2, diagram: multiple })], 'new.merfolk.json'));
   assert.deepEqual(useDiagram.getState().nodes.map((n) => n.pageIds), [['p2', 'p1'], ['p2']]);
   write({ ...multiple, nodes: [node('a', 'API', { pageIds: ['p1', 'p2'] }), node('b', 'DB', { pageIds: [] })] });
