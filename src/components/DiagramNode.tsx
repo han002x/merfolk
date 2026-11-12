@@ -5,6 +5,8 @@ import { useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
 import { STYLE_DEFAULTS, animationClass, flowDash, fontFamilyCss, inkOn } from '../style';
 import { CatalogIcon, ShapeOutline } from './ShapeOutline';
+import { PageButton } from './PageButton';
+import { DeckButton } from './DeckButton';
 import { iconTileCss, shapeCss } from '../shapes';
 import { seedOf } from '../rough';
 
@@ -20,6 +22,8 @@ export interface NodeData {
   /** how many nodes are folded inside this card */
   childCount: number;
   style?: ElementStyle;
+  /** flow clock reading at which the sequence reaches this node */
+  flowAt?: number;
   [key: string]: unknown;
 }
 
@@ -99,6 +103,7 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
   if (st?.opacity != null) styleCss.opacity = st.opacity;
   if (st?.fontFamily) styleCss.fontFamily = fontFamilyCss(st.fontFamily);
   if (st?.fontSize != null) styleCss.fontSize = st.fontSize;
+  if (d.flowAt != null) (styleCss as Record<string, string | number>)['--mf-flow-at'] = d.flowAt;
 
   // motion preset: a CSS class drives the keyframes, its cycle length comes
   // from the per-element speed (falls back to the theme default)
@@ -129,6 +134,7 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
     connecting ? 'connecting' : '',
     isConnectionTarget ? 'join-target' : '',
     highlighted ? 'mf-linked' : '',
+    d.flowAt != null ? 'mf-flow-node' : '',
     animCls ?? '',
   ]
     .filter(Boolean)
@@ -189,6 +195,8 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
           </button>
         )}
       </div>
+      <PageButton nodeId={id} />
+      <DeckButton nodeId={id} />
       <Handle type="source" position={Position.Bottom} />
     </div>
   );

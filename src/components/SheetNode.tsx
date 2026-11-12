@@ -2,6 +2,8 @@ import { memo, useState } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { useFoldMotion } from '../foldMotion';
 import { useDiagram } from '../store';
+import { PageButton } from './PageButton';
+import { DeckButton } from './DeckButton';
 
 export interface SheetData {
   groupId: string;
@@ -73,6 +75,8 @@ function SheetNodeInner({ data }: NodeProps) {
             {d.title || 'Untitled'}
           </span>
         )}
+      <PageButton nodeId={d.groupId} />
+      <DeckButton nodeId={d.groupId} />
       <button
         className="mf-dogear nodrag nopan"
         aria-label="Fold"

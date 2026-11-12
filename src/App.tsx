@@ -45,16 +45,22 @@ import { ShapePicker, type Placement } from './components/ShapePicker';
 import { ImagePicker } from './components/ImagePicker';
 import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
 import { toggleTheme, useTheme } from './theme';
+import { foldedAncestors } from './pages.ts';
+import { nameCanvasWindow, parseRoute } from './route';
+import { showDeck, showPage, useDock } from './dock';
 import { isTyping, useHotkeys } from './useHotkeys';
 import { copyImageNode, imagesFromClipboard, snapshotClipboard } from './clipboard';
 import {
   startAutosave,
+  startSync,
   restore,
   exportFile,
   importFile,
   clearSaved,
 } from './persist';
 import { exportGif } from './gif';
+import { FLOW_LEAD, flowCycle, flowSchedule, flowSeconds } from './flow';
+import { clock, seek, usePlayer } from './flowPlayer';
 import type { DiagramNode as DNode } from './types';
 import { SAMPLE } from './sample';
 import { hasOutline, shapeDef } from './shapes';
@@ -90,6 +96,7 @@ function ToolButton({
   label,
   hotkey,
   active,
+  disabled,
   onClick,
   children,
 }: {
@@ -97,6 +104,7 @@ function ToolButton({
   hotkey?: string;
   /** show the current tool pressed */
   active?: boolean;
+  disabled?: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -105,6 +113,7 @@ function ToolButton({
       className={active ? 'mf-tool is-active' : 'mf-tool'}
       aria-label={label}
       aria-pressed={active}
+      disabled={disabled}
       title={hotkey ? `${label}  ·  ${hotkey}` : label}
       onClick={onClick}
     >
@@ -221,7 +230,31 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     await new Promise((r) => window.requestAnimationFrame(() => r(null)));
     try {
       const { nodes: ns, edges: es } = useDiagram.getState();
-      await exportGif(el, { nodes: ns, edges: es });
+      // a sequence that is playing or stepped into is recorded as one loop,
+      // each frame taken at a fixed clock reading
+      const { steps, speed, playing: wasPlaying, lit: wasLit } = usePlayer.getState();
+      const recordFlow = steps > 0 && (wasPlaying || wasLit);
+      const was = clock();
+      if (recordFlow) usePlayer.getState().pause();
+      const loop = flowSeconds(steps, speed);
+      try {
+        await exportGif(
+          el,
+          { nodes: ns, edges: es },
+          {},
+          recordFlow
+            ? {
+                seconds: loop,
+                frame: (t) => seek(-FLOW_LEAD + (((t / loop) % 1) * flowCycle(steps))),
+              }
+            : undefined,
+        );
+      } finally {
+        if (recordFlow) {
+          seek(was);
+          if (wasPlaying) usePlayer.getState().toggle();
+        }
+      }
     } catch {
       // capture/encoding is best-effort; never crash the canvas
     } finally {
@@ -237,6 +270,44 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     for (const n of nodes) if (isOpenGroup(n, kids)) out.add(n.id);
     return out;
   }, [nodes, hidden]);
+
+  // the edges on screen: those into a folded card crease onto the card instead
+  // of vanishing, and ones on an unfolded group land on its sheet, as in Mermaid
+  const shown = useMemo(() => {
+    const { direct, folded } = foldEdges(nodes, edges, hidden);
+    // One between a group and its own contents has no sensible path, so it
+    // waits until the group folds (and then folds away inside it).
+    const kids = childrenOf(nodes);
+    const inside = new Map<string, Set<string>>();
+    const within = (g: string, id: string) => {
+      if (!inside.has(g)) inside.set(g, new Set(descendants(g, kids)));
+      return inside.get(g)!.has(id);
+    };
+    const endOf = (id: string) => (offscreen.has(id) ? SHEET_PREFIX + id : id);
+    const placed = direct.flatMap((e) => {
+      const s = offscreen.has(e.source);
+      const t = offscreen.has(e.target);
+      if ((s && within(e.source, e.target)) || (t && within(e.target, e.source))) return [];
+      return [{ ...e, source: endOf(e.source), target: endOf(e.target) }];
+    });
+    return { direct, placed, folded, endOf };
+  }, [nodes, edges, hidden, offscreen]);
+
+  // the order the sequenced flow travels them
+  const flow = useMemo(
+    () => flowSchedule([...shown.placed, ...shown.folded]),
+    [shown],
+  );
+  const setSchedule = usePlayer((s) => s.setSchedule);
+  const playing = usePlayer((s) => s.playing);
+  const lit = usePlayer((s) => s.lit);
+  const flowSpeed = usePlayer((s) => s.speed);
+  const togglePlay = usePlayer((s) => s.toggle);
+  const stepFlow = usePlayer((s) => s.stepBy);
+  const stopFlow = usePlayer((s) => s.stop);
+  const cycleSpeed = usePlayer((s) => s.cycleSpeed);
+  const noFlow = flow.steps === 0;
+  useEffect(() => setSchedule(flow.sig, flow.steps), [flow.sig, flow.steps, setSchedule]);
 
   // fold choreography: nodes mid-fold are drawn on the card they fold into
   const foldPhase = useFoldMotion((s) => s.phase);
@@ -320,9 +391,10 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           collapsed: n.collapsed,
           childCount: descendants(n.id, kids).length,
           style: n.style,
+          flowAt: flow.nodeAt.get(n.id),
         },
       }));
-  }, [nodes, offscreen, isGroup, positionOf, foldPhase, foldAnchor, selected]);
+  }, [nodes, offscreen, isGroup, positionOf, foldPhase, foldAnchor, selected, flow]);
 
   // a sheet of paper behind every unfolded group, under edges and nodes
   const sheetNodes: Node<SheetData>[] = useMemo(() => {
@@ -437,26 +509,9 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     [sheetNodes, rfNodes, ghostNode],
   );
 
-  // edges into a folded card crease onto the card instead of vanishing
   const rfEdges: Edge[] = useMemo(() => {
     const selEdge = new Set(selectedEdges);
-    const { direct, folded } = foldEdges(nodes, edges, hidden);
-    // An edge on an unfolded group lands on its sheet, as in Mermaid. One
-    // between a group and its own contents has no sensible path, so it waits
-    // until the group folds (and then folds away inside it).
-    const kids = childrenOf(nodes);
-    const inside = new Map<string, Set<string>>();
-    const within = (g: string, id: string) => {
-      if (!inside.has(g)) inside.set(g, new Set(descendants(g, kids)));
-      return inside.get(g)!.has(id);
-    };
-    const endOf = (id: string) => (offscreen.has(id) ? SHEET_PREFIX + id : id);
-    const onScreen = (e: { source: string; target: string }) => {
-      const s = offscreen.has(e.source);
-      const t = offscreen.has(e.target);
-      if ((s && within(e.source, e.target)) || (t && within(e.target, e.source))) return null;
-      return { source: endOf(e.source), target: endOf(e.target) };
-    };
+    const { direct, placed, folded, endOf } = shown;
     // while previewing an insertion that splits A → B, draw A → ghost → B as
     // dashed preview legs in place of the edge it would replace
     const split = ghostNode ? splitEdgeFor(edges, insertion) : undefined;
@@ -481,10 +536,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
       ...previewLegs,
       // the split edge stays mounted (faded) so its label and insert button
       // keep the pointer, otherwise the preview would end the hover it came from
-      ...direct.flatMap((e) => {
-        const ends = onScreen(e);
-        return ends ? [{ ...e, ...ends }] : [];
-      }).map((e) => ({
+      ...placed.map((e) => ({
         id: e.id,
         className: e.id === splitting?.id ? 'mf-edge-splitting' : undefined,
         type: 'diagram',
@@ -493,7 +545,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         target: e.target,
         label: e.label,
         animated: false,
-        data: { style: e.style },
+        data: { style: e.style, flowStep: flow.edgeStep.get(e.id) },
       })),
       ...folded.map((f) => ({
         id: f.id,
@@ -504,10 +556,10 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         selectable: false,
         focusable: false,
         deletable: false,
-        data: { folded: true, count: f.count },
+        data: { folded: true, count: f.count, flowStep: flow.edgeStep.get(f.id) },
       })),
     ];
-  }, [nodes, edges, hidden, offscreen, ghostNode, insertion, selectedEdges]);
+  }, [shown, flow, edges, ghostNode, insertion, selectedEdges]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -652,6 +704,59 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     [fold, unfold, fitView],
   );
 
+  // W: drill down into the selected node's page
+  const openSelectedPage = useCallback(() => {
+    const id = useDiagram.getState().selectedNodeIds[0];
+    if (id) showPage(id);
+  }, []);
+
+  // K: the Slides tab, on the selected node's deck (or every deck when nothing is selected)
+  const openSelectedDeck = useCallback(() => {
+    const id = useDiagram.getState().selectedNodeIds[0];
+    if (id) showDeck(id);
+    else useDock.setState({ open: true, view: 'slides' });
+  }, []);
+
+  // E: flip the page tab between Markdown and Preview
+  const toggleMode = useCallback(() => {
+    const { view, mode, setMode } = useDock.getState();
+    if (view === 'page') setMode(mode === 'read' ? 'edit' : 'read');
+  }, []);
+
+  // #/node/<id> (from the wiki): unfold what hides the node, select it, frame it
+  useEffect(() => {
+    const goto = () => {
+      const route = parseRoute(window.location.hash);
+      if (route.kind !== 'node') return;
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      const { nodes: all } = useDiagram.getState();
+      const node = all.find((n) => n.id === route.id);
+      if (!node) return;
+      const closed = foldedAncestors(all, node.id);
+      if (closed.length) unfold(closed);
+      setSelection([node.id], []);
+      const sheet = !node.collapsed && all.some((n) => n.parentId === node.id);
+      const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      window.setTimeout(
+        () =>
+          fitView({
+            nodes: [{ id: sheet ? `${SHEET_PREFIX}${node.id}` : node.id }],
+            padding: 0.6,
+            maxZoom: 1.2,
+            duration: calm ? 0 : 400,
+          }),
+        closed.length ? 320 : 60,
+      );
+    };
+    // after App's mount effect has restored the saved diagram
+    const first = window.setTimeout(goto, 0);
+    window.addEventListener('hashchange', goto);
+    return () => {
+      window.clearTimeout(first);
+      window.removeEventListener('hashchange', goto);
+    };
+  }, [unfold, setSelection, fitView]);
+
   useHotkeys(
     useMemo(
       () => [
@@ -666,8 +771,14 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'l', shift: true, run: () => tidy('LR') },
         { key: 't', run: () => toggleTheme() },
         { key: 'f', run: foldSelection },
+        { key: 'w', run: openSelectedPage },
+        { key: 'k', run: openSelectedDeck },
+        { key: 'e', run: toggleMode },
         { key: '[', run: () => foldLevel('fold') },
         { key: ']', run: () => foldLevel('unfold') },
+        { key: 'p', run: togglePlay },
+        { key: ',', run: () => stepFlow(-1) },
+        { key: '.', run: () => stepFlow(1) },
         { key: 'm', run: onTogglePanel },
         { key: 'z', meta: true, run: undo },
         { key: 'g', meta: true, run: groupSelection },
@@ -675,7 +786,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'backspace', run: deleteSelected },
         { key: 'delete', run: deleteSelected },
       ],
-      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection],
+      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection, openSelectedPage, openSelectedDeck, toggleMode, togglePlay, stepFlow],
     ),
   );
 
@@ -775,6 +886,36 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           </ToolButton>
           <ToolButton label="Unfold a level" hotkey="]" onClick={() => foldLevel('unfold')}>
             <Icon name="unfold" />
+          </ToolButton>
+        </div>
+        <span className="mf-sep" />
+        <div className="mf-group-btns">
+          <ToolButton label="Previous step" hotkey="," disabled={noFlow || !lit} onClick={() => stepFlow(-1)}>
+            <Icon name="step-back" />
+          </ToolButton>
+          <ToolButton
+            label={playing ? 'Pause flow' : 'Play flow'}
+            hotkey="P"
+            active={playing}
+            disabled={noFlow}
+            onClick={togglePlay}
+          >
+            <Icon name={playing ? 'pause' : 'play'} />
+          </ToolButton>
+          <ToolButton label="Stop flow" disabled={!playing && !lit} onClick={stopFlow}>
+            <Icon name="stop" />
+          </ToolButton>
+          <ToolButton label="Next step" hotkey="." disabled={noFlow} onClick={() => stepFlow(1)}>
+            <Icon name="step-fwd" />
+          </ToolButton>
+          <ToolButton label="Flow speed" disabled={noFlow} onClick={cycleSpeed}>
+            <span className="mf-speed">{flowSpeed === 0.5 ? '½' : flowSpeed}×</span>
+          </ToolButton>
+        </div>
+        <span className="mf-sep" />
+        <div className="mf-group-btns">
+          <ToolButton label="Slides" hotkey="K" onClick={openSelectedDeck}>
+            <Icon name="deck" />
           </ToolButton>
         </div>
         <span className="mf-sep" />
@@ -933,7 +1074,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 }
 
 export default function App() {
-  const [panelOpen, setPanelOpen] = useState(true);
+  const panelOpen = useDock((s) => s.open);
+  const setPanelOpen = useDock((s) => s.setOpen);
   const [panelWidth, setPanelWidth] = useState(360);
   const load = useDiagram((s) => s.load);
 
@@ -943,14 +1085,15 @@ export default function App() {
     if (useDiagram.getState().nodes.length === 0 && !restore()) {
       load(SAMPLE);
     }
-    const stop = startAutosave();
-    return stop;
+    nameCanvasWindow();
+    const stops = [startAutosave(), startSync()];
+    return () => stops.forEach((stop) => stop());
   }, [load]);
 
   return (
     <ReactFlowProvider>
       <div className="mf-app">
-        <Canvas onTogglePanel={() => setPanelOpen((v) => !v)} />
+        <Canvas onTogglePanel={() => setPanelOpen(!useDock.getState().open)} />
         {panelOpen ? (
           <MermaidPanel
             width={panelWidth}

@@ -18,6 +18,7 @@
 
 import type { Diagram, DiagramEdge, DiagramNode, NodeImage, NodeShape } from '../types';
 import { SHAPES, SHAPE_ALIAS, iconForm, shapeDef, shapeForForm } from '../shapes.ts';
+import { parsePageIds } from '../pages.ts';
 
 interface ParsedNode {
   id: string;
@@ -41,6 +42,24 @@ const SHAPE_PATTERNS: Array<{ re: RegExp; shape: NodeShape }> = [...SHAPES]
 /** `id@{ key: value, ... }` (Mermaid v11 shape / icon metadata) */
 const META_RE = /^([A-Za-z0-9_]+)\s*@\{(.*)\}$/;
 const META_PAIR_RE = /([A-Za-z]+)\s*:\s*("(?:[^"\\]|\\.)*"|[^,]*)/g;
+
+/** Where a node's wiki page lives; shared by the `click` emitter and parser. */
+export const PAGE_HREF = '#/wiki/';
+// any base is accepted on import (relative, absolute, another host): the page
+// id is whatever follows `#/wiki/`
+const CLICK_RE = /^click\s+([A-Za-z0-9_]+)\s+href\s+"[^"#]*#\/wiki\/([^"?]+)(?:\?[^"\n]*)?"/;
+
+let pageBase = '';
+
+/**
+ * URL the exported page links hang off, e.g. `https://notes.example/app/`.
+ * Empty keeps them relative (`#/wiki/<id>`). Any fragment on it is dropped.
+ */
+export function setPageBase(base: string) {
+  pageBase = base.trim().replace(/#.*$/, '');
+}
+
+export const pageLink = (pageId: string) => `${pageBase}${PAGE_HREF}${encodeURIComponent(pageId)}`;
 
 function stripQuotes(s: string): string {
   const t = s.trim();
@@ -135,6 +154,9 @@ function parseCore(src: string): CoreResult {
   const edges: DiagramEdge[] = [];
   const subgraphStack: string[] = [];
   const issues: ParseIssue[] = [];
+  const pageIds = new Map<string, string>();
+  const pageLists = new Map<string, string[]>();
+  const deckLists = new Map<string, string[]>();
   let edgeSeq = 0;
   let meaningfulLines = 0;
 
@@ -158,10 +180,29 @@ function parseCore(src: string): CoreResult {
 
   for (let idx = 0; idx < rawLines.length; idx++) {
     const line = rawLines[idx].trim();
+    if (/^%%\s+merfolk-(pages|decks)\b/.test(line)) {
+      const meta = line.match(/^%%\s+merfolk-(pages|decks)\s+([A-Za-z0-9_]+)\s+(.+)$/);
+      try {
+        if (!meta) throw new Error('Expected a node ID and a JSON array of IDs');
+        const value: unknown = JSON.parse(meta[3]);
+        (meta[1] === 'decks' ? deckLists : pageLists).set(meta[2], parsePageIds(value));
+      } catch (error) {
+        issues.push({ line: idx, text: line, reason: error instanceof Error ? error.message : 'Invalid page links' });
+      }
+      continue;
+    }
     if (line.length === 0 || line.startsWith('%%')) continue;
 
     // diagram header
     if (/^(flowchart|graph)\b/i.test(line)) continue;
+    if (/^sequenceDiagram\b/.test(line)) {
+      issues.push({
+        line: idx,
+        text: line,
+        reason: 'sequence diagrams are not supported by the canvas editor; use a flowchart or graph',
+      });
+      break;
+    }
 
     meaningfulLines++;
 
@@ -193,6 +234,17 @@ function parseCore(src: string): CoreResult {
     const parent = subgraphStack.length
       ? subgraphStack[subgraphStack.length - 1]
       : null;
+
+    // wiki link: `click A href "#/wiki/<pageId>"`
+    const ck = line.match(CLICK_RE);
+    if (ck) {
+      try {
+        pageIds.set(ck[1], decodeURIComponent(ck[2]));
+      } catch {
+        issues.push({ line: idx, text: line, reason: 'Invalid page URL encoding' });
+      }
+      continue;
+    }
 
     // edge line
     const em = line.match(EDGE_RE);
@@ -232,16 +284,23 @@ function parseCore(src: string): CoreResult {
     });
   }
 
-  const nodes: DiagramNode[] = [...nodeMap.values()].map((n, i) => ({
-    id: n.id,
-    label: n.label,
-    shape: n.shape,
-    parentId: n.parentId,
-    collapsed: false,
-    position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
-    ...(n.icon && { icon: n.icon }),
-    ...(n.image && { image: n.image }),
-  }));
+  const nodes: DiagramNode[] = [...nodeMap.values()].map((n, i) => {
+    const list = pageLists.get(n.id);
+    const linked = pageIds.get(n.id);
+    const decks = deckLists.get(n.id);
+    return {
+      id: n.id,
+      label: n.label,
+      shape: n.shape,
+      parentId: n.parentId,
+      collapsed: false,
+      position: { x: (i % 4) * 220, y: Math.floor(i / 4) * 140 },
+      ...(n.icon && { icon: n.icon }),
+      ...(list !== undefined ? { pageIds: list } : linked ? { pageIds: [linked] } : {}),
+      ...(decks !== undefined && { deckIds: decks }),
+      ...(n.image && { image: n.image }),
+    };
+  });
 
   return { diagram: { nodes, edges }, issues, meaningfulLines };
 }
@@ -297,6 +356,8 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
       position: prev.position,
       collapsed: prev.collapsed,
       style: prev.style,
+      ...((p.pageIds ?? prev.pageIds) !== undefined && { pageIds: p.pageIds ?? prev.pageIds }),
+      ...((p.deckIds ?? prev.deckIds) !== undefined && { deckIds: p.deckIds ?? prev.deckIds }),
     };
   });
 
@@ -306,7 +367,8 @@ export function mergeDiagram(parsed: Diagram, current: Diagram): Diagram {
 
   const edges: DiagramEdge[] = parsed.edges.map((p) => {
     const prev = curEdges.get(`${p.source}\u0000${p.target}`);
-    return prev ? { ...p, style: prev.style } : p;
+    if (!prev) return p;
+    return { ...p, style: prev.style, ...(prev.order != null && { order: prev.order }) };
   });
 
   return { nodes, edges };
@@ -389,6 +451,20 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
     const arrow = e.label ? `-->|${e.label}|` : '-->';
     lineRefs.set(out.length, { kind: 'edge', id: e.id });
     out.push(`  ${e.source} ${arrow} ${e.target}`);
+  }
+
+  for (const n of nodes) {
+    if (n.deckIds !== undefined) {
+      lineRefs.set(out.length, { kind: 'node', id: n.id });
+      out.push(`  %% merfolk-decks ${n.id} ${JSON.stringify(n.deckIds)}`);
+    }
+    if (n.pageIds === undefined) continue;
+    if (n.pageIds[0]) {
+      lineRefs.set(out.length, { kind: 'node', id: n.id });
+      out.push(`  click ${n.id} href "${pageLink(n.pageIds[0])}"`);
+    }
+    lineRefs.set(out.length, { kind: 'node', id: n.id });
+    out.push(`  %% merfolk-pages ${n.id} ${JSON.stringify(n.pageIds)}`);
   }
 
   return { text: out.join('\n'), lineRefs };

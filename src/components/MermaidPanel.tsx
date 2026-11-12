@@ -1,10 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useDiagram } from '../store';
 import { toMermaidWithMap } from '../mermaid/io';
 import { Icon } from './Icon';
 import { TreePanel } from './TreePanel';
+import { useDock, type View } from '../dock';
+import { usePageBase } from '../pageBase';
 
-const views: ('mermaid' | 'tree')[] = ['mermaid', 'tree'];
+const PagePanel = lazy(() => import('./PagePanel'));
+
+const SlidesPanel = lazy(() => import('./SlidesPanel'));
+const views: View[] = ['mermaid', 'tree', 'page', 'slides'];
+const titles: Record<View, string> = { mermaid: 'Mermaid', tree: 'Tree', page: 'Page', slides: 'Slides' };
 
 export function MermaidPanel({ width, onWidthChange, onClose }: {
   width: number;
@@ -13,7 +19,7 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
 }) {
   const [viewportWidth, setViewportWidth] = useState(window.innerWidth);
   const resize = useRef<{ pointerId: number; x: number; width: number } | null>(null);
-  const maxWidth = Math.min(720, Math.max(280, viewportWidth - 240), viewportWidth);
+  const maxWidth = Math.min(Math.max(280, viewportWidth - 240), viewportWidth);
   const minWidth = Math.min(280, maxWidth);
   const clampWidth = (value: number) => Math.min(maxWidth, Math.max(minWidth, value));
   const panelWidth = clampWidth(width);
@@ -34,7 +40,10 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
 
-  const [tab, setTab] = useState<'mermaid' | 'tree'>('mermaid');
+  const base = usePageBase((s) => s.base);
+  const setBase = usePageBase((s) => s.set);
+  const tab = useDock((s) => s.view);
+  const setTab = useDock((s) => s.setView);
   const [text, setText] = useState('');
   // line map is only valid while the textarea matches the live diagram; while
   // a parse error stands we null the mapping so stale highlights don't point at
@@ -73,7 +82,8 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
       setText(t);
       setErr(null);
     }
-  }, [nodes, edges, edited]);
+    // `base` is read by toMermaidWithMap through io.ts; listing it re-derives the text
+  }, [nodes, edges, edited, base]);
 
   // never leave a preview caret/ghost behind when the panel closes
   useEffect(() => () => {
@@ -81,18 +91,22 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
     setHighlight(null);
   }, [setInsertion, setHighlight]);
 
-  // reverse index: element -> line number, for highlighting the editor from canvas
-  const refToLine = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const [line, ref] of lineRefs) m.set(`${ref.kind}:${ref.id}`, line);
+  // An element can have a declaration, a page link, and page metadata.
+  const refToLines = useMemo(() => {
+    const m = new Map<string, number[]>();
+    for (const [line, ref] of lineRefs) {
+      const key = `${ref.kind}:${ref.id}`;
+      const mapped = m.get(key);
+      if (mapped) mapped.push(line);
+      else m.set(key, [line]);
+    }
     return m;
   }, [lineRefs]);
 
-  const activeLine = useMemo(() => {
-    if (edited || !highlight) return null;
-    const line = refToLine.get(`${highlight.kind}:${highlight.id}`);
-    return line ?? null;
-  }, [edited, highlight, refToLine]);
+  const activeLines = useMemo(() => {
+    if (edited || !highlight) return [];
+    return refToLines.get(`${highlight.kind}:${highlight.id}`) ?? [];
+  }, [edited, highlight, refToLines]);
 
   // lines for the elements selected on the canvas, so a canvas selection
   // highlights the matching editor lines (persistent, unlike the hover above).
@@ -101,15 +115,13 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
     const s = new Set<number>();
     if (edited) return s;
     for (const id of selectedNodeIds) {
-      const line = refToLine.get(`node:${id}`);
-      if (line != null) s.add(line);
+      for (const line of refToLines.get(`node:${id}`) ?? []) s.add(line);
     }
     for (const id of selectedEdgeIds) {
-      const line = refToLine.get(`edge:${id}`);
-      if (line != null) s.add(line);
+      for (const line of refToLines.get(`edge:${id}`) ?? []) s.add(line);
     }
     return s;
-  }, [edited, selectedNodeIds, selectedEdgeIds, refToLine]);
+  }, [edited, selectedNodeIds, selectedEdgeIds, refToLines]);
 
   const lines = useMemo(() => text.split('\n'), [text]);
 
@@ -379,7 +391,11 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
               onKeyDown={(event) => {
                 if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
                 event.preventDefault();
-                const next = event.key === 'Home' ? 'mermaid' : event.key === 'End' ? 'tree' : view === 'mermaid' ? 'tree' : 'mermaid';
+                const at = views.indexOf(view);
+                const next =
+                  event.key === 'Home' ? views[0]
+                  : event.key === 'End' ? views[views.length - 1]
+                  : views[(at + (event.key === 'ArrowRight' ? 1 : views.length - 1)) % views.length];
                 document.getElementById(`mf-tab-${next}`)?.click();
                 document.getElementById(`mf-tab-${next}`)?.focus();
               }}
@@ -394,7 +410,7 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
                 setInsertion(null);
                 setTab(view);
               }}>
-              {view === 'mermaid' ? 'Mermaid' : 'Tree'}
+              {titles[view]}
             </button>
           ))}
         </div>
@@ -408,6 +424,22 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
         </button>
       </div>
 
+      <div className="mf-panel-body" role="tabpanel" id="mf-view-page"
+        aria-labelledby="mf-tab-page" hidden={tab !== 'page'}>
+        {tab === 'page' && (
+          <Suspense fallback={null}>
+            <PagePanel />
+          </Suspense>
+        )}
+      </div>
+      <div className="mf-panel-body" role="tabpanel" id="mf-view-slides"
+        aria-labelledby="mf-tab-slides" hidden={tab !== 'slides'}>
+        {tab === 'slides' && (
+          <Suspense fallback={null}>
+            <SlidesPanel />
+          </Suspense>
+        )}
+      </div>
       <div className="mf-panel-body" role="tabpanel" id="mf-view-tree"
         aria-labelledby="mf-tab-tree" hidden={tab !== 'tree'}>
         <TreePanel />
@@ -420,7 +452,7 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
             {lines.map((line, i) => (
               <div
                 key={i}
-                className={`mf-mline${i === activeLine ? ' active' : ''}${
+                className={`mf-mline${activeLines.includes(i) ? ' active' : ''}${
                   selectedLines.has(i) ? ' selected' : ''
                 }${i === gapLine ? ' insert-before' : ''}`}
               >
@@ -458,10 +490,18 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
 
         {err && <div className="mf-err">{err}</div>}
         <div className="mf-panel-actions">
-          <button className="mf-primary" onClick={tidy}>
+          <button onClick={tidy}>
             Tidy
           </button>
           <button onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
+          <input
+            className="mf-base"
+            value={base}
+            onChange={(e) => setBase(e.target.value)}
+            placeholder="Base URL"
+            aria-label="Base URL for page links"
+            spellCheck={false}
+          />
         </div>
       </div>
     </aside>

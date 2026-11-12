@@ -2,7 +2,7 @@
 // reads every shape, icon form, image, edge and subgraph the way merfolk means it.
 // Run with: node --experimental-strip-types scripts/mermaid-compat.ts
 import { JSDOM } from 'jsdom';
-import { toMermaid } from '../src/mermaid/io.ts';
+import { setPageBase, toMermaid } from '../src/mermaid/io.ts';
 import { SHAPES } from '../src/shapes.ts';
 import type { Diagram, DiagramNode, NodeShape } from '../src/types.ts';
 
@@ -44,7 +44,8 @@ const PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcS
 const nodes: DiagramNode[] = [
   node('grp', 'rect', 'Stack'),
   ...SHAPES.map((d, i) => node(`s${i}`, d.shape, `${d.name} (${i})`, { parentId: 'grp' })),
-  node('i0', 'rect', 'GitHub', { icon: 'simple-icons:github' }),
+  node('i0', 'rect', 'GitHub', { icon: 'simple-icons:github', pageIds: ['pg1', 'pg2'] }),
+  node('p0', 'diamond', 'Linked', { pageIds: ['pg2', 'pg1'] }),
   node('i1', 'round', 'Database', { icon: 'lucide:database' }),
   node('i2', 'circle', 'User', { icon: 'lucide:user' }),
   node('i3', 'rect', '', { icon: 'lucide:cloud' }),
@@ -67,6 +68,9 @@ const d: Diagram = {
   })),
 };
 
+// an absolute base is what a deployed merfolk exports
+const BASE = 'https://notes.example/app/';
+setPageBase(BASE);
 const text = toMermaid(d);
 const fails: string[] = [];
 try {
@@ -111,6 +115,8 @@ try {
     } else if (v.type !== MERMAID_TYPE[n.shape]) {
       fails.push(`${n.id} (${n.shape}): mermaid read it as ${v.type}`);
     }
+    if (n.pageIds?.[0] && (v as { link?: string }).link !== `${BASE}#/wiki/${n.pageIds?.[0]}`)
+      fails.push(`${n.id}: wiki link ${(v as { link?: string }).link}`);
     if ((v.text ?? '') !== n.label) fails.push(`${n.id}: label ${JSON.stringify(v.text)}`);
   }
   const edges = db.getEdges();

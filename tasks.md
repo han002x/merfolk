@@ -7,6 +7,24 @@ highest-leverage unchecked task, executes it, and checks it off here.
 
 - [ ] _(none)_
 
+## Done — Wiki
+
+- [x] Markdown wiki pages linked to nodes: lazy create, separate editor window,
+      wikilinks + backlinks, `{{diagram}}` embed, drill down/up, cross-window
+      sync, orphan re-link/delete, `click` round trip.
+
+## Done — Slides
+
+- [x] Slide decks linked to nodes: Marp / Slidev Markdown, source editor beside
+      live slides, present mode, speaker notes, `{{diagram:Node}}` embeds and
+      Mermaid fences, Markdown export, print to PDF, `merfolk-decks` round trip.
+- [x] Slide tools (add, duplicate, move, delete, insert), presenter tools
+      (overview, presenter view, pointer, blank, jump), design tools (text
+      boxes, shapes, slide style, deck fonts).
+- [x] Lines, arrows, image objects, rotation, layering, alignment guides,
+      custom colours, layouts, deck themes, transitions, drag to reorder,
+      presenter window.
+
 ## Backlog — M8 Edge editing (next up)
 
 - [x] Inline-rename an edge label (double-click the edge).

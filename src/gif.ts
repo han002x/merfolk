@@ -22,6 +22,15 @@ import {
 
 export { GIF_DEFAULTS, cycleSeconds, frameCount, frameDelayMs, fitScale, gifFileName };
 
+/**
+ * A sequenced flow to record: its loop length, and a hook that sets the flow
+ * clock for the frame taken `elapsed` seconds into the capture.
+ */
+export interface FlowCapture {
+  seconds: number;
+  frame: (elapsed: number) => void;
+}
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -33,6 +42,7 @@ export async function exportGif(
   element: HTMLElement,
   diagram: Diagram,
   opts: Partial<typeof GIF_DEFAULTS> = {},
+  flow?: FlowCapture,
 ): Promise<void> {
   const { fps, maxWidth, quality, stillSeconds } = { ...GIF_DEFAULTS, ...opts };
 
@@ -45,7 +55,7 @@ export async function exportGif(
   const outW = Math.max(1, Math.round(srcW * scale));
   const outH = Math.max(1, Math.round(srcH * scale));
 
-  const seconds = cycleSeconds(diagram) || stillSeconds;
+  const seconds = cycleSeconds(diagram, flow?.seconds) || stillSeconds;
   const frames = frameCount(seconds, fps);
   const delay = frameDelayMs(fps);
 
@@ -91,6 +101,7 @@ export async function exportGif(
   const restoreTexture = await preparePaperTexture(element);
   try {
     for (let i = 0; i < frames; i++) {
+      flow?.frame((i / frames) * seconds);
       const restoreStyles = prepareSvgStyles(element);
       try {
         const canvas = await toCanvas(element, captureOpts);

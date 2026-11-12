@@ -6,16 +6,19 @@ import type {
   ElementStyle,
   NodeImage,
   NodeShape,
+  Deck,
+  Page,
 } from './types';
-import { fromMermaid, mergeDiagram, parseMermaid, toMermaid } from './mermaid/io';
-import { layout, type Direction } from './layout';
+import { fromMermaid, mergeDiagram, parseMermaid, toMermaid } from './mermaid/io.ts';
+import { layout, type Direction } from './layout.ts';
+import { createPageFor, mergePages, newPageId, normalizeDiagram, type LinkKey } from './pages.ts';
 import {
   childrenOf,
   descendants,
   groupOrigin,
   groupPlan,
   hiddenIds as computeHidden,
-} from './fold';
+} from './fold.ts';
 
 let idSeq = 0;
 const nextId = (prefix: string) => `${prefix}${Date.now().toString(36)}${idSeq++}`;
@@ -47,6 +50,8 @@ function unchanged(a: Diagram, b: Diagram): boolean {
       x.label !== y.label ||
       x.shape !== y.shape ||
       x.icon !== y.icon ||
+      JSON.stringify(x.pageIds ?? []) !== JSON.stringify(y.pageIds ?? []) ||
+      JSON.stringify(x.deckIds ?? []) !== JSON.stringify(y.deckIds ?? []) ||
       imageKey(x.image) !== imageKey(y.image) ||
       x.parentId !== y.parentId ||
       x.position.x !== y.position.x ||
@@ -120,6 +125,10 @@ interface Snapshot {
 interface State {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
+  /** wiki pages; not part of undo history */
+  pages: Page[];
+  /** slide decks; not part of undo history */
+  decks: Deck[];
 
   /** element currently hovered/focused anywhere (canvas or mermaid editor) */
   highlight: Highlight | null;
@@ -157,6 +166,30 @@ interface State {
   // selection
   setSelection: (nodeIds: string[], edgeIds: string[]) => void;
 
+  // wiki
+  /** Open a linked page or the default, creating missing content on first call. */
+  openPage: (nodeId: string, pageId?: string) => string | null;
+  createPageForNode: (nodeId: string) => string | null;
+  /** a free-standing page (no node yet) */
+  createPage: (title: string) => string;
+  /** drop a page and unlink any node that pointed at it */
+  deletePage: (id: string) => void;
+  /** Attach an existing page without changing its other links. */
+  linkPage: (pageId: string, nodeId: string) => void;
+  unlinkPage: (pageId: string, nodeId: string) => void;
+  makeDefaultPage: (pageId: string, nodeId: string) => void;
+  updatePage: (id: string, patch: Partial<Pick<Page, 'title' | 'body'>>) => void;
+
+  // slides: the same actions over decks
+  openDeck: (nodeId: string, deckId?: string) => string | null;
+  createDeckForNode: (nodeId: string) => string | null;
+  createDeck: (title: string) => string;
+  deleteDeck: (id: string) => void;
+  linkDeck: (deckId: string, nodeId: string) => void;
+  unlinkDeck: (deckId: string, nodeId: string) => void;
+  makeDefaultDeck: (deckId: string, nodeId: string) => void;
+  updateDeck: (id: string, patch: Partial<Pick<Deck, 'title' | 'body'>>) => void;
+
   // mutations
   addNode: (
     shape: NodeShape,
@@ -168,6 +201,8 @@ interface State {
   updateNodeImage: (id: string, patch: Partial<NodeImage> | null) => void;
   updateNodeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
   updateEdgeStyle: (ids: string[], patch: Partial<ElementStyle>) => void;
+  /** set (or, with undefined, clear) the flow step of several edges */
+  setEdgeOrder: (ids: string[], order: number | undefined) => void;
   moveNode: (id: string, position: { x: number; y: number }) => void;
   removeNode: (id: string) => void;
   connect: (source: string, target: string) => void;
@@ -194,6 +229,11 @@ interface State {
   syncMermaid: (src: string) => { ok: true } | { ok: false; error: string };
   exportMermaid: () => string;
   load: (d: Diagram) => void;
+  /**
+   * Take on another window's saved diagram without touching undo history or
+   * selection. Pages and decks merge by `updatedAt`; a no-op when nothing differs.
+   */
+  applyRemote: (d: Diagram) => void;
 }
 
 const HISTORY_LIMIT = 100;
@@ -235,9 +275,80 @@ export const useDiagram = create<State>((set, get) => {
     return { history: next };
   };
 
+
+  /**
+   * Pages and decks are the same thing to the store: documents that nodes link
+   * to in order, the first being the default. One set of actions serves both.
+   */
+  const linked = (list: 'pages' | 'decks', key: LinkKey) => {
+    const prefix = key === 'deckIds' ? 'deck' : 'page';
+    const relink = (nodes: DiagramNode[], match: (n: DiagramNode) => boolean, ids: (old: string[]) => string[]) =>
+      nodes.map((n) => (match(n) ? { ...n, [key]: ids(n[key] ?? []) } : n));
+    const has = (id: string) => (n: DiagramNode) => !!n[key]?.includes(id);
+    return {
+      open: (nodeId: string, docId?: string): string | null => {
+        const s = get();
+        const node = s.nodes.find((n) => n.id === nodeId);
+        if (!node) return null;
+        if (docId && !node[key]?.includes(docId)) return null;
+        const target = docId ? { ...node, [key]: [docId] } : node;
+        const doc = createPageFor(target, s[list], Date.now(), key);
+        if (doc) {
+          set({
+            [list]: [...s[list], doc],
+            nodes: relink(s.nodes, (n) => n.id === nodeId && !n[key]?.length, () => [doc.id]),
+          } as Partial<State>);
+        }
+        return doc?.id ?? target[key]?.[0] ?? null;
+      },
+      createFor: (nodeId: string): string | null => {
+        const s = get();
+        const node = s.nodes.find((n) => n.id === nodeId);
+        if (!node) return null;
+        const id = newPageId(s[list], prefix);
+        set({
+          [list]: [...s[list], { id, title: node.label, body: '', updatedAt: Date.now() }],
+          nodes: relink(s.nodes, (n) => n.id === nodeId, (old) => [...old, id]),
+        } as Partial<State>);
+        return id;
+      },
+      /** a free-standing document (no node yet) */
+      create: (title: string): string => {
+        const id = newPageId(get()[list], prefix);
+        set((s) => ({ [list]: [...s[list], { id, title, body: '', updatedAt: Date.now() }] }) as Partial<State>);
+        return id;
+      },
+      remove: (id: string) =>
+        set((s) => ({
+          [list]: s[list].filter((p) => p.id !== id),
+          nodes: relink(s.nodes, has(id), (old) => old.filter((p) => p !== id)),
+          // Undo can restore deleted nodes, but must not revive links to deleted documents.
+          history: s.history.map((h) => ({ ...h, nodes: relink(h.nodes, has(id), (old) => old.filter((p) => p !== id)) })),
+        }) as Partial<State>),
+      link: (id: string, nodeId: string) =>
+        set((s) => {
+          const node = s.nodes.find((n) => n.id === nodeId);
+          if (!node || has(id)(node) || !s[list].some((p) => p.id === id)) return s;
+          return { nodes: relink(s.nodes, (n) => n.id === nodeId, (old) => [...old, id]) };
+        }),
+      unlink: (id: string, nodeId: string) =>
+        set((s) => ({ nodes: relink(s.nodes, (n) => n.id === nodeId && has(id)(n), (old) => old.filter((p) => p !== id)) })),
+      makeDefault: (id: string, nodeId: string) =>
+        set((s) => ({ nodes: relink(s.nodes, (n) => n.id === nodeId && has(id)(n), (old) => [id, ...old.filter((p) => p !== id)]) })),
+      update: (id: string, patch: Partial<Pick<Page, 'title' | 'body'>>) =>
+        set((s) => ({
+          [list]: s[list].map((p) => (p.id === id ? { ...p, ...patch, updatedAt: Date.now() } : p)),
+        }) as Partial<State>),
+    };
+  };
+  const pages = linked('pages', 'pageIds');
+  const decks = linked('decks', 'deckIds');
+
   return {
   nodes: [],
   edges: [],
+  pages: [],
+  decks: [],
   highlight: null,
   insertion: null,
   ghostAt: null,
@@ -370,10 +481,31 @@ export const useDiagram = create<State>((set, get) => {
   },
 
   updateLabel: (id, label) =>
-    set((s) => ({
-      ...snapshot(),
-      nodes: s.nodes.map((n) => (n.id === id ? { ...n, label } : n)),
-    })),
+    set((s) => {
+      const nodes = s.nodes.map((n) => (n.id === id ? { ...n, label } : n));
+      return {
+        ...snapshot(),
+        nodes,
+      };
+    }),
+
+  openPage: pages.open,
+  createPageForNode: pages.createFor,
+  createPage: pages.create,
+  deletePage: pages.remove,
+  linkPage: pages.link,
+  unlinkPage: pages.unlink,
+  makeDefaultPage: pages.makeDefault,
+  updatePage: pages.update,
+
+  openDeck: decks.open,
+  createDeckForNode: decks.createFor,
+  createDeck: decks.create,
+  deleteDeck: decks.remove,
+  linkDeck: decks.link,
+  unlinkDeck: decks.unlink,
+  makeDefaultDeck: decks.makeDefault,
+  updateDeck: decks.update,
 
   updateNodeImage: (id, patch) =>
     set((s) => {
@@ -421,6 +553,21 @@ export const useDiagram = create<State>((set, get) => {
         edges: s.edges.map((e) =>
           set$.has(e.id) ? { ...e, style: { ...e.style, ...patch } } : e,
         ),
+      };
+    }),
+
+  setEdgeOrder: (ids, order) =>
+    set((s) => {
+      if (ids.length === 0) return s;
+      const set$ = new Set(ids);
+      return {
+        ...styleSnapshot(`order:${ids.join(',')}`),
+        edges: s.edges.map((e) => {
+          if (!set$.has(e.id)) return e;
+          const next = { ...e };
+          delete next.order;
+          return order == null ? next : { ...next, order };
+        }),
       };
     }),
 
@@ -624,15 +771,29 @@ export const useDiagram = create<State>((set, get) => {
 
   exportMermaid: () => toMermaid({ nodes: get().nodes, edges: get().edges }),
 
+  applyRemote: (incoming) => {
+    const d = normalizeDiagram(incoming);
+    set((s) => {
+      const pages = mergePages(s.pages, d.pages ?? []);
+      const decks = mergePages(s.decks, d.decks ?? []);
+      const same = JSON.stringify([s.nodes, s.edges]) === JSON.stringify([d.nodes, d.edges]);
+      if (same && pages === s.pages && decks === s.decks) return s;
+      return same ? { pages, decks } : { nodes: d.nodes, edges: d.edges, pages, decks };
+    });
+  },
+
   // Loading a whole new document (startup restore, file import, clear) starts
   // a fresh editing session — reset undo history rather than making it undoable.
-  load: (d) => {
+  load: (incoming) => {
+    const d = normalizeDiagram(incoming);
     lastMoveId = null;
     lastStyleKey = null;
     set({
       history: [],
       nodes: d.nodes,
       edges: d.edges,
+      pages: d.pages ?? [],
+      decks: d.decks ?? [],
       selectedNodeIds: [],
       selectedEdgeIds: [],
     });

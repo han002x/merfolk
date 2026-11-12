@@ -21,6 +21,13 @@ own and leaves the build green.
   curated tech / brand icon set, exported as Mermaid `@{ icon }`; verified
   against the real mermaid parser in `npm test`.
 
+- **Wiki.** Markdown pages per node in their own window, wikilinks, backlinks,
+  live sub-diagram embeds, and drill down / drill up between canvas and page.
+
+- **Slides.** Decks per node as Marp / Slidev Markdown: source beside live
+  slides, keyboard present mode, speaker notes, live diagram embeds, Markdown
+  and print-to-PDF export.
+
 ## Next
 
 - **M7 — Persistence.** Autosave the diagram to `localStorage`; restore on load.

@@ -3,6 +3,10 @@
 
 type IconName =
   | 'cursor'
+  | 'text'
+  | 'line'
+  | 'arrow'
+  | 'link'
   | 'rect'
   | 'round'
   | 'diamond'
@@ -23,9 +27,43 @@ type IconName =
   | 'unfold'
   | 'more'
   | 'shapes'
+  | 'page'
+  | 'deck'
+  | 'grid'
+  | 'expand'
+  | 'play'
+  | 'pause'
+  | 'stop'
+  | 'step-back'
+  | 'step-fwd'
   | 'image';
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  text: <path d="M4 6V4h16v2M12 4v16M8 20h8" />,
+  line: <path d="M5 19 19 5" />,
+  arrow: <path d="M5 19 19 5M8 5h11v11" />,
+  link: <path d="m10 13 4-4M8 15l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0M13 9l1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" />,
+  page: (
+    <>
+      <path d="M7 3h7l4 4v14H7Z" />
+      <path d="M14 3v4h4M10 12h5M10 16h5" />
+    </>
+  ),
+  deck: (
+    <>
+      <rect x="3" y="4" width="18" height="12" rx="1.5" />
+      <path d="M12 16v4M8 20h8" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1" />
+      <rect x="13" y="4" width="7" height="7" rx="1" />
+      <rect x="4" y="13" width="7" height="7" rx="1" />
+      <rect x="13" y="13" width="7" height="7" rx="1" />
+    </>
+  ),
+  expand: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
   rect: <rect x="3" y="6" width="18" height="12" rx="2" />,
   round: <rect x="3" y="6" width="18" height="12" rx="6" />,
   diamond: <path d="M12 3 21 12 12 21 3 12Z" />,
@@ -121,6 +159,21 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <circle cx="17" cy="7" r="3.5" />
       <path d="M7 13.5l3.8 6.5H3.2z" />
       <rect x="13.5" y="13.5" width="7" height="7" rx="3.5" />
+    </>
+  ),
+  play: <path d="M7 4.5v15l12-7.5z" />,
+  stop: <rect x="6" y="6" width="12" height="12" rx="1.5" />,
+  pause: <path d="M8 5v14M16 5v14" />,
+  'step-back': (
+    <>
+      <path d="M18 5l-9 7 9 7z" />
+      <path d="M5 5v14" />
+    </>
+  ),
+  'step-fwd': (
+    <>
+      <path d="M6 5l9 7-9 7z" />
+      <path d="M19 5v14" />
     </>
   ),
   // vertical three-dot kebab menu

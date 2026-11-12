@@ -100,6 +100,10 @@ export interface DiagramNode {
    * then only picks the tile's corners (round => rounded, circle => circle)
    */
   icon?: string;
+  /** linked wiki pages in order; the first is the default */
+  pageIds?: string[];
+  /** linked slide decks in order; the first is the default */
+  deckIds?: string[];
   /**
    * Mermaid's `@{ img: ... }` image node. Set, the node shows the picture with
    * its label above (`pos: 't'`) or below (default) it; wins over `icon`
@@ -109,11 +113,26 @@ export interface DiagramNode {
   style?: ElementStyle;
 }
 
+/** A Markdown wiki page. Nodes point at pages; pages outlive their nodes. */
+export interface Page {
+  id: string;
+  title: string;
+  /** Markdown source */
+  body: string;
+  /** epoch ms of the last edit; the newer copy wins when windows sync */
+  updatedAt: number;
+}
+
+/** A slide deck: Markdown with `---` between slides. Linked to nodes like a page. */
+export type Deck = Page;
+
 export interface DiagramEdge {
   id: string;
   source: string;
   target: string;
   label?: string;
+  /** 1-based step in the flow sequence; missing => follows the graph */
+  order?: number;
   /** optional per-edge visual overrides */
   style?: ElementStyle;
 }
@@ -121,4 +140,8 @@ export interface DiagramEdge {
 export interface Diagram {
   nodes: DiagramNode[];
   edges: DiagramEdge[];
+  /** wiki pages; absent in diagrams saved before the wiki existed */
+  pages?: Page[];
+  /** slide decks; absent in diagrams saved before slides existed */
+  decks?: Deck[];
 }
