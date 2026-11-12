@@ -7,7 +7,7 @@ import { useDiagram } from './store.ts';
 import { normalizeDiagram } from './pages.ts';
 
 const KEY = 'merfolk.diagram';
-const VERSION = 2;
+const VERSION = 3;
 
 interface Saved {
   version: number;
@@ -19,7 +19,7 @@ export function readSaved(): Diagram | null {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Saved;
-    if (![1, VERSION].includes(parsed.version) || !parsed.diagram) return null;
+    if (![1, 2, VERSION].includes(parsed.version) || !parsed.diagram) return null;
     return normalizeDiagram(parsed.diagram);
   } catch {
     return null;
@@ -40,7 +40,7 @@ export function startAutosave(debounceMs = 400): () => void {
   return useDiagram.subscribe((state) => {
     window.clearTimeout(timer);
     timer = window.setTimeout(
-      () => write({ nodes: state.nodes, edges: state.edges, pages: state.pages }),
+      () => write({ nodes: state.nodes, edges: state.edges, pages: state.pages, decks: state.decks }),
       debounceMs,
     );
   });
@@ -60,7 +60,7 @@ export function startSync(): () => void {
 /** Restore the saved diagram into the store. Returns true if anything loaded. */
 export function restore(): boolean {
   const saved = readSaved();
-  if (!saved || (saved.nodes.length === 0 && !saved.pages?.length)) return false;
+  if (!saved || (saved.nodes.length === 0 && !saved.pages?.length && !saved.decks?.length)) return false;
   useDiagram.getState().load(saved);
   return true;
 }
@@ -71,8 +71,8 @@ export function clearSaved() {
 
 /** Download the current diagram as a .merfolk.json file. */
 export function exportFile() {
-  const { nodes, edges, pages } = useDiagram.getState();
-  const payload: Saved = { version: VERSION, diagram: { nodes, edges, pages } };
+  const { nodes, edges, pages, decks } = useDiagram.getState();
+  const payload: Saved = { version: VERSION, diagram: { nodes, edges, pages, decks } };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {
     type: 'application/json',
   });

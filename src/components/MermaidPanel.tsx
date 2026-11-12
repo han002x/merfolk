@@ -8,8 +8,9 @@ import { usePageBase } from '../pageBase';
 
 const PagePanel = lazy(() => import('./PagePanel'));
 
-const views: View[] = ['mermaid', 'tree', 'page'];
-const titles: Record<View, string> = { mermaid: 'Mermaid', tree: 'Tree', page: 'Page' };
+const SlidesPanel = lazy(() => import('./SlidesPanel'));
+const views: View[] = ['mermaid', 'tree', 'page', 'slides'];
+const titles: Record<View, string> = { mermaid: 'Mermaid', tree: 'Tree', page: 'Page', slides: 'Slides' };
 
 export function MermaidPanel({ width, onWidthChange, onClose }: {
   width: number;
@@ -428,6 +429,14 @@ export function MermaidPanel({ width, onWidthChange, onClose }: {
         {tab === 'page' && (
           <Suspense fallback={null}>
             <PagePanel />
+          </Suspense>
+        )}
+      </div>
+      <div className="mf-panel-body" role="tabpanel" id="mf-view-slides"
+        aria-labelledby="mf-tab-slides" hidden={tab !== 'slides'}>
+        {tab === 'slides' && (
+          <Suspense fallback={null}>
+            <SlidesPanel />
           </Suspense>
         )}
       </div>

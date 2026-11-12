@@ -47,7 +47,7 @@ import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
 import { toggleTheme, useTheme } from './theme';
 import { foldedAncestors } from './pages.ts';
 import { nameCanvasWindow, parseRoute } from './route';
-import { showPage, useDock } from './dock';
+import { showDeck, showPage, useDock } from './dock';
 import { isTyping, useHotkeys } from './useHotkeys';
 import { copyImageNode, imagesFromClipboard, snapshotClipboard } from './clipboard';
 import {
@@ -710,6 +710,13 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
     if (id) showPage(id);
   }, []);
 
+  // K: the Slides tab, on the selected node's deck (or every deck when nothing is selected)
+  const openSelectedDeck = useCallback(() => {
+    const id = useDiagram.getState().selectedNodeIds[0];
+    if (id) showDeck(id);
+    else useDock.setState({ open: true, view: 'slides' });
+  }, []);
+
   // E: flip the page tab between Markdown and Preview
   const toggleMode = useCallback(() => {
     const { view, mode, setMode } = useDock.getState();
@@ -765,6 +772,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 't', run: () => toggleTheme() },
         { key: 'f', run: foldSelection },
         { key: 'w', run: openSelectedPage },
+        { key: 'k', run: openSelectedDeck },
         { key: 'e', run: toggleMode },
         { key: '[', run: () => foldLevel('fold') },
         { key: ']', run: () => foldLevel('unfold') },
@@ -778,7 +786,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'backspace', run: deleteSelected },
         { key: 'delete', run: deleteSelected },
       ],
-      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection, openSelectedPage, toggleMode, togglePlay, stepFlow],
+      [arm, tidy, onTogglePanel, deleteSelected, undo, cancelPending, foldSelection, foldLevel, groupSelection, openSelectedPage, openSelectedDeck, toggleMode, togglePlay, stepFlow],
     ),
   );
 
@@ -902,6 +910,12 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           </ToolButton>
           <ToolButton label="Flow speed" disabled={noFlow} onClick={cycleSpeed}>
             <span className="mf-speed">{flowSpeed === 0.5 ? '½' : flowSpeed}×</span>
+          </ToolButton>
+        </div>
+        <span className="mf-sep" />
+        <div className="mf-group-btns">
+          <ToolButton label="Slides" hotkey="K" onClick={openSelectedDeck}>
+            <Icon name="deck" />
           </ToolButton>
         </div>
         <span className="mf-sep" />

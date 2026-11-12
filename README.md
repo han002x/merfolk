@@ -86,10 +86,70 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   comments preserve all links and their order when importing Mermaid back into
   merfolk. Other Mermaid renderers ignore these comments. Mermaid stores page
   references; use `.merfolk.json` to include page content.
+- **Slides** — every node can also link slide decks, written as code. Press `K`,
+  the slides button on a node (beside its page button), or **Slides** on the
+  toolbar to open the selected node's deck in the side panel's **Slides** tab
+  (created on first use, titled from the node); with nothing selected the tab
+  lists every deck. The tab shows the deck as slides or as its Markdown, and
+  its menu switches between a node's decks: **New deck**, **Link existing
+  deck**, **Unlink**, **Make default**. ↗ opens the deck in the slides window,
+  where the full tools live, and a slide's number presents from that slide; decks appear beneath their nodes in the canvas tree
+  and the slides sidebar, and link, unlink and outlive nodes exactly as pages do.
+  A deck is Markdown in the subset [Marp](https://marp.app) and
+  [Slidev](https://sli.dev) both read: `---` on its own line starts a new
+  slide, an HTML comment (`<!-- … -->`) is a speaker note, and optional front
+  matter at the top is kept but not shown. `{{diagram}}` draws the linked
+  node's live sub-diagram, `{{diagram:Node}}` draws any node by label or id,
+  and ```` ```mermaid ```` fences render as diagrams. `[[wikilinks]]` open the
+  wiki. The source sits beside its slides, which redraw as you type. The slide
+  under the caret is outlined; click a slide to move the caret to its source,
+  and its number presents from that slide. Each slide's ⋮ menu adds a slide
+  after it, duplicates, moves or deletes it; drag a slide by its number to
+  reorder. **+ Slide** adds a blank slide or a layout (title, title and
+  content, section, two columns), and **Insert** drops in a diagram, Mermaid
+  fence, table, code block or speaker note. Every tool is an edit to the
+  Markdown, so undo takes it back. **Insert** also places objects: a text box,
+  rectangle, rounded rectangle, ellipse, line, arrow, or an image from a link
+  or a file. Drag one to move it: its edges and centre snap to the slide's and
+  to other objects', with guides (`⇧` moves freely). Drag any edge or corner to
+  resize (`⇧` keeps proportions) and the knob above it to turn (`⇧` for 15° steps); arrow keys nudge
+  (`⇧` for bigger steps), `⌫` deletes. Its bar sets fill, border, text colour
+  (swatches or any colour), font and size, brings it to the front or sends it
+  to the back (objects paint in source order), and **Edit text** or a double-click edits its words directly on the slide.
+  `Enter` also starts text editing; `Esc` finishes it. `Tab` / `⇧Tab` cycle
+  objects, and `Ctrl/⌘D` duplicates the selected object. **Undo** / **Redo**
+  and `Ctrl/⌘Z` / `Ctrl/⌘⇧Z` share a history with the source editor.
+  The object bar also offers font, size and text alignment; **Edit source**
+  remains available in its Style menu. An object is one HTML block,
+  `<div class="box round hand" style="left:10%;top:20%;width:30%;height:20%">Text</div>`,
+  placed in percent of the slide. **Style** dresses the slide being written
+  (background, text colour, centered, inverted) with Marp's own directives
+  (`<!-- _backgroundColor: … -->`, `_color`, `_class: lead invert`; without the
+  underscore they carry on to later slides), and sets the deck's text and
+  heading fonts (sans, serif, mono, hand) as `font` / `headingFont` in the
+  front matter, where `backgroundColor` and `color` dress every slide: a deck
+  theme (Paper, Kraft, Sky, Night) is that pair. `transition: fade` or
+  `slide` there animates slide changes.
+  **Present** starts at the
+  slide being written and fills the window: `→` / `Space` / `Enter` next, `←` /
+  `Backspace` back, `Home` / `End`, a number then `Enter` to jump, `O` for all
+  slides, `N` for the presenter view (notes, timer, next slide), `L` for a
+  pointer, `B` to blank the screen, `P` for a presenter window to keep on your
+  own screen (every window on the deck stays on the same slide), `F` full
+  screen, `Esc` exit. The same
+  tools sit in the corner of the slide. The slide number lives in the URL
+  (`#/slides/<id>?slide=3`). Print
+  while presenting for a PDF, one slide per sheet. **Export Markdown** writes a
+  standalone `.md` with `marp: true`, every embed replaced by a Mermaid fence
+  and wikilinks by their text; objects are written out with their full inline
+  CSS and the deck's fonts as a Marp `style`. Slidev draws those fences
+  natively; Marp needs a Mermaid plugin, and HTML enabled to show objects. Deck links ride through Mermaid as
+  `%% merfolk-decks A ["deck1"]` comments; deck content lives in
+  `.merfolk.json`.
 - **Persistence** — the diagram autosaves to `localStorage` and restores on
   reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
   or clear the canvas, from the toolbar. Older single-page saves and JSON files
-  migrate automatically; new saves use version 2.
+  migrate automatically; new saves use version 3.
 - **Paper and ink** — one look throughout: a grained paper desk, card-stock
   panels, crisp kraft sheets for unfolded groups, and diagrams drawn in
   hand-drawn ink (roughjs, seeded per element so the wobble never changes)
@@ -118,6 +178,7 @@ simple architecture, simple design, simple implementation, no filler text.
 | `T` | Toggle theme |
 | `M` | Toggle Mermaid panel |
 | `W` | Open the selected node's default wiki page in the side panel |
+| `K` | Open the selected node's default slide deck in the side panel (all decks when nothing is selected) |
 | `E` | Page tab: switch between Edit and Read |
 | `F` | Fold / unfold the selected group (or the sheet a selected node sits on) |
 | `[` / `]` | Fold / unfold one level |
@@ -137,7 +198,7 @@ npm install
 npm run dev      # http://localhost:5173
 npm run build    # type-check + production bundle to dist/
 npx playwright install chromium # browser for end-to-end tests
-npm run test:e2e # wiki and side-panel editor browser tests
+npm run test:e2e # wiki, side-panel editor and slides browser tests
 npm test         # mermaid round-trip, fold logic, and a check against the real mermaid parser
 npm run icons    # regenerate src/icons/catalog.ts from the curated list in scripts/icons.ts
 ```
@@ -160,9 +221,12 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 | `src/components/SheetNode.tsx` | Paper sheet behind an unfolded group, with the dog-ear fold control |
 | `src/components/Icon.tsx` | Inline-SVG icon set (currentColor, theme-aware) |
 | `src/pages.ts` | Pure wiki logic: lazy pages, shared links, migration, wikilinks, backlinks, orphans, embed subtree, cross-window merge |
-| `src/route.ts` | Hash routes (`#/wiki/<id>`, `#/node/<id>`) and window helpers |
+| `src/slides.ts` | Pure deck logic: split slides, speaker notes, Marp / Slidev Markdown export |
+| `src/slides/` | Lazy-loaded slides window: `SlidesApp` (source beside slides), `Slide`, `Present` |
+| `src/route.ts` | Hash routes (`#/wiki/<id>`, `#/slides/<id>`, `#/node/<id>`) and window helpers |
 | `src/dock.ts` | Which view the side panel shows; `showPage` opens a node's page there |
 | `src/components/PagePanel.tsx` | Page tab: edit / read the selected node's page beside the canvas |
+| `src/components/SlidesPanel.tsx` | Slides tab: the selected node's deck as slides or Markdown beside the canvas |
 | `src/wiki/` | Lazy-loaded wiki window: `WikiApp`, rich-text `Editor`, CodeMirror `SourceEditor`, sanitized `Preview`, `render` |
 | `src/useHotkeys.ts` | Global keyboard shortcuts, suspended while typing |
 | `src/components/MermaidPanel.tsx` | Live Mermaid text view + import/copy |

@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useDiagram } from '../store';
 import { restore, startAutosave, startSync } from '../persist';
 import { toggleTheme, useTheme } from '../theme';
-import { backlinks, linkableNodes, nodesOfPage, pathTo } from '../pages';
+import { backlinks, nodesOfPage, pathTo } from '../pages';
 import { openNode, pageHref } from '../route';
 import { Icon } from '../components/Icon';
 import Document, { ModeSwitch, type PageMode } from './Document';
 import Menu from './Menu';
 import Navigation from './Navigation';
+import NodeLinks from './NodeLinks';
 import './wiki.css';
 
 export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nodeId?: string }) {
@@ -24,7 +25,6 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
   const pageNodes = page ? nodesOfPage(nodes, page.id) : [];
   const node = pageNodes.find((n) => n.id === nodeId) ?? pageNodes[0];
   const linked = page ? backlinks(page, nodes, pages) : [];
-  const linkable = page ? linkableNodes(nodes, page.id) : [];
   const theme = useTheme();
   const [mode, setMode] = useState<PageMode>('edit');
   // the narrow-screen index closes itself once a page is chosen
@@ -81,37 +81,7 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
             Pages
           </button>
           <nav className="wk-crumbs" aria-label="Linked nodes">
-            {page && node && pathTo(nodes, node.id).slice(0, -1).map((n) => (
-              <button key={n.id} className="wk-crumb" title="Show on canvas" onClick={() => openNode(n.id)}>
-                {n.label || 'Group'}
-              </button>
-            ))}
-            {page && <Menu className="wk-crumb" label={node ? `Linked to ${node.label || 'Untitled'}` : 'Link to node'}
-              button={<>
-                {node ? node.label || 'Untitled' : 'Link to node'}
-                {pageNodes.length > 1 && <small>+{pageNodes.length - 1}</small>}
-                <span aria-hidden="true">⌄</span>
-              </>}>
-              {pageNodes.map((n) => <div key={n.id} className="wk-menu-row">
-                <button role="menuitemradio" aria-checked={n.id === node?.id}
-                  onClick={() => { window.location.hash = pageHref(page.id, n.id); }}>
-                  <span>{where(n.id)}</span>
-                </button>
-                <button aria-label={`Unlink from ${n.label || 'Untitled'}`} title="Unlink"
-                  onClick={() => useDiagram.getState().unlinkPage(page.id, n.id)}>×</button>
-              </div>)}
-              {pageNodes.length > 0 && linkable.length > 0 && <>
-                <hr />
-                <div className="wk-menu-label">Link to node</div>
-              </>}
-              {linkable.map((n) => <button key={n.id} role="menuitem" onClick={() => {
-                useDiagram.getState().linkPage(page.id, n.id);
-                window.location.hash = pageHref(page.id, n.id);
-              }}>
-                <span>{where(n.id)}</span>
-              </button>)}
-              {pageNodes.length + linkable.length === 0 && <div className="wk-menu-label">No nodes on the canvas</div>}
-            </Menu>}
+            {page && <NodeLinks id={page.id} nodeId={nodeId} />}
           </nav>
           {page && <>
             <ModeSwitch value={page.body} mode={mode} onMode={setMode} />

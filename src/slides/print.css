@@ -1,0 +1,16 @@
+/* Loaded with present mode only: an @page rule would resize every print from the window. */
+/* Print is the PDF export: one slide per sheet */
+@media print {
+  @page { size: 1280px 720px; margin: 0; }
+  .sl-present { display: block; height: auto; }
+  .sl-present > :not(.sl-print) { display: none; }
+  .sl-print { display: block; }
+  .sl-print .sl-slide {
+    width: 1280px;
+    border: 0;
+    border-radius: 0;
+    break-after: page;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

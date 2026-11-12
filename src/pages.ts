@@ -1,7 +1,11 @@
 // Pure wiki logic: pages link to any number of nodes and outlive them.
+// Slide decks link the same way, so each helper takes the node field to read.
 // No store or DOM here, so scripts/pages.ts can exercise it directly.
 
 import type { Diagram, DiagramNode, Page } from './types';
+
+/** The node field holding links to pages or to decks. */
+export type LinkKey = 'pageIds' | 'deckIds';
 
 /** Validate page references at JSON and Mermaid boundaries. */
 export function parsePageIds(value: unknown): string[] {
@@ -15,43 +19,45 @@ export function normalizeDiagram(diagram: Diagram): Diagram {
   return {
     ...diagram,
     pages: Array.isArray(diagram.pages) ? diagram.pages : [],
+    decks: Array.isArray(diagram.decks) ? diagram.decks : [],
     nodes: diagram.nodes.map((node) => {
       const legacy = 'pageId' in node ? node.pageId : undefined;
       const clean = { ...node };
       if ('pageId' in clean) delete clean.pageId;
+      if (node.deckIds !== undefined) clean.deckIds = parsePageIds(node.deckIds);
       if (node.pageIds !== undefined) return { ...clean, pageIds: parsePageIds(node.pageIds) };
       return typeof legacy === 'string' && legacy ? { ...clean, pageIds: [legacy] } : clean;
     }),
   };
 }
 
-export function newPageId(pages: Page[]): string {
+export function newPageId(pages: Page[], prefix = 'page'): string {
   let id: string;
   do {
-    id = `page${Math.floor(Math.random() * 36 ** 5).toString(36).padStart(5, '0')}`;
+    id = `${prefix}${Math.floor(Math.random() * 36 ** 5).toString(36).padStart(5, '0')}`;
   } while (pages.some((p) => p.id === id));
   return id;
 }
 
 /** The default page of a node, if it exists. */
-export function pageOf(node: DiagramNode | undefined, pages: Page[]): Page | undefined {
-  return pages.find((p) => p.id === node?.pageIds?.[0]);
+export function pageOf(node: DiagramNode | undefined, pages: Page[], key: LinkKey = 'pageIds'): Page | undefined {
+  return pages.find((p) => p.id === node?.[key]?.[0]);
 }
 
 /**
  * Give `node` a page, titled from its label, unless it already has one.
  * Returns the new page, or null when nothing needed creating.
  */
-export function createPageFor(node: DiagramNode, pages: Page[], now = Date.now()): Page | null {
-  if (pageOf(node, pages)) return null;
+export function createPageFor(node: DiagramNode, pages: Page[], now = Date.now(), key: LinkKey = 'pageIds'): Page | null {
+  if (pageOf(node, pages, key)) return null;
   // A reference imported from Mermaid may not have page content yet.
-  const id = node.pageIds?.[0] ?? newPageId(pages);
+  const id = node[key]?.[0] ?? newPageId(pages, key === 'deckIds' ? 'deck' : 'page');
   return { id, title: node.label, body: '', updatedAt: now };
 }
 
 /** Pages no node points at. */
-export function orphanPages(nodes: DiagramNode[], pages: Page[]): Page[] {
-  const used = new Set(nodes.flatMap((n) => n.pageIds ?? []));
+export function orphanPages(nodes: DiagramNode[], pages: Page[], key: LinkKey = 'pageIds'): Page[] {
+  const used = new Set(nodes.flatMap((n) => n[key] ?? []));
   return pages.filter((p) => !used.has(p.id));
 }
 
@@ -89,8 +95,8 @@ export function mergePages(local: Page[], remote: Page[], now = Date.now()): Pag
 }
 
 /** Nodes not yet linked to this page. */
-export function linkableNodes(nodes: DiagramNode[], pageId: string): DiagramNode[] {
-  return nodes.filter((n) => !n.pageIds?.includes(pageId));
+export function linkableNodes(nodes: DiagramNode[], pageId: string, key: LinkKey = 'pageIds'): DiagramNode[] {
+  return nodes.filter((n) => !n[key]?.includes(pageId));
 }
 
 // ---- wikilinks -------------------------------------------------------------
@@ -121,8 +127,8 @@ export function resolveLink(target: string, nodes: DiagramNode[], pages: Page[])
 }
 
 /** All nodes linked to a page, in diagram order. */
-export function nodesOfPage(nodes: DiagramNode[], pageId: string): DiagramNode[] {
-  return nodes.filter((n) => n.pageIds?.includes(pageId));
+export function nodesOfPage(nodes: DiagramNode[], pageId: string, key: LinkKey = 'pageIds'): DiagramNode[] {
+  return nodes.filter((n) => n[key]?.includes(pageId));
 }
 
 /** Pages whose body links to `page` (by title, or by its node's label). */
@@ -158,6 +164,15 @@ export function foldedAncestors(nodes: DiagramNode[], nodeId: string): string[] 
 }
 
 /**
+ * The node an embed draws: `{{diagram:Target}}` names one by id or label,
+ * a bare `{{diagram}}` takes the node the page or deck is open on.
+ */
+export function embedNode(target: string, nodes: DiagramNode[], fallback?: string): string | undefined {
+  if (!target.trim()) return fallback;
+  return (nodes.find((n) => n.id === target.trim()) ?? nodes.find((n) => n.label && same(n.label, target)))?.id;
+}
+
+/**
  * What a page embeds: a group's subtree, or a lone node with its direct
  * neighbours. Page links are dropped, so the Mermaid carries no `click` lines.
  */
@@ -184,7 +199,7 @@ export function embedDiagram(d: Diagram, nodeId: string): Diagram {
   }
   const nodes = d.nodes
     .filter((n) => keep.has(n.id))
-    .map(({ pageIds: _drop, ...n }) => ({
+    .map(({ pageIds: _pages, deckIds: _decks, ...n }) => ({
       ...n,
       parentId: n.parentId && keep.has(n.parentId) ? n.parentId : null,
     }));

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useDiagram } from '../store';
 import { useTheme } from '../theme';
 import { toMermaid } from '../mermaid/io';
-import { embedDiagram } from '../pages';
+import { embedDiagram, embedNode } from '../pages';
 import { openNode, pageHref, parseRoute } from '../route';
 import { renderPage } from './render';
 
@@ -16,6 +16,7 @@ async function diagramSvg(source: string, dark: boolean) {
     const { default: mermaid } = await import('mermaid');
     mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'neutral' });
     try {
+      if (!(await mermaid.parse(source, { suppressErrors: true }))) return;
       svg = (await mermaid.render(`wk-embed-${seq++}`, source)).svg;
     } catch {
       return;
@@ -46,23 +47,38 @@ export default function Preview({
   const root = useRef<HTMLDivElement>(null);
 
   const html = useMemo(() => renderPage(body, { nodes, pages }), [body, nodes, pages]);
-  const source = useMemo(() => {
-    if (!nodeId) return '';
-    const sub = embedDiagram({ nodes, edges }, nodeId);
-    return sub.nodes.length ? toMermaid(sub) : '';
-  }, [nodes, edges, nodeId]);
 
   useEffect(() => {
-    const hosts = root.current?.querySelectorAll<HTMLElement>('[data-embed]');
+    const hosts = root.current?.querySelectorAll<HTMLElement>('[data-embed], [data-mermaid]');
     if (!hosts?.length) return;
     const render = new AbortController();
-    if (source) {
-      void diagramSvg(source, dark).then((svg) => {
-        if (!render.signal.aborted && svg) hosts.forEach((host) => { host.innerHTML = svg; });
-      });
-    } else hosts.forEach((host) => host.replaceChildren());
+    hosts.forEach((host) => {
+      // a fence carries its own source; an embed draws a node of the live diagram
+      const fence = host.dataset.mermaid === undefined ? undefined : decodeURIComponent(host.dataset.mermaid);
+      let source = fence ?? '';
+      if (host.dataset.embed !== undefined) {
+        const id = embedNode(host.dataset.embed, nodes, nodeId);
+        const sub = id ? embedDiagram({ nodes, edges }, id) : null;
+        source = sub?.nodes.length ? toMermaid(sub) : '';
+      }
+      const key = `${dark}\u0000${source}`;
+      if (host.dataset.shown === key) return;
+      const show = (svg?: string) => {
+        if (render.signal.aborted) return;
+        host.dataset.shown = key;
+        if (svg) {
+          host.innerHTML = svg;
+          // drawn width, so a slide can scale the picture with its own size
+          const drawn = host.querySelector('svg')?.viewBox.baseVal.width;
+          if (drawn) host.style.setProperty('--embed-w', String(drawn));
+        }
+        else host.textContent = fence ?? '';
+      };
+      if (source) void diagramSvg(source, dark).then(show);
+      else show();
+    });
     return () => render.abort();
-  }, [html, source, dark]);
+  }, [html, nodes, edges, nodeId, dark]);
 
   const onClick = (e: React.MouseEvent) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || !(e.target instanceof Element)) return;

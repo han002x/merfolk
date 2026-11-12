@@ -3,6 +3,10 @@
 
 type IconName =
   | 'cursor'
+  | 'text'
+  | 'line'
+  | 'arrow'
+  | 'link'
   | 'rect'
   | 'round'
   | 'diamond'
@@ -24,6 +28,9 @@ type IconName =
   | 'more'
   | 'shapes'
   | 'page'
+  | 'deck'
+  | 'grid'
+  | 'expand'
   | 'play'
   | 'pause'
   | 'stop'
@@ -32,12 +39,31 @@ type IconName =
   | 'image';
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  text: <path d="M4 6V4h16v2M12 4v16M8 20h8" />,
+  line: <path d="M5 19 19 5" />,
+  arrow: <path d="M5 19 19 5M8 5h11v11" />,
+  link: <path d="m10 13 4-4M8 15l-1 1a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0M13 9l1-1a4 4 0 0 1 6 6l-4 4a4 4 0 0 1-6 0" />,
   page: (
     <>
       <path d="M7 3h7l4 4v14H7Z" />
       <path d="M14 3v4h4M10 12h5M10 16h5" />
     </>
   ),
+  deck: (
+    <>
+      <rect x="3" y="4" width="18" height="12" rx="1.5" />
+      <path d="M12 16v4M8 20h8" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1" />
+      <rect x="13" y="4" width="7" height="7" rx="1" />
+      <rect x="4" y="13" width="7" height="7" rx="1" />
+      <rect x="13" y="13" width="7" height="7" rx="1" />
+    </>
+  ),
+  expand: <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
   rect: <rect x="3" y="6" width="18" height="12" rx="2" />,
   round: <rect x="3" y="6" width="18" height="12" rx="6" />,
   diamond: <path d="M12 3 21 12 12 21 3 12Z" />,

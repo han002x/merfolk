@@ -6,6 +6,7 @@ import { useFoldMotion } from '../foldMotion';
 import { STYLE_DEFAULTS, animationClass, flowDash, fontFamilyCss, inkOn } from '../style';
 import { CatalogIcon, ShapeOutline } from './ShapeOutline';
 import { PageButton } from './PageButton';
+import { DeckButton } from './DeckButton';
 import { iconTileCss, shapeCss } from '../shapes';
 import { seedOf } from '../rough';
 
@@ -195,6 +196,7 @@ function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
         )}
       </div>
       <PageButton nodeId={id} />
+      <DeckButton nodeId={id} />
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
