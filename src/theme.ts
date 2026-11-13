@@ -1,11 +1,11 @@
 import { useSyncExternalStore } from 'react';
 import { COLORS, FONTS, PRESETS, colorMode, documentIcon, isAppearance, type Appearance } from './appearance';
 export type Theme = 'light' | 'dark';
-const KEY = 'merfolk.appearance';
+const KEY = 'marmerlade.appearance';
 interface Settings { selected: string; custom: Appearance | null }
 function fallback(): Settings {
   let saved: string | null = null;
-  try { saved = localStorage.getItem('merfolk.theme'); } catch { /* use system preference */ }
+  try { saved = localStorage.getItem('marmerlade.theme'); } catch { /* use system preference */ }
   return { selected: (saved === 'light' || saved !== 'dark' && window.matchMedia?.('(prefers-color-scheme: light)').matches) ? 'paper' : 'night-paper', custom: null };
 }
 function read(): Settings {
@@ -56,4 +56,4 @@ window.addEventListener('storage', (e) => { if (e.key === KEY || e.key === null)
 function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; }
 export function useAppearance() { return useSyncExternalStore(subscribe, () => current, () => current); }
 export function useTheme(): Theme { return colorMode(activeAppearance(useAppearance())); }
-export function openAppearance() { window.dispatchEvent(new Event('merfolk:appearance')); }
+export function openAppearance() { window.dispatchEvent(new Event('marmerlade:appearance')); }

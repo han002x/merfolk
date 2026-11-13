@@ -9,6 +9,7 @@ import '@fontsource/jetbrains-mono/400.css'
 import '@fontsource/jetbrains-mono/500.css'
 import '@fontsource/kalam/400.css'
 import '@fontsource/kalam/700.css'
+import './legacy.ts'
 import './index.css'
 import Root from './Root.tsx'
 

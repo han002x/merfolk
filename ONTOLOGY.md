@@ -1,4 +1,4 @@
-# merfolk ontology
+# marmerlade ontology
 
 The data model, and how diagrams, wiki pages, slide decks and Mermaid relate.
 Source of truth: `src/types.ts`. Everything here is checked against the code.
@@ -13,7 +13,7 @@ Diagram ─┬─ nodes[]  DiagramNode   a box, icon, image, or group
 ```
 
 One flat document, saved as `{ version: 3, diagram: { nodes, edges, pages, decks } }`
-(`.merfolk.json`, and `localStorage["merfolk.diagram"]`). Import also accepts a
+(`.marmerlade.json`, and `localStorage["marmerlade.diagram"]`). Import also accepts a
 bare `Diagram`. `pages` and `decks` may be absent; they default to `[]`.
 
 ### Relationships
@@ -75,7 +75,7 @@ shapes import as `rect`. For an icon tile, `shape` only picks the corners:
 
 Curated catalog in `src/icons/catalog.ts` (Lucide `lucide:*`, Simple Icons
 `simple-icons:*`). An id outside the catalog (e.g. `logos:aws`) is kept and
-exported to Mermaid; merfolk draws a neutral placeholder glyph for it.
+exported to Mermaid; marmerlade draws a neutral placeholder glyph for it.
 
 ## DiagramEdge
 
@@ -160,7 +160,7 @@ transition: fade             # fade | slide
 ```
 
 - Slide break: `---` on its own line.
-- Front matter keys merfolk reads: `backgroundColor`, `color`, `font`,
+- Front matter keys marmerlade reads: `backgroundColor`, `color`, `font`,
   `headingFont`, `transition`, `class`. All other keys are kept verbatim.
 - Directives are HTML comments: `<!-- key: value -->` applies to this and later
   slides; `<!-- _key: value -->` to this slide only. Keys: `backgroundColor`,
@@ -189,7 +189,7 @@ transition: fade             # fade | slide
 `src/mermaid/io.ts`: `toMermaid` / `fromMermaid` / `parseMermaid` (strict).
 Output is always `flowchart TD`.
 
-| merfolk | Mermaid |
+| marmerlade | Mermaid |
 | --- | --- |
 | leaf node | `id["label"]` in the shape's brackets, e.g. `db[("DB")]` |
 | icon tile | `id@{ icon: "lucide:database", form: "square", label: "DB" }` |
@@ -197,8 +197,8 @@ Output is always `flowchart TD`.
 | group | `subgraph id ["label"] … end`, nested by `parentId` |
 | edge | `a -->\|label\| b` (labels optional) |
 | `pageIds[0]` | `click id href "#/wiki/<pageId>"` (prefixed by the Base URL if set) |
-| all `pageIds` | `%% merfolk-pages id ["p1","p2"]` |
-| `deckIds` | `%% merfolk-decks id ["d1"]` |
+| all `pageIds` | `%% marmerlade-pages id ["p1","p2"]` |
+| `deckIds` | `%% marmerlade-decks id ["d1"]` |
 
 Parser limits: chains (`A --> B --> C`) and `&` groups (`A & B --> C & D`)
 import as one edge per node pair and export one per line; `-->`, `---`,
@@ -211,7 +211,7 @@ canvas holds its last good state.
 deck **content** (only the ids survive, via the comments above). When Mermaid
 text is edited live, `mergeDiagram` keeps `position`, `collapsed`, `style` and
 links by node id, and `style`/`order` by `source→target` pair. Use
-`.merfolk.json` whenever content or look must survive.
+`.marmerlade.json` whenever content or look must survive.
 
 ## Routes
 
@@ -225,7 +225,7 @@ links by node id, and `style`/`order` by `source→target` pair. Use
 
 ## How to build
 
-Write a `.merfolk.json`, then **Import** it from the toolbar. JSON is the only
+Write a `.marmerlade.json`, then **Import** it from the toolbar. JSON is the only
 format that carries everything.
 
 1. Choose ids: `[A-Za-z0-9_]+` for nodes, `[A-Za-z0-9_-]+` for pages and decks.

@@ -61,7 +61,7 @@ export default function Present({ deckId, nodeId, slides, slide, presenter = fal
   };
   /** the speaker's view in a window of its own, for a second screen */
   const openPresenter = () =>
-    window.open(deckHref(deckId, nodeId, at, true), 'merfolk-presenter', 'popup,width=960,height=640')?.focus();
+    window.open(deckHref(deckId, nodeId, at, true), 'marmerlade-presenter', 'popup,width=960,height=640')?.focus();
   const fullscreen = () =>
     void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen());
 
@@ -73,7 +73,7 @@ export default function Present({ deckId, nodeId, slides, slide, presenter = fal
   // every window presenting this deck stays on the same slide
   const channel = useRef<BroadcastChannel>(undefined);
   useEffect(() => {
-    const ch = new BroadcastChannel(`merfolk-slides:${deckId}`);
+    const ch = new BroadcastChannel(`marmerlade-slides:${deckId}`);
     ch.onmessage = (e: MessageEvent<{ at: number }>) => latest.current.go(e.data.at);
     channel.current = ch;
     return () => ch.close();

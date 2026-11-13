@@ -8,7 +8,7 @@ test('docs page renders the ontology and in-page links stay on it', async ({ pag
     page.getByRole('menuitem', { name: 'Docs', exact: true }).click(),
   ]);
   await expect(docs).toHaveURL(/#\/docs$/);
-  await expect(docs.getByRole('heading', { name: 'merfolk ontology', level: 1 })).toBeVisible();
+  await expect(docs.getByRole('heading', { name: 'marmerlade ontology', level: 1 })).toBeVisible();
   await expect(docs.getByRole('heading', { name: 'DiagramNode', level: 2 })).toBeVisible();
 
   await docs.getByRole('link', { name: 'Shapes', exact: true }).first().click();

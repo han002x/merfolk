@@ -31,7 +31,7 @@ own and leaves the build green.
 ## Next
 
 - **M7 — Persistence.** Autosave the diagram to `localStorage`; restore on load.
-  Export / import a `.merfolk.json` file. (Highest leverage: work is currently
+  Export / import a `.marmerlade.json` file. (Highest leverage: work is currently
   lost on refresh — breaks the "open and build" promise.)
 - **M8 — Edge editing.** Rename an edge label inline, delete an edge, choose
   arrowheads. Round-trip labels through Mermaid (already parsed, not yet

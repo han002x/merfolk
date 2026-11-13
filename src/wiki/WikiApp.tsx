@@ -32,7 +32,7 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
   const where = (id: string) => pathTo(nodes, id).map((n) => n.label || 'Untitled').join(' › ');
 
   useEffect(() => {
-    document.title = page ? `${page.title || 'Untitled'} · merfolk` : 'Wiki · merfolk';
+    document.title = page ? `${page.title || 'Untitled'} · marmerlade` : 'Wiki · marmerlade';
   }, [page]);
 
   const targets = useCallback(() => {

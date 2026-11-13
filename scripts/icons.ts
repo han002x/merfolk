@@ -1,4 +1,4 @@
-// Generates src/icons/catalog.ts: the curated icon subset merfolk ships.
+// Generates src/icons/catalog.ts: the curated icon subset marmerlade ships.
 // Run with: npm run icons
 //
 // Artwork is copied from two Iconify packs so the full packs never reach the

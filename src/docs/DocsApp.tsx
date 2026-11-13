@@ -33,7 +33,7 @@ export default function DocsApp() {
   const [active, setActive] = useState('');
 
   useEffect(() => {
-    document.title = 'Docs · merfolk';
+    document.title = 'Docs · marmerlade';
   }, []);
 
   // highlight the section being read

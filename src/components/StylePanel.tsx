@@ -410,7 +410,7 @@ function ImageSection({ node }: { node: DiagramNode }) {
       </div>
       {error && <p className="mf-picker-error">{error}</p>}
       {embedded && !error && (
-        <p className="mf-style-hint">Embedded images work in merfolk and mermaid.live; GitHub blocks data: images.</p>
+        <p className="mf-style-hint">Embedded images work in marmerlade and mermaid.live; GitHub blocks data: images.</p>
       )}
       <div className="mf-seg">
         {IMAGE_SIZES.map((px) => (

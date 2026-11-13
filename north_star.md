@@ -1,6 +1,6 @@
 # North star
 
-merfolk is a canvas diagramming tool (Excalidraw / Miro / FigJam class) whose
+marmerlade is a canvas diagramming tool (Excalidraw / Miro / FigJam class) whose
 one distinctive bet is **foldable, drill-down diagrams that round-trip with
 Mermaid**. Zoom out to the shape of a system; drill in to the detail; hand the
 same diagram to any Mermaid renderer and back.
@@ -22,7 +22,7 @@ See `DESIGN.md` for the binding UI/UX rules.
 
 ## Done looks like
 
-A person can open merfolk, build or paste a diagram, fold parts of it to manage
+A person can open marmerlade, build or paste a diagram, fold parts of it to manage
 complexity, and export clean Mermaid — all through a quiet, fast, keyboard-
 friendly interface that needs no instructions. Every change ships type-checked
 and building green.

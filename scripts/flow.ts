@@ -90,7 +90,7 @@ assert.equal(flowCycle(3), 4.5);
 assert.equal(flowSeconds(3, 1), 4.5 * HOP_SECONDS);
 assert.equal(flowSeconds(3, 2), 2.25 * HOP_SECONDS);
 
-// a manual step is for merfolk only: Mermaid text ignores it, and a live
+// a manual step is for marmerlade only: Mermaid text ignores it, and a live
 // Mermaid sync keeps it
 {
   const node = (id: string): DiagramNode => ({

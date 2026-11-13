@@ -6,7 +6,7 @@ import type { Diagram } from './types';
 import { useDiagram } from './store.ts';
 import { normalizeDiagram } from './pages.ts';
 
-const KEY = 'merfolk.diagram';
+const KEY = 'marmerlade.diagram';
 const VERSION = 3;
 
 interface Saved {
@@ -69,7 +69,7 @@ export function clearSaved() {
   localStorage.removeItem(KEY);
 }
 
-/** Download the current diagram as a .merfolk.json file. */
+/** Download the current diagram as a .marmerlade.json file. */
 export function exportFile() {
   const { nodes, edges, pages, decks } = useDiagram.getState();
   const payload: Saved = { version: VERSION, diagram: { nodes, edges, pages, decks } };
@@ -79,18 +79,18 @@ export function exportFile() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'diagram.merfolk.json';
+  a.download = 'diagram.marmerlade.json';
   a.click();
   URL.revokeObjectURL(url);
 }
 
-/** Read a .merfolk.json file and load it onto the canvas. */
+/** Read a .marmerlade.json file and load it onto the canvas. */
 export async function importFile(file: File): Promise<void> {
   const text = await file.text();
   const parsed = JSON.parse(text) as Saved | Diagram;
   const diagram = 'diagram' in parsed ? parsed.diagram : parsed;
   if (!Array.isArray(diagram.nodes) || !Array.isArray(diagram.edges)) {
-    throw new Error('Not a merfolk diagram file');
+    throw new Error('Not a marmerlade diagram file');
   }
   useDiagram.getState().load(diagram);
 }

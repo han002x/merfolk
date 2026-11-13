@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-const dom = new JSDOM('', { url: 'https://merfolk.test' });
+const dom = new JSDOM('', { url: 'https://marmerlade.test' });
 for (const key of ['window', 'document', 'navigator', 'Node', 'HTMLElement', 'Element', 'MutationObserver', 'getComputedStyle']) {
   Object.defineProperty(globalThis, key, { value: Reflect.get(dom.window, key), configurable: true });
 }

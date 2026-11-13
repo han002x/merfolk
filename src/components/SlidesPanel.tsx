@@ -166,7 +166,7 @@ export default function SlidesPanel() {
             <li key={i}>
               <div className="sl-tools">
                 {/* a slide's number presents from that slide, in the slides window */}
-                <a className="sl-number" href={deckHref(deck.id, deckNode?.id, i + 1)} target="merfolk-slides"
+                <a className="sl-number" href={deckHref(deck.id, deckNode?.id, i + 1)} target="marmerlade-slides"
                   onClick={saveForWindow}
                   title="Present from here" aria-label={`Present from slide ${i + 1}`}>
                   {i + 1}

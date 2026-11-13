@@ -10,7 +10,7 @@ const test = base.extend<{ browserErrors: string[] }>({
 });
 async function seed(page: Page, body = '', dock = false) {
   await page.addInitScript(({ body }) => {
-    if (!localStorage.getItem('merfolk.diagram')) localStorage.setItem('merfolk.diagram', JSON.stringify({ version: 2, diagram: {
+    if (!localStorage.getItem('marmerlade.diagram')) localStorage.setItem('marmerlade.diagram', JSON.stringify({ version: 2, diagram: {
       nodes: [{ id: 'a', label: 'API', shape: 'rect', parentId: null, collapsed: false, position: { x: 0, y: 0 }, pageIds: ['p'] }], edges: [],
       pages: [{ id: 'p', title: 'Notes', body, updatedAt: 1 }, { id: 'other', title: 'Other', body: '', updatedAt: 1 }],
     } }));
@@ -20,7 +20,7 @@ async function seed(page: Page, body = '', dock = false) {
   await expect(page.getByLabel('Page content')).toBeVisible();
 }
 async function savedBody(page: Page) {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('merfolk.diagram') ?? '{}').diagram?.pages.find((p: { id: string }) => p.id === 'p')?.body);
+  return page.evaluate(() => JSON.parse(localStorage.getItem('marmerlade.diagram') ?? '{}').diagram?.pages.find((p: { id: string }) => p.id === 'p')?.body);
 }
 for (const dock of [false, true]) {
   test(`slash commands and table editing ${dock ? 'in dock' : 'in wiki'}`, async ({ page }) => {
@@ -77,7 +77,7 @@ test('formatting, undo, wikilinks and unchanged opening', async ({ page }) => {
 });
 test('unsupported HTML stays intact in source mode', async ({ page }) => {
   const body = '<details><summary>Details</summary>Preserved</details>';
-  await page.addInitScript((body) => localStorage.setItem('merfolk.diagram', JSON.stringify({ version: 2, diagram: { nodes: [], edges: [], pages: [{ id: 'p', title: 'HTML', body, updatedAt: 1 }] } })), body);
+  await page.addInitScript((body) => localStorage.setItem('marmerlade.diagram', JSON.stringify({ version: 2, diagram: { nodes: [], edges: [], pages: [{ id: 'p', title: 'HTML', body, updatedAt: 1 }] } })), body);
   await page.goto('/#/wiki/p');
   await expect(page.getByRole('tab', { name: 'Edit', exact: true })).toBeDisabled();
   await expect(page.locator('.cm-content')).toContainText(body);
@@ -106,7 +106,7 @@ test('narrow dark layout keeps commands inside viewport', async ({ page }) => {
   await expect(menu).toBeVisible();
   const rect = await menu.boundingBox();
   expect(rect && rect.x >= 0 && rect.x + rect.width <= 375 && rect.y + rect.height <= 700).toBeTruthy();
-  await page.screenshot({ path: '/tmp/merfolk-editor-narrow.png' });
+  await page.screenshot({ path: '/tmp/marmerlade-editor-narrow.png' });
 });
 test('table keyboard navigation, line breaks and undo grouping', async ({ page }) => {
   await seed(page);
@@ -230,7 +230,7 @@ test('narrow table menus stay visible through horizontal scroll', async ({ page 
   expect(dimensions.offset).toBeGreaterThan(0);
   const toolbar = await page.getByRole('toolbar', { name: 'Table controls' }).boundingBox();
   expect(toolbar && toolbar.x >= 0 && toolbar.x + toolbar.width <= 375).toBeTruthy();
-  await page.screenshot({ path: '/tmp/merfolk-confluence-narrow.png' });
+  await page.screenshot({ path: '/tmp/marmerlade-confluence-narrow.png' });
 });
 
 test('page links are managed from the node menu and the dock title menu', async ({ page }) => {

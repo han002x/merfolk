@@ -1,7 +1,7 @@
 // Copy and paste of images.
 //
 // Paste (Ctrl/Cmd+V) turns whatever picture is on the clipboard into an image
-// node: a merfolk image node copied earlier (exact size and label), an image
+// node: a marmerlade image node copied earlier (exact size and label), an image
 // file (screenshot, "Copy image"), an <img> from a copied web page, or a bare
 // image URL. Copy (Ctrl/Cmd+C) puts a selected image node on the clipboard as
 // HTML carrying the node, plain text, and, where the browser allows, a PNG so
@@ -16,8 +16,8 @@ export interface ClipImage {
   label: string;
 }
 
-/** marks an <img> as a copied merfolk node; holds the node minus its src */
-const MF_ATTR = 'data-merfolk';
+/** marks an <img> as a copied marmerlade node; holds the node minus its src */
+const MF_ATTR = 'data-marmerlade';
 
 const escAttr = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -74,7 +74,7 @@ export async function imagesFromClipboard(clip: ClipSnapshot): Promise<ClipImage
   const img = clip.html ? new DOMParser().parseFromString(clip.html, 'text/html').querySelector('img') : null;
   const src = img?.getAttribute('src') ?? '';
 
-  // 1. a node copied from merfolk comes back exactly as it was
+  // 1. a node copied from marmerlade comes back exactly as it was
   const meta = img?.getAttribute(MF_ATTR);
   if (meta && asImageSrc(src)) {
     try {

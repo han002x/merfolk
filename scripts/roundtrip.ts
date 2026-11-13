@@ -56,12 +56,12 @@ console.log('PASS: wiki links round-trip as click lines');
   assert.deepEqual(fromMermaid(out).nodes.map((n) => n.pageIds), [['second', 'shared', 'first'], ['shared', 'second']]);
   assert.equal(out.match(/click A href/g)?.length, 1);
   assert.ok(out.includes('click A href "#/wiki/second"'));
-  const precedence = fromMermaid('flowchart TD\nA[A]\n%% merfolk-pages A ["p2","p1","p2"]\nclick A href "#/wiki/ignored"');
+  const precedence = fromMermaid('flowchart TD\nA[A]\n%% marmerlade-pages A ["p2","p1","p2"]\nclick A href "#/wiki/ignored"');
   assert.deepEqual(precedence.nodes[0].pageIds, ['p2', 'p1']);
   for (const invalid of ['{', '[1]', '[""]', 'null']) {
-    assert.equal(parseMermaid(`flowchart TD\nA[A]\n%% merfolk-pages A ${invalid}`).ok, false);
+    assert.equal(parseMermaid(`flowchart TD\nA[A]\n%% marmerlade-pages A ${invalid}`).ok, false);
   }
-  const empty = fromMermaid('flowchart TD\nA[A]\nclick A href "#/wiki/ignored"\n%% merfolk-pages A []');
+  const empty = fromMermaid('flowchart TD\nA[A]\nclick A href "#/wiki/ignored"\n%% marmerlade-pages A []');
   assert.deepEqual(mergeDiagram(empty, multiple).nodes[0].pageIds, []);
   const omitted = fromMermaid('flowchart TD\nA[A]');
   assert.deepEqual(mergeDiagram(omitted, multiple).nodes[0].pageIds, ['second', 'shared', 'first']);

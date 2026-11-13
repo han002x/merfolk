@@ -54,9 +54,9 @@ export function useHash(): string {
   return useSyncExternalStore(subscribe, () => window.location.hash);
 }
 
-const CANVAS = 'merfolk-canvas';
-const WIKI = 'merfolk-wiki';
-const SLIDES = 'merfolk-slides';
+const CANVAS = 'marmerlade-canvas';
+const WIKI = 'marmerlade-wiki';
+const SLIDES = 'marmerlade-slides';
 
 /** Name the canvas window so the wiki can navigate it instead of opening more. */
 export function nameCanvasWindow() {
@@ -80,5 +80,5 @@ export function openNode(nodeId: string) {
 
 /** Open (or reuse) the docs window. */
 export function openDocs() {
-  window.open('#/docs', 'merfolk-docs')?.focus();
+  window.open('#/docs', 'marmerlade-docs')?.focus();
 }

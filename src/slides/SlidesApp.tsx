@@ -69,7 +69,7 @@ export default function SlidesApp({ deckId, nodeId, slide, presenter }: {
   const where = (id: string) => pathTo(nodes, id).map((n) => n.label || 'Untitled').join(' › ');
 
   useEffect(() => {
-    document.title = deck ? `${deck.title || 'Untitled'} · merfolk` : 'Slides · merfolk';
+    document.title = deck ? `${deck.title || 'Untitled'} · marmerlade` : 'Slides · marmerlade';
   }, [deck]);
 
   const targets = useCallback(() => {

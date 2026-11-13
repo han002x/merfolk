@@ -26,11 +26,11 @@ export default function AppearanceDialog() {
     const close = () => previous.current?.focus();
     const element = dialog.current;
     element?.addEventListener('close', close);
-    window.addEventListener('merfolk:appearance', open);
+    window.addEventListener('marmerlade:appearance', open);
     window.addEventListener('keydown', key);
     return () => {
       element?.removeEventListener('close', close);
-      window.removeEventListener('merfolk:appearance', open);
+      window.removeEventListener('marmerlade:appearance', open);
       window.removeEventListener('keydown', key);
     };
   }, []);

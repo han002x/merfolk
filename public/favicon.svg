@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- a sheet of paper with its corner folded down, inked and sealed -->
-  <path d="M5 4.5H20.5L27.5 11.5V27.5H5Z" fill="#fbf8f1" stroke="#3a352e" stroke-width="1.8" stroke-linejoin="round"/>
-  <path d="M20.5 4.5V11.5H27.5" fill="#e3d8c4" stroke="#3a352e" stroke-width="1.8" stroke-linejoin="round"/>
-  <path d="M9.5 15.5C12.5 15 16 15.3 19 15M9.5 20.5C11.5 20.2 13.5 20.4 15 20.2" fill="none" stroke="#3a352e" stroke-width="1.6" stroke-linecap="round"/>
-  <circle cx="21.5" cy="22" r="2.6" fill="#d0532f"/>
+  <!-- a marmalade jar; an orange slice blended into the label, inked -->
+  <rect x="8" y="4" width="16" height="5" rx="1.5" fill="#e3d8c4" stroke="#3a352e" stroke-width="1.8" stroke-linejoin="round"/>
+  <path d="M7 11.5C7 9.8 8.3 9 10 9H22C23.7 9 25 9.8 25 11.5V25C25 26.7 23.7 28 22 28H10C8.3 28 7 26.7 7 25Z" fill="#f2a23a" stroke="#3a352e" stroke-width="1.8" stroke-linejoin="round"/>
+  <circle cx="16" cy="19" r="5.6" fill="#fbf8f1" stroke="#3a352e" stroke-width="1.6"/>
+  <path d="M16 13.8V24.2M10.8 19H21.2M12.3 15.3L19.7 22.7M19.7 15.3L12.3 22.7" fill="none" stroke="#d0532f" stroke-width="1.4" stroke-linecap="round"/>
 </svg>

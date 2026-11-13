@@ -1,4 +1,4 @@
-# merfolk
+# marmerlade
 
 A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 **foldable, drill-down diagrams** that interoperate with **Mermaid**.
@@ -32,7 +32,7 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   nodes (no incoming edge) first, branches together, each node lighting as the
   pulse lands. `,` / `.` step back and forward, and the speed button cycles
   ½× / 1× / 2×. Select a connection and set its **Flow step** to override the
-  order (saved in `.merfolk.json`, not in Mermaid). Folded cards take the pulse
+  order (saved in `.marmerlade.json`, not in Mermaid). Folded cards take the pulse
   on their crease edges. **Export GIF** records one loop of a running or
   stepped sequence.
 - **Shapes** — rectangle, rounded, diamond and circle on the toolbar; stadium,
@@ -82,10 +82,10 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   default Base URL. Restart the dev server or rebuild after changing it.
   A saved browser setting overrides this default, including an empty value
   for relative links. Import
-  reads the page id from any base. `%% merfolk-pages A ["page1","page2"]`
+  reads the page id from any base. `%% marmerlade-pages A ["page1","page2"]`
   comments preserve all links and their order when importing Mermaid back into
-  merfolk. Other Mermaid renderers ignore these comments. Mermaid stores page
-  references; use `.merfolk.json` to include page content.
+  marmerlade. Other Mermaid renderers ignore these comments. Mermaid stores page
+  references; use `.marmerlade.json` to include page content.
 - **Slides** — every node can also link slide decks, written as code. Press `K`,
   the slides button on a node (beside its page button), or **Slides** on the
   toolbar to open the selected node's deck in the side panel's **Slides** tab
@@ -144,10 +144,10 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   and wikilinks by their text; objects are written out with their full inline
   CSS and the deck's fonts as a Marp `style`. Slidev draws those fences
   natively; Marp needs a Mermaid plugin, and HTML enabled to show objects. Deck links ride through Mermaid as
-  `%% merfolk-decks A ["deck1"]` comments; deck content lives in
-  `.merfolk.json`.
+  `%% marmerlade-decks A ["deck1"]` comments; deck content lives in
+  `.marmerlade.json`.
 - **Persistence** — the diagram autosaves to `localStorage` and restores on
-  reload, so nothing is lost on refresh. Export / import a `.merfolk.json` file,
+  reload, so nothing is lost on refresh. Export / import a `.marmerlade.json` file,
   or clear the canvas, from the toolbar. Older single-page saves and JSON files
   migrate automatically; new saves use version 3.
 - **Paper and ink** — one look throughout: a grained paper desk, card-stock
@@ -225,7 +225,7 @@ npm run icons    # regenerate src/icons/catalog.ts from the curated list in scri
 | `src/foldMotion.ts` | Fold / unfold choreography; commits one undo step per fold |
 | `src/layout.ts` | Dagre auto-layout over the visible graph; unfolded groups are clusters so sheets don't overlap |
 | `src/theme.ts` | Theme store: OS default, `localStorage` persistence, `<html data-theme>` flip |
-| `src/persist.ts` | Diagram autosave/restore + `.merfolk.json` export/import |
+| `src/persist.ts` | Diagram autosave/restore + `.marmerlade.json` export/import |
 | `src/components/DiagramNode.tsx` | Custom React Flow node: shapes, inline rename, folded-card tab |
 | `src/components/SheetNode.tsx` | Paper sheet behind an unfolded group, with the dog-ear fold control |
 | `src/components/Icon.tsx` | Inline-SVG icon set (currentColor, theme-aware) |
@@ -247,8 +247,8 @@ Parses the common `flowchart` / `graph` subset: node declarations in all 14
 classic bracket shapes (`[]` `()` `([])` `[[]]` `[()]` `(())` `((()))` `{}`
 `{{}}` `[//]` `[\\]` `[/\]` `[\/]` `>]`), v11 `@{ shape: … }` / `@{ icon: … }`
 metadata, `-->` / `---` edges with optional `|labels|`, and `subgraph … end`
-blocks (which become collapsible group nodes), and `click <id> href "#/wiki/<pageId>"` page links. v11 shapes merfolk doesn't draw
-yet import as rectangles. It round-trips everything merfolk itself produces,
+blocks (which become collapsible group nodes), and `click <id> href "#/wiki/<pageId>"` page links. v11 shapes marmerlade doesn't draw
+yet import as rectangles. It round-trips everything marmerlade itself produces,
 and `scripts/mermaid-compat.ts` feeds that output to the real `mermaid` parser
 to confirm it reads every shape, icon, edge and subgraph the same way.
 The shape table lives in `src/shapes.ts`.

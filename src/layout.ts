@@ -1,4 +1,4 @@
-// Dagre auto-layout for merfolk.
+// Dagre auto-layout for marmerlade.
 //
 // Lays out the currently VISIBLE graph (collapsed subtrees are already hidden)
 // so folding a group re-flows the remaining nodes sensibly. Returns new

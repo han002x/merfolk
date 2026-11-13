@@ -1,5 +1,5 @@
-// Feed merfolk's Mermaid export to the REAL mermaid parser and check that it
-// reads every shape, icon form, image, edge and subgraph the way merfolk means it.
+// Feed marmerlade's Mermaid export to the REAL mermaid parser and check that it
+// reads every shape, icon form, image, edge and subgraph the way marmerlade means it.
 // Run with: node --experimental-strip-types scripts/mermaid-compat.ts
 import { JSDOM } from 'jsdom';
 import { setPageBase, toMermaid } from '../src/mermaid/io.ts';
@@ -11,7 +11,7 @@ const dom = new JSDOM('<!doctype html><html><body></body></html>');
 Object.assign(globalThis, { window: dom.window, document: dom.window.document });
 const { default: mermaid } = await import('mermaid');
 
-/** mermaid's internal vertex type for each merfolk shape */
+/** mermaid's internal vertex type for each marmerlade shape */
 const MERMAID_TYPE: Record<NodeShape, string> = {
   rect: 'square',
   round: 'round',
@@ -68,7 +68,7 @@ const d: Diagram = {
   })),
 };
 
-// an absolute base is what a deployed merfolk exports
+// an absolute base is what a deployed marmerlade exports
 const BASE = 'https://notes.example/app/';
 setPageBase(BASE);
 const text = toMermaid(d);

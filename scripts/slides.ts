@@ -335,7 +335,7 @@ const node = (id: string, label: string, extra: Partial<DiagramNode> = {}): Diag
   assert.ok(out.includes('```\n{{diagram}} [[x]]\n```'), 'code is left alone');
   assert.ok(out.includes('<!-- note -->'), 'notes travel as comments');
   assert.equal(splitSlides(out).slides.length, 2, 'the export is still a two-slide deck');
-  assert.ok(!out.includes('merfolk-'), 'no merfolk comments in exported diagrams');
+  assert.ok(!out.includes('marmerlade-'), 'no marmerlade comments in exported diagrams');
 
   const kept = toMarkdown({ ...deck, body: '---\nmarp: true\ntitle: Mine\ntheme: gaia\n---\n\n# A' }, { nodes, edges });
   assert.ok(kept.startsWith('---\nmarp: true\ntitle: Mine\ntheme: gaia\n---\n\n# A'), kept);
@@ -393,10 +393,10 @@ const node = (id: string, label: string, extra: Partial<DiagramNode> = {}): Diag
 
 // ---- save: version 2 files load, version 3 keeps decks ----
 {
-  localStorage.setItem('merfolk.diagram', JSON.stringify({ version: 2, diagram: { nodes: [node('a', 'API')], edges: [], pages: [] } }));
+  localStorage.setItem('marmerlade.diagram', JSON.stringify({ version: 2, diagram: { nodes: [node('a', 'API')], edges: [], pages: [] } }));
   assert.deepEqual(readSaved()?.decks, [], 'a wiki-era save has no decks');
   write({ nodes: [node('a', 'API', { deckIds: ['d', 'd'] })], edges: [], decks: [{ id: 'd', title: 'D', body: 'x', updatedAt: 1 }] });
-  assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 3);
+  assert.equal(JSON.parse(localStorage.getItem('marmerlade.diagram')!).version, 3);
   const saved = readSaved()!;
   assert.deepEqual(saved.nodes[0].deckIds, ['d'], 'duplicate links collapse');
   assert.equal(saved.decks?.[0].body, 'x');
@@ -405,7 +405,7 @@ const node = (id: string, label: string, extra: Partial<DiagramNode> = {}): Diag
 // ---- mermaid: deck links ride in a comment ----
 {
   const text = toMermaid({ nodes: [node('a', 'API', { deckIds: ['d1', 'd2'], pageIds: ['p'] }), node('b', 'DB')], edges: [] });
-  assert.ok(text.includes('%% merfolk-decks a ["d1","d2"]'), text);
+  assert.ok(text.includes('%% marmerlade-decks a ["d1","d2"]'), text);
   assert.ok(!/click a href .*d1/.test(text), 'the click link stays the wiki page');
   const back = fromMermaid(text);
   assert.deepEqual(back.nodes.find((n) => n.id === 'a')?.deckIds, ['d1', 'd2']);

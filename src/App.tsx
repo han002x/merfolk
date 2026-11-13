@@ -148,7 +148,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
 
   // a new user's demo diagram is framed below the first-run notes
   useEffect(() => {
-    if (!isFirstRun() || localStorage.getItem('merfolk.diagram')) return;
+    if (!isFirstRun() || localStorage.getItem('marmerlade.diagram')) return;
     const t = window.setTimeout(() => fitView(FIRST_RUN_FIT), 80);
     return () => window.clearTimeout(t);
   }, [fitView]);
@@ -888,7 +888,6 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
       }}
     >
       <div className="mf-toolbar">
-        <span className="mf-brand">merfolk</span>
         <div className="mf-group-btns">
           <ToolButton label="Rectangle" hotkey="R" onClick={() => arm({ shape: 'rect' })}>
             <Icon name="rect" />
@@ -906,6 +905,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           <ImagePicker open={imageOpen} onOpenChange={setImageOpen} onPick={arm} />
         </div>
         <span className="mf-sep" />
+        <div className="mf-group-btns">
         <div className="mf-menu-wrap" ref={arrangeRef}>
           <ToolButton label="Tidy and fold" onClick={() => setArrangeOpen((v) => !v)}>
             <Icon name="layout" />
@@ -926,6 +926,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
               </ToolButton>
             </div>
           )}
+        </div>
         </div>
         <span className="mf-sep" />
         <div className="mf-group-btns">

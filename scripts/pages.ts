@@ -213,16 +213,16 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
   assert.equal(st.openPage('a', 'later'), 'later');
   assert.equal(st.openPage('a'), 'missing');
   assert.deepEqual(ids('a'), ['missing', 'later']);
-  assert.ok(st.syncMermaid('flowchart TD\na[API]\n%% merfolk-pages a ["later","missing"]').ok);
+  assert.ok(st.syncMermaid('flowchart TD\na[API]\n%% marmerlade-pages a ["later","missing"]').ok);
   assert.deepEqual(ids('a'), ['later', 'missing']);
-  assert.ok(st.syncMermaid('flowchart TD\na[API]\n%% merfolk-pages a []').ok);
+  assert.ok(st.syncMermaid('flowchart TD\na[API]\n%% marmerlade-pages a []').ok);
   assert.deepEqual(ids('a'), []);
   assert.equal(useDiagram.getState().pages.length, 2);
 }
 
 // Old saves migrate at every entry point, and new saves retain order and sharing.
 {
-  const storageWindow = new JSDOM('', { url: 'https://merfolk.test' }).window;
+  const storageWindow = new JSDOM('', { url: 'https://marmerlade.test' }).window;
   Object.defineProperty(globalThis, 'localStorage', { value: storageWindow.localStorage, configurable: true });
   const legacy = { nodes: [{ ...node('a', 'API'), pageId: 'p1' }], edges: [], pages: [page('p1', 'Notes', 1)] };
   const migrated = normalizeDiagram(legacy);
@@ -230,25 +230,25 @@ const page = (id: string, title: string, updatedAt: number): Page => ({
   assert.equal('pageId' in migrated.nodes[0], false);
   assert.deepEqual(normalizeDiagram({ nodes: [node('a', 'API')], edges: [] }).pages, []);
   assert.deepEqual(normalizeDiagram({ ...legacy, nodes: [{ ...legacy.nodes[0], pageIds: [] }] }).nodes[0].pageIds, []);
-  localStorage.setItem('merfolk.diagram', JSON.stringify({ version: 1, diagram: legacy }));
+  localStorage.setItem('marmerlade.diagram', JSON.stringify({ version: 1, diagram: legacy }));
   assert.deepEqual(readSaved()?.nodes[0].pageIds, ['p1']);
   useDiagram.getState().load(legacy);
   assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
   useDiagram.getState().applyRemote(legacy);
   assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
-  await importFile(new File([JSON.stringify({ version: 1, diagram: legacy })], 'legacy.merfolk.json'));
+  await importFile(new File([JSON.stringify({ version: 1, diagram: legacy })], 'legacy.marmerlade.json'));
   assert.deepEqual(useDiagram.getState().nodes[0].pageIds, ['p1']);
   const multiple: Diagram = { nodes: [node('a', 'API', { pageIds: ['p2', 'p1'] }), node('b', 'DB', { pageIds: ['p2'] })],
     edges: [], pages: [page('p1', 'First', 1), page('p2', 'Shared', 2)] };
   write(multiple);
-  assert.equal(JSON.parse(localStorage.getItem('merfolk.diagram')!).version, 3);
+  assert.equal(JSON.parse(localStorage.getItem('marmerlade.diagram')!).version, 3);
   assert.deepEqual(readSaved(), { ...multiple, decks: [] });
-  await importFile(new File([JSON.stringify({ version: 2, diagram: multiple })], 'new.merfolk.json'));
+  await importFile(new File([JSON.stringify({ version: 2, diagram: multiple })], 'new.marmerlade.json'));
   assert.deepEqual(useDiagram.getState().nodes.map((n) => n.pageIds), [['p2', 'p1'], ['p2']]);
   write({ ...multiple, nodes: [node('a', 'API', { pageIds: ['p1', 'p2'] }), node('b', 'DB', { pageIds: [] })] });
   // Dispatch the same storage event the other window receives.
   const stop = startSync();
-  window.dispatchEvent(new window.StorageEvent('storage', { key: 'merfolk.diagram' }));
+  window.dispatchEvent(new window.StorageEvent('storage', { key: 'marmerlade.diagram' }));
   assert.deepEqual(useDiagram.getState().nodes.map((n) => n.pageIds), [['p1', 'p2'], []]);
   stop();
   const stopAutosave = startAutosave(0);

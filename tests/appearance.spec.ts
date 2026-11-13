@@ -7,8 +7,8 @@ async function open(page: Page) {
 }
 async function seed(page: Page) {
   await page.addInitScript(() => {
-    if (localStorage.getItem('merfolk.diagram')) return;
-    localStorage.setItem('merfolk.diagram', JSON.stringify({ version: 3, diagram: {
+    if (localStorage.getItem('marmerlade.diagram')) return;
+    localStorage.setItem('marmerlade.diagram', JSON.stringify({ version: 3, diagram: {
       nodes: [{ id: 'a', label: 'API', shape: 'rect', parentId: null, collapsed: false, position: { x: 0, y: 0 }, style: { stroke: '#ff0000', fontFamily: 'serif', sloppiness: 2, strokeWidth: 4 }, pageIds: ['p'], deckIds: ['d'] }], edges: [],
       pages: [{ id: 'p', title: 'Notes', body: '# Heading\n\n{{diagram}}', updatedAt: 1 }],
       decks: [{ id: 'd', title: 'Deck', body: '---\ncolor: red\nfont: serif\n---\n\n# Launch\n\n<!-- _backgroundColor: pink -->\n\n<!-- keep this note -->\n\n<div class="box rect mono" style="left:12.345%;top:20%;width:30%;height:40%;color:red">Box</div>', updatedAt: 1 }],
@@ -31,14 +31,14 @@ test('presets restyle existing content, local overrides work and survive reload'
   await node.click();
   await page.getByRole('button', { name: 'Stroke #c8442b', exact: true }).click();
   await expect(page.locator('.mf-outline-ink').first()).toHaveCSS('stroke', 'rgb(200, 68, 43)');
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('merfolk.diagram'))).toContain('#c8442b');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('marmerlade.diagram'))).toContain('#c8442b');
   await page.reload();
   await expect(page.locator('.mf-outline-ink').first()).toHaveCSS('stroke', 'rgb(200, 68, 43)');
   await open(page);
   await page.getByRole('button', { name: 'Terminal', exact: true }).click();
   await page.getByRole('button', { name: 'Close appearance' }).click();
   await expect(page.locator('.mf-outline-ink').first()).toHaveCSS('stroke', 'rgb(159, 214, 173)');
-  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('merfolk.diagram') ?? '{}').diagram);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('marmerlade.diagram') ?? '{}').diagram);
   expect(saved.nodes[0].style.strokeWidth).toBe(4);
   expect(saved.decks[0].body).toContain('left:12.345%');
   expect(saved.decks[0].body).toContain('<!-- keep this note -->');
@@ -88,7 +88,7 @@ test('custom edits persist across presets and synchronize to wiki and slides', a
 });
 
 test('legacy preference migration, narrow dialog and keyboard focus', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('merfolk.theme', 'dark'));
+  await page.addInitScript(() => localStorage.setItem('marmerlade.theme', 'dark'));
   await seed(page);
   await expect(page.locator('html')).toHaveAttribute('data-appearance', 'night-paper');
   await page.setViewportSize({ width: 375, height: 700 });

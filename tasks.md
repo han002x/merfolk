@@ -17,7 +17,7 @@ highest-leverage unchecked task, executes it, and checks it off here.
 
 - [x] Slide decks linked to nodes: Marp / Slidev Markdown, source editor beside
       live slides, present mode, speaker notes, `{{diagram:Node}}` embeds and
-      Mermaid fences, Markdown export, print to PDF, `merfolk-decks` round trip.
+      Mermaid fences, Markdown export, print to PDF, `marmerlade-decks` round trip.
 - [x] Slide tools (add, duplicate, move, delete, insert), presenter tools
       (overview, presenter view, pointer, blank, jump), design tools (text
       boxes, shapes, slide style, deck fonts).

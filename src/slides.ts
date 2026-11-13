@@ -339,7 +339,7 @@ const toBox = (tag: Tag): Box => {
 
 const round = (n: number) => `${Math.round(n * 10) / 10}`;
 
-/** The opening tag for a box. Classes and style properties merfolk does not own are kept. */
+/** The opening tag for a box. Classes and style properties marmerlade does not own are kept. */
 function openTag(box: Box, classes: string[] = [], style = new Map<string, string>()): string {
   const owned = new Set<string>([...SHAPES, ...FONTS]);
   const names = ['box', ...(box.shape ? [box.shape] : []), ...(box.font ? [box.font] : []), ...classes.filter((c) => !owned.has(c))];
@@ -461,7 +461,7 @@ const STACKS: Record<Font, string> = {
 /** An arrow is one clipped block: a shaft a third of its height, a head as long as it is tall. */
 export const ARROW = 'polygon(0 33%,calc(100% - 1.4em) 33%,calc(100% - 1.4em) 0,100% 50%,calc(100% - 1.4em) 100%,calc(100% - 1.4em) 67%,0 67%)';
 
-/** A box with everything spelled out inline, for renderers that lack merfolk's stylesheet. */
+/** A box with everything spelled out inline, for renderers that lack marmerlade's stylesheet. */
 function standalone(tag: Tag): string {
   const box = toBox(tag);
   const css = (!hasText(box.shape) ? [

@@ -1,4 +1,4 @@
-// Every shape and icon form round-trips through merfolk's own Mermaid parser.
+// Every shape and icon form round-trips through marmerlade's own Mermaid parser.
 // Run with: node --experimental-strip-types scripts/shapes.ts
 import { parseMermaid, toMermaid } from '../src/mermaid/io.ts';
 import { SHAPES } from '../src/shapes.ts';

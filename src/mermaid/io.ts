@@ -1,4 +1,4 @@
-// Mermaid flowchart <-> merfolk Diagram interop.
+// Mermaid flowchart <-> marmerlade Diagram interop.
 //
 // We support the common `flowchart`/`graph` subset:
 //   - node declarations in every classic bracket shape (see src/shapes.ts):
@@ -12,8 +12,8 @@
 //   - subgraphs:  subgraph Title ... end   (become collapsible group nodes)
 //
 // This is intentionally a pragmatic parser, not a full mermaid grammar. It
-// round-trips what merfolk itself produces and handles hand-written basics.
-// Everything merfolk emits is checked against the real mermaid parser by
+// round-trips what marmerlade itself produces and handles hand-written basics.
+// Everything marmerlade emits is checked against the real mermaid parser by
 // scripts/mermaid-compat.ts.
 
 import type { Diagram, DiagramEdge, DiagramNode, NodeImage, NodeShape } from '../types';
@@ -232,8 +232,8 @@ function parseCore(src: string): CoreResult {
 
   for (let idx = 0; idx < rawLines.length; idx++) {
     const line = rawLines[idx].trim();
-    if (/^%%\s+merfolk-(pages|decks)\b/.test(line)) {
-      const meta = line.match(/^%%\s+merfolk-(pages|decks)\s+([A-Za-z0-9_]+)\s+(.+)$/);
+    if (/^%%\s+(?:marmerlade|merfolk)-(pages|decks)\b/.test(line)) {
+      const meta = line.match(/^%%\s+(?:marmerlade|merfolk)-(pages|decks)\s+([A-Za-z0-9_]+)\s+(.+)$/);
       try {
         if (!meta) throw new Error('Expected a node ID and a JSON array of IDs');
         const value: unknown = JSON.parse(meta[3]);
@@ -505,7 +505,7 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
   for (const n of nodes) {
     if (n.deckIds !== undefined) {
       lineRefs.set(out.length, { kind: 'node', id: n.id });
-      out.push(`  %% merfolk-decks ${n.id} ${JSON.stringify(n.deckIds)}`);
+      out.push(`  %% marmerlade-decks ${n.id} ${JSON.stringify(n.deckIds)}`);
     }
     if (n.pageIds === undefined) continue;
     if (n.pageIds[0]) {
@@ -513,7 +513,7 @@ export function toMermaidWithMap(diagram: Diagram): MermaidResult {
       out.push(`  click ${n.id} href "${pageLink(n.pageIds[0])}"`);
     }
     lineRefs.set(out.length, { kind: 'node', id: n.id });
-    out.push(`  %% merfolk-pages ${n.id} ${JSON.stringify(n.pageIds)}`);
+    out.push(`  %% marmerlade-pages ${n.id} ${JSON.stringify(n.pageIds)}`);
   }
 
   return { text: out.join('\n'), lineRefs };

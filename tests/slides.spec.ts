@@ -11,7 +11,7 @@ const test = base.extend<{ browserErrors: string[] }>({
 const BODY = '# Launch\n\n<!-- open warmly -->\n\n---\n\n## System\n\n{{diagram}}\n\n---\n\n```mermaid\nflowchart TD\n  x --> y\n```';
 async function seed(page: Page, hash = '/#/slides/d?node=a') {
   await page.addInitScript(({ body }) => {
-    if (!localStorage.getItem('merfolk.diagram')) localStorage.setItem('merfolk.diagram', JSON.stringify({ version: 3, diagram: {
+    if (!localStorage.getItem('marmerlade.diagram')) localStorage.setItem('marmerlade.diagram', JSON.stringify({ version: 3, diagram: {
       nodes: [
         { id: 'a', label: 'API', shape: 'rect', parentId: null, collapsed: false, position: { x: 0, y: 0 }, deckIds: ['d'] },
         { id: 'b', label: 'DB', shape: 'rect', parentId: null, collapsed: false, position: { x: 0, y: 200 } },
@@ -24,7 +24,7 @@ async function seed(page: Page, hash = '/#/slides/d?node=a') {
   if (/\/#\/slides\/[^?]+/.test(hash) && !hash.includes('slide=')) await page.getByRole('tab', { name: 'Source', exact: true }).click();
 }
 const savedBody = (page: Page) =>
-  page.evaluate(() => JSON.parse(localStorage.getItem('merfolk.diagram') ?? '{}').diagram?.decks.find((d: { id: string }) => d.id === 'd')?.body);
+  page.evaluate(() => JSON.parse(localStorage.getItem('marmerlade.diagram') ?? '{}').diagram?.decks.find((d: { id: string }) => d.id === 'd')?.body);
 
 test('edit a deck as Markdown beside its slides', async ({ page }) => {
   await seed(page);

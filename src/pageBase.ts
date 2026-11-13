@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 import { setPageBase } from './mermaid/io';
 
-const KEY = 'merfolk.pageBase';
+const KEY = 'marmerlade.pageBase';
 const DEFAULT_BASE = import.meta.env.VITE_PAGE_BASE_URL?.trim() ?? '';
 
 const read = () => {

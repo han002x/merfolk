@@ -117,7 +117,7 @@ body,
   line-height: 1;
   letter-spacing: 0;
   color: var(--mf-text);
-  padding: 0 8px 0 6px;
+  padding: 0 8px 0 2px;
 }
 .mf-brand::first-letter {
   color: var(--mf-seal);
@@ -801,7 +801,7 @@ body,
   align-items: center;
   gap: 3px;
   height: 22px;
-  padding: 0 8px 0 6px;
+  padding: 0 8px 0 2px;
   border-radius: 11px;
   border: 1px solid var(--mf-accent);
   background: var(--mf-accent);
@@ -2059,6 +2059,19 @@ body,
   stroke-width: 1.2;
   opacity: 0.55;
 }
+.mf-welcome-brand {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: mf-fade 500ms ease-out backwards;
+}
+.mf-welcome-brand .mf-brand {
+  font-size: 40px;
+  padding: 0;
+}
 .mf-welcome-note {
   position: absolute;
   margin: 0;
@@ -2094,6 +2107,7 @@ body,
 }
 @media (prefers-reduced-motion: reduce) {
   .mf-welcome,
+  .mf-welcome-brand,
   .mf-welcome-note {
     animation: none;
     transition: none;

@@ -1,4 +1,4 @@
-// Core data model for merfolk diagrams.
+// Core data model for marmerlade diagrams.
 // A graph is a flat list of nodes + edges. Any node can be a "group" that
 // owns children; collapsing a group hides its subtree (drill-down). A group
 // has no card of its own until it is folded: unfolded, it is a titled sheet.
