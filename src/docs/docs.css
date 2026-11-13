@@ -1,14 +1,17 @@
+/* Reference reading: always the plain UI face, whatever the theme draws with. */
 .dk {
+  --dk-sans: Inter, system-ui, sans-serif;
+  --dk-mono: 'JetBrains Mono', ui-monospace, monospace;
   height: 100vh;
   overflow-y: auto;
   background: var(--mf-bg);
   color: var(--mf-text);
-  font-family: var(--mf-ui-font, var(--mf-sans));
+  font-family: var(--dk-sans);
 }
 .dk-head {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 16px;
@@ -16,17 +19,108 @@
   background: var(--mf-panel);
   border-bottom: 1px solid var(--mf-border);
 }
-.dk-head a {
+.dk-head a { color: var(--mf-muted); text-decoration: none; }
+.dk-head a:hover { color: var(--mf-text); }
+
+.dk-body {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 800px);
+  justify-content: center;
+  gap: 48px;
+  padding: 0 24px;
+}
+
+/* contents */
+.dk-toc {
+  position: sticky;
+  top: 56px;
+  align-self: start;
+  max-height: calc(100vh - 56px);
+  overflow-y: auto;
+  padding: 28px 0 32px;
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+.dk-toc a {
   color: var(--mf-muted);
   text-decoration: none;
+  padding: 4px 10px;
+  border-left: 2px solid transparent;
+  line-height: 1.4;
 }
-.dk-head a:hover {
+.dk-toc a[data-depth='3'] { padding-left: 22px; }
+.dk-toc a:hover { color: var(--mf-text); }
+.dk-toc a[aria-current] { color: var(--mf-text); border-left-color: var(--mf-accent); font-weight: 600; }
+
+/* prose */
+.dk .wk-prose {
+  max-width: none;
+  padding: 28px 0 96px;
+  font-family: var(--dk-sans);
+  font-size: 15.5px;
+  line-height: 1.75;
+}
+.dk .wk-prose h1 { font-size: 2em; margin: 0 0 .4em; }
+.dk .wk-prose h2 {
+  font-size: 1.45em;
+  margin: 2.4em 0 .6em;
+  padding-top: 1.2em;
+  border-top: 1px solid var(--mf-border);
+}
+.dk .wk-prose h3 { font-size: 1.15em; margin: 1.8em 0 .4em; }
+.dk .wk-prose h1,
+.dk .wk-prose h2,
+.dk .wk-prose h3 { font-family: var(--dk-sans); font-weight: 700; scroll-margin-top: 64px; }
+.dk .wk-prose p,
+.dk .wk-prose li { font-style: normal; }
+.dk .wk-prose ul,
+.dk .wk-prose ol { padding-left: 1.5em; }
+.dk .wk-prose li { margin: .3em 0; }
+.dk .wk-prose li > ul,
+.dk .wk-prose li > ol { margin: .3em 0; }
+.dk .wk-prose hr { border: 0; border-top: 1px solid var(--mf-border); margin: 2em 0; }
+
+/* code: monospace with ligatures off, so `-->` reads as typed */
+.dk .wk-prose code,
+.dk .wk-prose pre {
+  font-family: var(--dk-mono);
+  font-style: normal;
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
   color: var(--mf-text);
 }
-.dk .wk-prose {
-  padding-top: 24px;
+.dk .wk-prose code {
+  font-size: .86em;
+  padding: 1px 4px;
+  white-space: break-spaces;
+  background: color-mix(in srgb, var(--mf-text) 7%, transparent);
 }
-.dk .wk-prose h2,
-.dk .wk-prose h3 {
-  scroll-margin-top: 56px;
+.dk .wk-prose pre {
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 1.2em 0;
+}
+.dk .wk-prose pre code { font-size: inherit; padding: 0; background: none; white-space: pre; }
+
+/* tables size to their content and stay legible */
+.dk .wk-prose table {
+  display: block;
+  overflow-x: auto;
+  table-layout: auto;
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  margin: 1.2em 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.dk .wk-prose th,
+.dk .wk-prose td { min-width: 0; padding: 8px 12px; }
+.dk .wk-prose td:first-child { font-weight: 500; }
+.dk .wk-prose tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--mf-text) 3%, transparent); }
+
+@media (max-width: 960px) {
+  .dk-body { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .dk-toc { display: none; }
 }

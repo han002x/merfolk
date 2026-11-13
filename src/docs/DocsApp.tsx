@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { Marked } from 'marked';
 import DOMPurify from 'dompurify';
 import source from '../../ONTOLOGY.md?raw';
@@ -18,11 +18,41 @@ const marked = new Marked({
   },
 });
 
+interface Entry { id: string; text: string; depth: number }
+
+const outline: Entry[] = marked
+  .lexer(source)
+  .flatMap((t) =>
+    t.type === 'heading' && (t.depth === 2 || t.depth === 3)
+      ? [{ id: slug(t.tokens?.map((x) => x.raw).join('') ?? t.text), text: t.text.replace(/`/g, ''), depth: t.depth }]
+      : [],
+  );
+
 export default function DocsApp() {
   const html = useMemo(() => DOMPurify.sanitize(marked.parse(source, { async: false, gfm: true })), []);
+  const [active, setActive] = useState('');
 
   useEffect(() => {
     document.title = 'Docs · merfolk';
+  }, []);
+
+  // highlight the section being read
+  useEffect(() => {
+    const heads = outline.map((e) => document.getElementById(e.id)).filter((el): el is HTMLElement => !!el);
+    const seen = new Set<string>();
+    const watch = new IntersectionObserver(
+      (hits) => {
+        for (const h of hits) {
+          if (h.isIntersecting) seen.add(h.target.id);
+          else seen.delete(h.target.id);
+        }
+        const first = heads.find((el) => seen.has(el.id));
+        if (first) setActive(first.id);
+      },
+      { rootMargin: '-56px 0px -70% 0px' },
+    );
+    heads.forEach((el) => watch.observe(el));
+    return () => watch.disconnect();
   }, []);
 
   // `#shapes` would leave the docs route, so in-page anchors scroll instead
@@ -34,12 +64,21 @@ export default function DocsApp() {
   };
 
   return (
-    <div className="dk">
+    <div className="dk" onClick={onClick}>
       <header className="dk-head">
         <a href="#/">← Canvas</a>
         <strong>Docs</strong>
       </header>
-      <article className="wk-prose" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />
+      <div className="dk-body">
+        <nav className="dk-toc" aria-label="Contents">
+          {outline.map((e) => (
+            <a key={e.id} href={`#${e.id}`} data-depth={e.depth} aria-current={active === e.id || undefined}>
+              {e.text}
+            </a>
+          ))}
+        </nav>
+        <article className="wk-prose" dangerouslySetInnerHTML={{ __html: html }} />
+      </div>
     </div>
   );
 }
