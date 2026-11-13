@@ -42,6 +42,7 @@ import { JoinPreview } from './components/JoinPreview';
 import { MermaidPanel } from './components/MermaidPanel';
 import { StylePanel } from './components/StylePanel';
 import { Icon } from './components/Icon';
+import { Welcome, WELCOME_EVENT, FIRST_RUN_FIT, isFirstRun } from './components/Welcome';
 import { ShapePicker, type Placement } from './components/ShapePicker';
 import { ImagePicker } from './components/ImagePicker';
 import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
@@ -145,6 +146,13 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const groupNodes = useDiagram((s) => s.groupNodes);
   const fileInput = useRef<HTMLInputElement>(null);
 
+  // a new user's demo diagram is framed below the first-run notes
+  useEffect(() => {
+    if (!isFirstRun() || localStorage.getItem('merfolk.diagram')) return;
+    const t = window.setTimeout(() => fitView(FIRST_RUN_FIT), 80);
+    return () => window.clearTimeout(t);
+  }, [fitView]);
+
   /** shape awaiting placement, and the live cursor position for its preview */
   const [pending, setPending] = useState<Placement | null>(null);
   /** the shape + icon library popover */
@@ -166,6 +174,26 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   /** the overflow (3-dot) menu: open state and its anchor for click-outside */
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  /** the tidy / fold dropdown */
+  const [arrangeOpen, setArrangeOpen] = useState(false);
+  const arrangeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!arrangeOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (arrangeRef.current && !arrangeRef.current.contains(e.target as globalThis.Node)) {
+        setArrangeOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setArrangeOpen(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [arrangeOpen]);
   /** true while a GIF is being captured + encoded (disables re-entry) */
   const [exporting, setExporting] = useState(false);
 
@@ -205,6 +233,8 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const clearCanvas = useCallback(() => {
     clearSaved();
     load({ nodes: [], edges: [] });
+    useDock.getState().setOpen(false);
+    window.dispatchEvent(new Event(WELCOME_EVENT));
   }, [load]);
 
   const tidy = useCallback(
@@ -876,22 +906,26 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
           <ImagePicker open={imageOpen} onOpenChange={setImageOpen} onPick={arm} />
         </div>
         <span className="mf-sep" />
-        <div className="mf-group-btns">
-          <ToolButton label="Tidy down" hotkey="L" onClick={() => tidy('TB')}>
-            <Icon name="tidy-down" />
+        <div className="mf-menu-wrap" ref={arrangeRef}>
+          <ToolButton label="Tidy and fold" onClick={() => setArrangeOpen((v) => !v)}>
+            <Icon name="layout" />
           </ToolButton>
-          <ToolButton label="Tidy right" hotkey="⇧L" onClick={() => tidy('LR')}>
-            <Icon name="tidy-right" />
-          </ToolButton>
-        </div>
-        <span className="mf-sep" />
-        <div className="mf-group-btns">
-          <ToolButton label="Fold a level" hotkey="[" onClick={() => foldLevel('fold')}>
-            <Icon name="fold" />
-          </ToolButton>
-          <ToolButton label="Unfold a level" hotkey="]" onClick={() => foldLevel('unfold')}>
-            <Icon name="unfold" />
-          </ToolButton>
+          {arrangeOpen && (
+            <div className="mf-menu mf-flow-menu" role="toolbar" aria-label="Tidy and fold">
+              <ToolButton label="Tidy down" hotkey="L" onClick={() => (setArrangeOpen(false), tidy('TB'))}>
+                <Icon name="tidy-down" />
+              </ToolButton>
+              <ToolButton label="Tidy right" hotkey="⇧L" onClick={() => (setArrangeOpen(false), tidy('LR'))}>
+                <Icon name="tidy-right" />
+              </ToolButton>
+              <ToolButton label="Fold a level" hotkey="[" onClick={() => foldLevel('fold')}>
+                <Icon name="fold" />
+              </ToolButton>
+              <ToolButton label="Unfold a level" hotkey="]" onClick={() => foldLevel('unfold')}>
+                <Icon name="unfold" />
+              </ToolButton>
+            </div>
+          )}
         </div>
         <span className="mf-sep" />
         <div className="mf-group-btns">
@@ -1114,19 +1148,34 @@ export default function App() {
   const [panelWidth, setPanelWidth] = useState(360);
   const load = useDiagram((s) => s.load);
 
-  // on first mount: restore the saved diagram, or seed the sample; then
-  // begin autosaving every change back to localStorage
+  const [welcome, setWelcome] = useState(false);
+
+  // Clear canvas returns to the first-run view
+  useEffect(() => {
+    const show = () => setWelcome(true);
+    window.addEventListener(WELCOME_EVENT, show);
+    return () => window.removeEventListener(WELCOME_EVENT, show);
+  }, []);
+
+  // on first mount: restore the saved diagram, or seed the sample (a new user
+  // also gets the panel closed and the first-run notes); then begin
+  // autosaving every change back to localStorage
   useEffect(() => {
     if (useDiagram.getState().nodes.length === 0 && !restore()) {
       load(SAMPLE);
+      if (isFirstRun()) {
+        setPanelOpen(false);
+        setWelcome(true);
+      }
     }
     nameCanvasWindow();
     const stops = [startAutosave(), startSync()];
     return () => stops.forEach((stop) => stop());
-  }, [load]);
+  }, [load, setPanelOpen]);
 
   return (
     <ReactFlowProvider>
+      {welcome && <Welcome onDone={() => setWelcome(false)} />}
       <div className="mf-app">
         <Canvas onTogglePanel={() => setPanelOpen(!useDock.getState().open)} />
         {panelOpen ? (

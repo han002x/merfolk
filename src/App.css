@@ -2027,3 +2027,79 @@ body,
   outline: 0;
   border-color: var(--mf-accent);
 }
+
+/* ---- first-run notes ---- */
+.mf-welcome {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.mf-welcome.is-leaving {
+  opacity: 0;
+}
+.mf-welcome-ink {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--mf-seal);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  overflow: visible;
+}
+.mf-welcome-ink path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mf-draw 700ms ease-out forwards;
+}
+.mf-welcome-ink path.is-echo {
+  stroke-width: 1.2;
+  opacity: 0.55;
+}
+.mf-welcome-note {
+  position: absolute;
+  margin: 0;
+  font-family: var(--mf-content-font, var(--mf-hand));
+  font-size: 20px;
+  line-height: 1.2;
+  color: var(--mf-text);
+  transform: rotate(-2deg);
+  animation: mf-fade 500ms ease-out 300ms backwards;
+}
+.mf-welcome-note.is-right {
+  text-align: right;
+  transform: rotate(2deg);
+}
+.mf-welcome-note kbd {
+  margin-left: 8px;
+  padding: 0 6px;
+  font: 12px/18px var(--mf-mono);
+  color: var(--mf-muted);
+  border: 1px solid var(--mf-border);
+  border-radius: 4px;
+  vertical-align: 2px;
+}
+@keyframes mf-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes mf-fade {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mf-welcome,
+  .mf-welcome-note {
+    animation: none;
+    transition: none;
+  }
+  .mf-welcome-ink path {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
