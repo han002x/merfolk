@@ -155,11 +155,14 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
   hand-drawn ink (roughjs, seeded per element so the wobble never changes)
   with handwritten Kalam labels and open chevron arrowheads. The style panel's
   Sloppiness picks **Ink** (clean), **Sketch** (default) or **Scribble**.
-- **Dark / light themes** — toolbar toggle (☀ / ☾). Follows the OS by default,
-  remembers your choice in `localStorage`. The whole UI — canvas, nodes, panel,
-  React Flow controls and minimap — is driven by CSS variables + React Flow's
-  `colorMode`, so it's a single attribute flip. Light is white paper with sumi ink;
-  dark is night paper with chalk.
+- **App appearance** — choose Paper, Night Paper, Clean, Blueprint, Terminal,
+  Sepia, Classic (black and white), Halloween, or one editable Custom style from **More actions → Appearance** or
+  press `T`. Wiki and slides headers also have an Appearance button. Custom
+  controls colors, fonts, wiki/slides icon symbols and colors, sketchiness, corners, texture, and shadows, with
+  changes saved automatically across windows. Selecting a style resets existing
+  diagram and slide styling; individual styling controls work afterward and
+  survive reloads. Reset Custom from any preset to start again.
+
 
 ## Design
 
@@ -175,7 +178,7 @@ simple architecture, simple design, simple implementation, no filler text.
 | `I` | Add an image: paste a URL, upload a file, or take it from the clipboard |
 | `L` | Tidy top-down |
 | `⇧L` | Tidy left-right |
-| `T` | Toggle theme |
+| `T` | Open app appearance |
 | `M` | Toggle Mermaid panel |
 | `W` | Open the selected node's default wiki page in the side panel |
 | `K` | Open the selected node's default slide deck in the side panel (all decks when nothing is selected) |

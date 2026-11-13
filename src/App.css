@@ -66,7 +66,7 @@ body,
   height: 100vh;
   background: var(--mf-grain), var(--mf-bg);
   color: var(--mf-text);
-  font-family: var(--mf-sans);
+  font-family: var(--mf-ui-font, var(--mf-sans));
   font-feature-settings: 'cv05', 'ss01';
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -111,7 +111,7 @@ body,
 }
 
 .mf-brand {
-  font-family: var(--mf-hand);
+  font-family: var(--mf-content-font, var(--mf-hand));
   font-weight: 700;
   font-size: 18px;
   line-height: 1;
@@ -218,6 +218,13 @@ body,
   z-index: 6;
 }
 
+.mf-flow-menu {
+  flex-direction: row;
+  right: auto;
+  left: 0;
+  min-width: 0;
+}
+
 .mf-menu-item {
   display: flex;
   align-items: center;
@@ -229,7 +236,7 @@ body,
   border: 1px solid transparent;
   border-radius: 8px;
   cursor: pointer;
-  font-family: var(--mf-sans);
+  font-family: var(--mf-ui-font, var(--mf-sans));
   font-size: 13px;
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -268,7 +275,7 @@ body,
   border-radius: 7px;
   padding: 5px 10px;
   cursor: pointer;
-  font: 500 12px var(--mf-sans);
+  font: 500 12px var(--mf-ui-font, var(--mf-sans));
   transition: background 120ms ease;
 }
 .mf-panel button:where(:not([class*='wk-'])):hover {
@@ -285,7 +292,7 @@ body,
   border-radius: 8px;
   padding: 7px 12px;
   cursor: pointer;
-  font-family: var(--mf-sans);
+  font-family: var(--mf-ui-font, var(--mf-sans));
   font-size: 13px;
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -331,7 +338,7 @@ body,
   align-items: center;
   justify-content: center;
   padding: 8px 12px;
-  font-family: var(--mf-hand);
+  font-family: var(--mf-content-font, var(--mf-hand));
   font-size: 14px;
   box-shadow: 0 2px 10px var(--mf-shadow);
   transition:
@@ -436,7 +443,7 @@ body,
   border: 1px solid color-mix(in srgb, var(--mf-seal) 50%, transparent);
   background: color-mix(in srgb, var(--mf-seal) 14%, transparent);
   color: var(--mf-seal);
-  font: 600 11.5px/1 var(--mf-sans);
+  font: 600 11.5px/1 var(--mf-ui-font, var(--mf-sans));
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition:
@@ -745,7 +752,7 @@ body,
 .mf-edge-label {
   position: absolute;
   pointer-events: all;
-  font-family: var(--mf-hand);
+  font-family: var(--mf-content-font, var(--mf-hand));
   font-size: 13px;
 }
 .mf-edge-text {
@@ -789,7 +796,7 @@ body,
   pointer-events: all;
 }
 .mf-edge-action {
-  font-family: var(--mf-sans);
+  font-family: var(--mf-ui-font, var(--mf-sans));
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -1086,7 +1093,7 @@ body,
   border: 1px solid transparent;
   border-radius: 7px;
   cursor: pointer;
-  font-family: var(--mf-sans);
+  font-family: var(--mf-ui-font, var(--mf-sans));
   font-size: 12px;
   line-height: 1;
   transition:
@@ -1184,7 +1191,7 @@ body,
   max-width: calc(100% - 48px);
   height: 22px;
   padding: 0 6px;
-  font-family: var(--mf-hand);
+  font-family: var(--mf-content-font, var(--mf-hand));
   font-size: 14px;
   font-weight: 700;
   line-height: 22px;
@@ -1877,7 +1884,7 @@ body,
   border-radius: 7px;
   background: transparent;
   color: var(--mf-muted);
-  font: 12px var(--mf-sans);
+  font: 12px var(--mf-ui-font, var(--mf-sans));
   text-align: left;
   cursor: pointer;
 }
@@ -1895,7 +1902,7 @@ body,
   border: 1px solid var(--mf-accent);
   border-radius: 4px;
   padding: 4px;
-  font: 13px var(--mf-sans);
+  font: 13px var(--mf-ui-font, var(--mf-sans));
 }
 .mf-tree-heading {
   margin: 14px 0 0;
@@ -1938,7 +1945,7 @@ body,
 }
 .mf-page.has-page {
   color: var(--mf-accent);
-  border-color: color-mix(in srgb, var(--mf-accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--mf-wiki-icon) 45%, transparent);
 }
 .mf-page:hover {
   color: var(--mf-accent);
@@ -1948,6 +1955,7 @@ body,
   right: calc(var(--ear) + 6px);
   top: 6px;
 }
+.mf-deck.has-page { border-color: color-mix(in srgb, var(--mf-slides-icon) 45%, transparent); }
 /* the slides button sits beside the page button */
 .mf-deck {
   right: 17px;

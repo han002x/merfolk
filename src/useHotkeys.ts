@@ -12,14 +12,14 @@ export interface Hotkey {
 export function isTyping(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;
   const tag = el.tagName;
-  return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+  return tag === 'SELECT' || tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
 }
 
 /** Global keyboard shortcuts, suspended while the user is typing in a field. */
 export function useHotkeys(hotkeys: Hotkey[]) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e.target)) return;
+      if (isTyping(e.target) || document.querySelector('dialog[open]')) return;
       const key = e.key.toLowerCase();
       for (const h of hotkeys) {
         const metaOk = h.meta ? e.metaKey || e.ctrlKey : !(e.metaKey || e.ctrlKey);

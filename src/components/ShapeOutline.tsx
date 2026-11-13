@@ -1,3 +1,4 @@
+import { useStyleDefaults } from '../useStyleDefaults';
 // Node outlines and icon artwork. Every node is drawn as ink on paper: a clean
 // fill under a hand-drawn outline (src/rough.ts), sized to the node in pixels
 // so the wobble never stretches.
@@ -5,7 +6,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ElementStyle, NodeShape } from '../types';
 import { shapeDef } from '../shapes';
 import { ICON_BY_ID } from '../icons/catalog';
-import { STYLE_DEFAULTS, dashArray } from '../style';
+import { dashArray } from '../style';
 import { roughOutline } from '../rough';
 
 /** Layout size of the element's parent (unaffected by canvas zoom). */
@@ -53,6 +54,7 @@ export function ShapeOutline({
   /** a folded card: draw its folded pages stacked underneath */
   pages?: boolean;
 }) {
+  const STYLE_DEFAULTS = useStyleDefaults();
   const ref = useRef<SVGSVGElement>(null);
   const size = useParentSize(ref);
   const sloppiness = style?.sloppiness ?? STYLE_DEFAULTS.sloppiness;

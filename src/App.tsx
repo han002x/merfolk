@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   NodeToolbar,
@@ -44,7 +45,7 @@ import { Icon } from './components/Icon';
 import { ShapePicker, type Placement } from './components/ShapePicker';
 import { ImagePicker } from './components/ImagePicker';
 import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
-import { toggleTheme, useTheme } from './theme';
+import { openAppearance, useTheme, activeAppearance } from './theme';
 import { foldedAncestors } from './pages.ts';
 import { nameCanvasWindow, parseRoute } from './route';
 import { showDeck, showPage, useDock } from './dock';
@@ -302,10 +303,20 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
   const playing = usePlayer((s) => s.playing);
   const lit = usePlayer((s) => s.lit);
   const flowSpeed = usePlayer((s) => s.speed);
-  const togglePlay = usePlayer((s) => s.toggle);
-  const stepFlow = usePlayer((s) => s.stepBy);
   const stopFlow = usePlayer((s) => s.stop);
   const cycleSpeed = usePlayer((s) => s.cycleSpeed);
+  const [flowOpen, setFlowOpen] = useState(false);
+  const flowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!flowOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (flowRef.current && !flowRef.current.contains(e.target as globalThis.Node)) setFlowOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [flowOpen]);
+  const togglePlay = usePlayer((s) => s.toggle);
+  const stepFlow = usePlayer((s) => s.stepBy);
   const noFlow = flow.steps === 0;
   useEffect(() => setSchedule(flow.sig, flow.steps), [flow.sig, flow.steps, setSchedule]);
 
@@ -769,7 +780,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         { key: 'i', run: () => (setPickerOpen(false), setImageOpen((v) => !v)) },
         { key: 'l', run: () => tidy('TB') },
         { key: 'l', shift: true, run: () => tidy('LR') },
-        { key: 't', run: () => toggleTheme() },
+        { key: 't', run: () => openAppearance() },
         { key: 'f', run: foldSelection },
         { key: 'w', run: openSelectedPage },
         { key: 'k', run: openSelectedDeck },
@@ -849,12 +860,6 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
       <div className="mf-toolbar">
         <span className="mf-brand">merfolk</span>
         <div className="mf-group-btns">
-          <ToolButton label="Select" hotkey="V" active={!pending} onClick={cancelPending}>
-            <Icon name="cursor" />
-          </ToolButton>
-        </div>
-        <span className="mf-sep" />
-        <div className="mf-group-btns">
           <ToolButton label="Rectangle" hotkey="R" onClick={() => arm({ shape: 'rect' })}>
             <Icon name="rect" />
           </ToolButton>
@@ -890,33 +895,51 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
         </div>
         <span className="mf-sep" />
         <div className="mf-group-btns">
-          <ToolButton label="Previous step" hotkey="," disabled={noFlow || !lit} onClick={() => stepFlow(-1)}>
-            <Icon name="step-back" />
-          </ToolButton>
-          <ToolButton
-            label={playing ? 'Pause flow' : 'Play flow'}
-            hotkey="P"
-            active={playing}
-            disabled={noFlow}
-            onClick={togglePlay}
-          >
-            <Icon name={playing ? 'pause' : 'play'} />
-          </ToolButton>
-          <ToolButton label="Stop flow" disabled={!playing && !lit} onClick={stopFlow}>
-            <Icon name="stop" />
-          </ToolButton>
-          <ToolButton label="Next step" hotkey="." disabled={noFlow} onClick={() => stepFlow(1)}>
-            <Icon name="step-fwd" />
-          </ToolButton>
-          <ToolButton label="Flow speed" disabled={noFlow} onClick={cycleSpeed}>
-            <span className="mf-speed">{flowSpeed === 0.5 ? '½' : flowSpeed}×</span>
-          </ToolButton>
-        </div>
-        <span className="mf-sep" />
-        <div className="mf-group-btns">
-          <ToolButton label="Slides" hotkey="K" onClick={openSelectedDeck}>
-            <Icon name="deck" />
-          </ToolButton>
+          <div className="mf-menu-wrap" ref={flowRef}>
+            <ToolButton
+              label={playing ? 'Stop flow' : 'Play flow'}
+              hotkey="P"
+              active={playing}
+              disabled={noFlow}
+              onClick={() => {
+                if (playing) {
+                  stopFlow();
+                  setFlowOpen(false);
+                } else {
+                  togglePlay();
+                  setFlowOpen(true);
+                }
+              }}
+            >
+              <Icon name={playing ? 'stop' : 'play'} />
+            </ToolButton>
+            {flowOpen && (
+              <div className="mf-menu mf-flow-menu" role="toolbar" aria-label="Flow controls">
+                <ToolButton label="Previous step" hotkey="," disabled={noFlow || !lit} onClick={() => stepFlow(-1)}>
+                  <Icon name="step-back" />
+                </ToolButton>
+                <ToolButton
+                  label={playing ? 'Pause flow' : 'Stop flow'}
+                  disabled={!playing && !lit}
+                  onClick={() => {
+                    if (playing) togglePlay();
+                    else {
+                      stopFlow();
+                      setFlowOpen(false);
+                    }
+                  }}
+                >
+                  <Icon name={playing ? 'pause' : 'stop'} />
+                </ToolButton>
+                <ToolButton label="Next step" hotkey="." disabled={noFlow} onClick={() => stepFlow(1)}>
+                  <Icon name="step-fwd" />
+                </ToolButton>
+                <ToolButton label="Flow speed" disabled={noFlow} onClick={cycleSpeed}>
+                  <span className="mf-speed">{flowSpeed === 0.5 ? '½' : flowSpeed}×</span>
+                </ToolButton>
+              </div>
+            )}
+          </div>
         </div>
         <span className="mf-sep" />
         <div className="mf-menu-wrap" ref={menuRef}>
@@ -964,11 +987,12 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
                 role="menuitem"
                 onClick={() => {
                   setMenuOpen(false);
-                  toggleTheme();
+                  menuRef.current?.querySelector('button')?.focus();
+                  openAppearance();
                 }}
               >
-                <Icon name={theme === 'dark' ? 'sun' : 'moon'} />
-                <span>{theme === 'dark' ? 'Light theme' : 'Dark theme'}</span>
+                <Icon name={'shapes'} />
+                <span>Appearance</span>
               </button>
               <span className="mf-menu-sep" />
               <button
@@ -1028,7 +1052,7 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
             </button>
           </div>
         </NodeToolbar>
-        <Background gap={18} />
+        <Background gap={activeAppearance().texture === 'grid' ? 24 : 18} variant={activeAppearance().texture === 'grid' ? BackgroundVariant.Lines : BackgroundVariant.Dots} />
         <Controls />
         <MiniMap pannable zoomable />
       </ReactFlow>

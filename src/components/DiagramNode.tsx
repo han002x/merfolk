@@ -1,9 +1,10 @@
+import { useStyleDefaults } from '../useStyleDefaults';
 import { memo, useMemo, useState } from 'react';
 import { Handle, Position, useConnection, type NodeProps } from '@xyflow/react';
 import { DEFAULT_IMAGE_SIZE, type ElementStyle, type NodeImage, type NodeShape } from '../types';
 import { useDiagram } from '../store';
 import { useFoldMotion } from '../foldMotion';
-import { STYLE_DEFAULTS, animationClass, flowDash, fontFamilyCss, inkOn } from '../style';
+import { animationClass, flowDash, fontFamilyCss, inkOn } from '../style';
 import { CatalogIcon, ShapeOutline } from './ShapeOutline';
 import { PageButton } from './PageButton';
 import { DeckButton } from './DeckButton';
@@ -61,6 +62,7 @@ export function NodeImg({ image }: { image: NodeImage }) {
 }
 
 function DiagramNodeInner({ id, data, selected, dragging }: NodeProps) {
+  const STYLE_DEFAULTS = useStyleDefaults();
   const d = data as NodeData;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(d.label);

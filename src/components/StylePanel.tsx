@@ -1,3 +1,4 @@
+import { useStyleDefaults } from '../useStyleDefaults';
 import { useMemo, useRef, useState } from 'react';
 import { useDiagram } from '../store';
 import { DEFAULT_IMAGE_SIZE, type DiagramNode, type ElementStyle } from '../types';
@@ -12,7 +13,6 @@ import {
   STROKE_COLORS,
   STROKE_STYLES,
   STROKE_WIDTHS,
-  STYLE_DEFAULTS,
 } from '../style';
 
 type K = keyof ElementStyle;
@@ -36,6 +36,7 @@ const FONT_GLYPH: Record<string, string> = {
  * selected node/edge at once.
  */
 export function StylePanel() {
+  const STYLE_DEFAULTS = useStyleDefaults();
   const selectedNodeIds = useDiagram((s) => s.selectedNodeIds);
   const selectedEdgeIds = useDiagram((s) => s.selectedEdgeIds);
   const nodes = useDiagram((s) => s.nodes);

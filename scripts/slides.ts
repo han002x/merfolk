@@ -1,5 +1,6 @@
 // Slide deck logic: splitting, notes, export, links, sync, save migration.
 // Run with: node --experimental-strip-types scripts/slides.ts
+import { PRESETS, isAppearance } from '../src/appearance.ts';
 import { JSDOM } from 'jsdom';
 import assert from 'node:assert/strict';
 // DOMPurify binds to a window at import time
@@ -11,7 +12,7 @@ const { parseRoute, deckHref } = await import('../src/route.ts');
 const { useDiagram } = await import('../src/store.ts');
 const { readSaved, write } = await import('../src/persist.ts');
 import { dragged, dragMode } from '../src/slides/drag.ts';
-import { duplicateBox, setBoxContent, LAYOUTS, moveSlide, orderBox, addBox, boxCaret, removeBox, setBox, setDeckStyle, setSlideStyle, slideBoxes, BLOCKS, deckFileName, editSlides, insertBlock, slideAt, slideCaret, slideStarts, splitSlides, toMarkdown } from '../src/slides.ts';
+import { restyleDeck, duplicateBox, setBoxContent, LAYOUTS, moveSlide, orderBox, addBox, boxCaret, removeBox, setBox, setDeckStyle, setSlideStyle, slideBoxes, BLOCKS, deckFileName, editSlides, insertBlock, slideAt, slideCaret, slideStarts, splitSlides, toMarkdown } from '../src/slides.ts';
 import { embedNode, nodesOfPage, orphanPages } from '../src/pages.ts';
 import { fromMermaid, toMermaid } from '../src/mermaid/io.ts';
 import type { DiagramNode } from '../src/types.ts';
@@ -410,6 +411,25 @@ const node = (id: string, label: string, extra: Partial<DiagramNode> = {}): Diag
   assert.deepEqual(back.nodes.find((n) => n.id === 'a')?.deckIds, ['d1', 'd2']);
   assert.deepEqual(back.nodes.find((n) => n.id === 'a')?.pageIds, ['p']);
   assert.equal(back.nodes.find((n) => n.id === 'b')?.deckIds, undefined);
+}
+
+// App appearance resets supported styling without editing examples or geometry.
+{
+  const body = '---\nfont: mono\ncolor: red\ntransition: fade\n---\n\n# Launch\n\n<!-- _class: lead invert -->\n\n<!-- remember this -->\n\n<div class="box rect hand" style="left:12.345%;top:20%;width:30%;height:40%;color:red;transform:rotate(12.5deg)">Text</div>\n\n```html\n<div class="box mono" style="color:red">Example</div>\n```';
+  const reset = restyleDeck(body);
+  assert.equal(splitSlides(reset).slides[0].look.lead, true);
+  assert.equal(splitSlides(reset).slides[0].look.invert, false);
+  assert.deepEqual(splitSlides(reset).slides[0].notes, ['remember this']);
+  assert.ok(reset.includes('left:12.345%'));
+  assert.ok(reset.includes('transform:rotate(12.5deg)'));
+  assert.ok(reset.includes('```html\n<div class="box mono" style="color:red">Example</div>\n```'));
+  assert.equal(restyleDeck(reset), reset);
+  const exported = toMarkdown({ id: 'd', title: 'Launch', body: '# Hello', updatedAt: 1 }, { nodes: [], edges: [] }, undefined, PRESETS[2].style);
+  assert.ok(exported.includes('backgroundColor: "#f7f8fa"'));
+  assert.ok(exported.includes('section { font-family: Inter, system-ui, sans-serif; }'));
+  assert.equal(isAppearance(PRESETS[0].style), true);
+  assert.equal(isAppearance({ ...PRESETS[0].style, uiFont: ['sans'] }), false);
+  assert.equal(isAppearance({ ...PRESETS[0].style, colors: { bg: '#fff' } }), false);
 }
 
 console.log('slides: ok');

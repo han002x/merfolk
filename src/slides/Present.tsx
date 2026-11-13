@@ -84,6 +84,7 @@ export default function Present({ deckId, nodeId, slides, slide, presenter = fal
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (document.querySelector('dialog[open]')) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const { go, exit } = latest.current;
       const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;

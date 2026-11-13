@@ -21,7 +21,7 @@ const theme = EditorView.theme({
     border: '1px solid var(--mf-border)',
     borderRadius: '8px',
     color: 'var(--mf-text)',
-    fontFamily: 'var(--mf-sans)',
+    fontFamily: 'var(--mf-ui-font)',
   },
   '.cm-tooltip-autocomplete ul li[aria-selected]': {
     background: 'color-mix(in srgb, var(--mf-accent) 22%, transparent)',

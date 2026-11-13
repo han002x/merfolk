@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDiagram } from '../store';
 import { restore, startAutosave, startSync } from '../persist';
-import { toggleTheme, useTheme } from '../theme';
+import { openAppearance } from '../theme';
 import { backlinks, nodesOfPage, pathTo } from '../pages';
 import { openNode, pageHref } from '../route';
 import { Icon } from '../components/Icon';
@@ -25,7 +25,6 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
   const pageNodes = page ? nodesOfPage(nodes, page.id) : [];
   const node = pageNodes.find((n) => n.id === nodeId) ?? pageNodes[0];
   const linked = page ? backlinks(page, nodes, pages) : [];
-  const theme = useTheme();
   const [mode, setMode] = useState<PageMode>('edit');
   // the narrow-screen index closes itself once a page is chosen
   const [index, setIndex] = useState<{ at: string | null } | null>(null);
@@ -63,8 +62,8 @@ export default function WikiApp({ pageId, nodeId }: { pageId: string | null; nod
       <aside className="wk-index">
         <div className="wk-index-head">
           <a className="wk-brand" href="#/wiki">Wiki</a>
-          <button className="wk-icon" onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />
+          <button className="wk-icon" onClick={openAppearance} title="Appearance" aria-label="Appearance">
+            <Icon name={'shapes'} size={15} />
           </button>
           <button className="wk-icon" onClick={create} title="New page" aria-label="New page">
             <Icon name="plus" size={15} />

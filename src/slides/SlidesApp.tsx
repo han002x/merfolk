@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDiagram } from '../store';
 import { restore, startAutosave, startSync } from '../persist';
-import { toggleTheme, useTheme } from '../theme';
+import { openAppearance, activeAppearance } from '../theme';
 import { nodesOfPage, pathTo } from '../pages';
 import {
   addBox, BLOCKS, boxCaret, deckFileName, duplicateBox, editSlides, insertBlock, removeBox, setBox, setBoxContent, setDeckStyle, setSlideStyle,
@@ -61,7 +61,6 @@ export default function SlidesApp({ deckId, nodeId, slide, presenter }: {
   const deck = decks.find((d) => d.id === deckId);
   const deckNodes = deck ? nodesOfPage(nodes, deck.id, 'deckIds') : [];
   const node = deckNodes.find((n) => n.id === nodeId) ?? deckNodes[0];
-  const theme = useTheme();
   const body = deck?.body ?? '';
   const slides = useSlides(body);
   // the narrow-screen index closes itself once a deck is chosen
@@ -146,6 +145,7 @@ export default function SlidesApp({ deckId, nodeId, slide, presenter }: {
   });
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (document.querySelector('dialog[open]')) return;
       const { box, reshape, discard, duplicate, editText, travel, current, body } = keys.current;
       if (isTyping(e.target) || e.altKey || slide) return;
       if (e.metaKey || e.ctrlKey) {
@@ -320,7 +320,7 @@ export default function SlidesApp({ deckId, nodeId, slide, presenter }: {
   const download = () => {
     if (!deck) return;
     const { nodes, edges } = useDiagram.getState();
-    const url = URL.createObjectURL(new Blob([toMarkdown(deck, { nodes, edges }, node?.id)], { type: 'text/markdown' }));
+    const url = URL.createObjectURL(new Blob([toMarkdown(deck, { nodes, edges }, node?.id, activeAppearance())], { type: 'text/markdown' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = deckFileName(deck);
@@ -333,8 +333,8 @@ export default function SlidesApp({ deckId, nodeId, slide, presenter }: {
       <aside className="wk-index">
         <div className="wk-index-head">
           <a className="wk-brand" href="#/slides">Slides</a>
-          <button className="wk-icon" onClick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
-            <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={15} />
+          <button className="wk-icon" onClick={openAppearance} title="Appearance" aria-label="Appearance">
+            <Icon name={'shapes'} size={15} />
           </button>
           <button className="wk-icon" onClick={create} title="New deck" aria-label="New deck">
             <Icon name="plus" size={15} />

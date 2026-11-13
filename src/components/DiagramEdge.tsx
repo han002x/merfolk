@@ -1,3 +1,4 @@
+import { useStyleDefaults } from '../useStyleDefaults';
 import { useEffect, useMemo, useState } from 'react';
 import {
   BaseEdge,
@@ -8,7 +9,7 @@ import {
 import { useDiagram } from '../store';
 import { Icon } from './Icon';
 import type { ElementStyle } from '../types';
-import { STYLE_DEFAULTS, animationClass, dashArray, flowDash, fontFamilyCss } from '../style';
+import { animationClass, dashArray, flowDash, fontFamilyCss } from '../style';
 import { arrowHead, ink, seedOf, type Side } from '../rough';
 
 const EDGE_STYLE_BASE: React.CSSProperties = {
@@ -32,6 +33,7 @@ export function DiagramEdge({
   selected,
   data,
 }: EdgeProps) {
+  const STYLE_DEFAULTS = useStyleDefaults();
   const updateEdgeLabel = useDiagram((s) => s.updateEdgeLabel);
   const setHighlight = useDiagram((s) => s.setHighlight);
   const highlighted = useDiagram(

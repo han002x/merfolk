@@ -1,3 +1,6 @@
+import { activeAppearance, useAppearance } from '../theme';
+import { documentIcon } from '../appearance';
+
 // Tiny inline-SVG icon set. Icons inherit `currentColor` and a 1.6 stroke so
 // they sit consistently next to text and flip with the theme automatically.
 
@@ -27,6 +30,13 @@ type IconName =
   | 'unfold'
   | 'more'
   | 'shapes'
+  | 'pumpkin'
+  | 'ghost'
+  | 'bat'
+  | 'skull'
+  | 'book'
+  | 'notebook'
+  | 'monitor'
   | 'page'
   | 'deck'
   | 'grid'
@@ -39,6 +49,13 @@ type IconName =
   | 'image';
 
 const PATHS: Record<IconName, React.ReactNode> = {
+  pumpkin: <><path d="M12 7C5 2 1 8 3 15c1 5 6 7 9 5 3 2 8 0 9-5 2-7-2-13-9-8ZM12 7c-1-3 0-5 2-5" /><path d="m6 11 3 1-2 2Zm12 0-3 1 2 2Z" fill="currentColor" stroke="none" /><path d="m7 16 2 2 3-1 3 1 2-2" /></>,
+  ghost: <><path d="M5 21V10a7 7 0 0 1 14 0v11l-3-2-4 2-4-2Z" /><circle cx="9" cy="10" r="1" fill="currentColor" /><circle cx="15" cy="10" r="1" fill="currentColor" /><path d="M10 15h4" /></>,
+  bat: <path d="m12 9-2-3-1 4C6 7 3 6 2 5v9c3-1 4 0 5 3 2-1 3 0 5 3 2-3 3-4 5-3 1-3 2-4 5-3V5c-1 1-4 2-7 5l-1-4Z" />,
+  skull: <><path d="M8 21v-4a8 8 0 1 1 8 0v4ZM11 18v3M13 18v3" /><circle cx="8.5" cy="10.5" r="1.5" /><circle cx="15.5" cy="10.5" r="1.5" /><path d="m12 13-1 2h2Z" fill="currentColor" stroke="none" /></>,
+  book: <><path d="M12 5C8 2 4 3 2 4v15c3-1 6-1 10 2 4-3 7-3 10-2V4c-2-1-6-2-10 1Z" /><path d="M12 5v16" /></>,
+  notebook: <><rect x="5" y="3" width="15" height="18" rx="2" /><path d="M9 3v18M3 7h4M3 12h4M3 17h4M12 8h5M12 12h5" /></>,
+  monitor: <><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M12 17v4M8 21h8" /></>,
   text: <path d="M4 6V4h16v2M12 4v16M8 20h8" />,
   line: <path d="M5 19 19 5" />,
   arrow: <path d="M5 19 19 5M8 5h11v11" />,
@@ -51,8 +68,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   deck: (
     <>
-      <rect x="3" y="4" width="18" height="12" rx="1.5" />
-      <path d="M12 16v4M8 20h8" />
+      <rect x="6" y="3" width="16" height="14" rx="1.5" />
+      <path d="M18 17v4H2V7h4M10 7h8M10 11h5" />
     </>
   ),
   grid: (
@@ -193,9 +210,15 @@ export function Icon({
   name: IconName;
   size?: number;
 }) {
+  const appearance = activeAppearance(useAppearance());
+  const kind = name === 'page' ? 'wiki' : name === 'deck' ? 'slides' : undefined;
+  const selected = kind ? documentIcon(appearance, kind) : undefined;
   return (
     <svg
       className="mf-svg"
+      data-document-icon={kind}
+      data-icon={selected?.symbol ?? name}
+      style={kind ? { color: `var(--mf-${kind}-icon)` } : undefined}
       width={size}
       height={size}
       viewBox="0 0 24 24"
@@ -206,7 +229,7 @@ export function Icon({
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {PATHS[name]}
+      {PATHS[selected?.symbol ?? name]}
     </svg>
   );
 }

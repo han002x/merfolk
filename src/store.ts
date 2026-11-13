@@ -1,3 +1,4 @@
+import { restyleDeck } from './slides.ts';
 import { create } from 'zustand';
 import type {
   Diagram,
@@ -149,6 +150,8 @@ interface State {
   // derived helpers
   isGroup: (id: string) => boolean;
   hiddenNodeIds: () => Set<string>;
+
+  restyleAppearance: () => void;
 
   // history
   canUndo: () => boolean;
@@ -361,6 +364,24 @@ export const useDiagram = create<State>((set, get) => {
   hiddenNodeIds: () => computeHidden(get().nodes),
 
   canUndo: () => get().history.length > 0,
+
+  restyleAppearance: () => set((state) => {
+    const clear = (style: ElementStyle | undefined): ElementStyle | undefined => {
+      if (!style) return style;
+      const kept = { ...style };
+      delete kept.stroke; delete kept.background; delete kept.fontFamily; delete kept.sloppiness; delete kept.edges;
+      return kept;
+    };
+    return {
+      ...snapshot(),
+      nodes: state.nodes.map((node) => ({ ...node, style: clear(node.style) })),
+      edges: state.edges.map((edge) => ({ ...edge, style: clear(edge.style) })),
+      decks: state.decks.map((deck) => {
+        const body = restyleDeck(deck.body);
+        return body === deck.body ? deck : { ...deck, body, updatedAt: Date.now() };
+      }),
+    };
+  }),
 
   undo: () =>
     set((s) => {

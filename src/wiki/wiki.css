@@ -4,7 +4,7 @@
   height: 100vh;
   background: var(--mf-bg);
   color: var(--mf-text);
-  font-family: var(--mf-sans);
+  font-family: var(--mf-ui-font, var(--mf-sans));
 }
 
 .wk a {
@@ -67,7 +67,7 @@
   border-radius: 7px;
   background: none;
   color: var(--mf-muted);
-  font: 12px var(--mf-sans);
+  font: 12px var(--mf-ui-font, var(--mf-sans));
   text-align: left;
   cursor: pointer;
 }
@@ -132,7 +132,7 @@
   border-radius: 7px;
   background: none;
   color: inherit;
-  font: 13px var(--mf-sans);
+  font: 13px var(--mf-ui-font, var(--mf-sans));
   text-align: left;
   cursor: pointer;
   overflow: hidden;
@@ -167,7 +167,7 @@ a.wk-item {
   border: 1px solid var(--mf-border);
   border-radius: 7px;
   color: var(--mf-text);
-  font: 12px var(--mf-sans);
+  font: 12px var(--mf-ui-font, var(--mf-sans));
   padding: 5px 10px;
   cursor: pointer;
   transition: background 120ms ease;
@@ -183,7 +183,7 @@ a.wk-item {
   border-radius: 7px;
   background: none;
   color: var(--mf-muted);
-  font: 14px var(--mf-sans);
+  font: 14px var(--mf-ui-font, var(--mf-sans));
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -219,7 +219,7 @@ a.wk-item {
   background: var(--mf-panel);
   color: var(--mf-text);
   box-shadow: 0 8px 24px var(--mf-shadow);
-  font: 13px var(--mf-sans);
+  font: 13px var(--mf-ui-font, var(--mf-sans));
 }
 .wk-menu button {
   display: flex;
@@ -318,7 +318,7 @@ a.wk-item {
   border-radius: 4px;
   background: none;
   color: var(--mf-muted);
-  font: 12px var(--mf-sans);
+  font: 12px var(--mf-ui-font, var(--mf-sans));
   cursor: pointer;
 }
 .wk-crumb:hover {
@@ -347,7 +347,7 @@ a.wk-item {
   border: 0;
   outline: 0;
   color: inherit;
-  font: 700 32px/1.2 var(--mf-sans);
+  font: 700 32px/1.2 var(--mf-ui-font, var(--mf-sans));
   letter-spacing: -0.025em;
 }
 .wk-title::placeholder {
@@ -422,7 +422,7 @@ a.wk-item {
 }
 .wk-list h1 {
   margin: 0;
-  font: 700 32px/1.2 var(--mf-sans);
+  font: 700 32px/1.2 var(--mf-ui-font, var(--mf-sans));
   letter-spacing: -0.025em;
 }
 .wk-list ul {
@@ -576,7 +576,7 @@ a.wk-item {
   border: 0;
   border-radius: 6px;
   color: var(--mf-muted);
-  font: 500 12px var(--mf-sans);
+  font: 500 12px var(--mf-ui-font, var(--mf-sans));
   cursor: pointer;
   transition:
     background 120ms ease,
@@ -611,7 +611,7 @@ a.wk-item {
 .wk-page-content .cm-line { padding: 0; }
 .wk-rich-editor { flex: 1; min-height: 180px; overflow-y: auto; }
 .wk-rich-editor .tiptap { min-height: 240px; outline: none; }
-.wk-prose { box-sizing: border-box; width: 100%; max-width: 780px; margin: 0 auto; padding: 16px 32px 48px; font-family: var(--mf-sans); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
+.wk-prose { box-sizing: border-box; width: 100%; max-width: 780px; margin: 0 auto; padding: 16px 32px 48px; font-family: var(--mf-ui-font, var(--mf-sans)); font-size: 15px; line-height: 1.7; overflow-wrap: anywhere; }
 .wk-prose > :first-child { margin-top: 0; }
 .wk-prose h1, .wk-prose h2, .wk-prose h3 { line-height: 1.25; letter-spacing: -.02em; margin: 1.4em 0 .5em; }
 .wk-prose h1 { font-size: 1.6em; }
@@ -640,7 +640,7 @@ a.wk-item {
 .wk-prose .is-editor-empty:first-child::before { content: attr(data-placeholder); float: left; color: var(--mf-muted); pointer-events: none; height: 0; }
 .wk-diagram-block { border: 1px solid var(--mf-border); border-radius: 8px; margin: 16px 0; padding: 8px; }
 .wk-prose .wk-diagram-block .wk-preview { padding: 0; }
-.wk-format, .wk-command-menu { background: var(--mf-panel); border: 1px solid var(--mf-border); border-radius: 9px; box-shadow: 0 8px 28px var(--mf-shadow); color: var(--mf-text); font: 13px var(--mf-sans); }
+.wk-format, .wk-command-menu { background: var(--mf-panel); border: 1px solid var(--mf-border); border-radius: 9px; box-shadow: 0 8px 28px var(--mf-shadow); color: var(--mf-text); font: 13px var(--mf-ui-font, var(--mf-sans)); }
 .wk-format { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; max-width: min(400px, 90vw); }
 .wk-format button, .wk-command-menu button { border: 0; background: transparent; color: inherit; cursor: pointer; border-radius: 5px; font: inherit; padding: 7px 10px; }
 .wk-format button:hover, .wk-format button[aria-pressed='true'], .wk-command-menu button[aria-selected='true'] { background: color-mix(in srgb, var(--mf-accent) 16%, transparent); }
@@ -664,7 +664,7 @@ a.wk-item {
 .wk-rich-editor .tableWrapper table { min-width: 260px; table-layout: auto; }
 .wk-rich-editor .tableWrapper:focus-within table { outline: 1px solid color-mix(in srgb, var(--mf-accent) 45%, transparent); }
 .wk-prose .selectedCell { background: color-mix(in srgb, var(--mf-accent) 16%, var(--mf-panel)); }
-.wk-table-ui { color: var(--mf-text); font: 12px var(--mf-sans); }
+.wk-table-ui { color: var(--mf-text); font: 12px var(--mf-ui-font, var(--mf-sans)); }
 .wk-table-ui button { cursor: pointer; font: inherit; color: inherit; }
 .wk-table-grip, .wk-table-add { position: fixed; z-index: 20; border: 0; background: var(--mf-input); color: var(--mf-muted); padding: 0; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
 .wk-table-grip.column { height: 14px; font-size: 10px; letter-spacing: 2px; }
@@ -679,9 +679,12 @@ a.wk-item {
 .wk-table-caret { color: var(--mf-muted); }
 .wk-table-toolbar-divider { height: 20px; width: 1px; background: var(--mf-border); margin: 0 2px; }
 .wk-table-menu { position: fixed; z-index: 1100; padding: 5px; min-width: 180px; max-width: calc(100vw - 16px); border: 1px solid var(--mf-border); border-radius: 8px; background: var(--mf-panel); color: var(--mf-text); box-shadow: 0 8px 24px var(--mf-shadow); }
-.wk-table-menu button { display: block; text-align: left; width: 100%; padding: 8px 10px; font: 13px var(--mf-sans); color: inherit; background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
+.wk-table-menu button { display: block; text-align: left; width: 100%; padding: 8px 10px; font: 13px var(--mf-ui-font, var(--mf-sans)); color: inherit; background: transparent; border: 0; border-radius: 4px; cursor: pointer; }
 .wk-table-menu button:hover, .wk-table-menu button:focus-visible { background: var(--mf-input); outline: none; }
 .wk-table-menu button.danger { color: #d74747; }
 .wk-table-ui button:focus-visible { outline: 2px solid var(--mf-accent); outline-offset: 2px; }
 /* index.css pins color-scheme to dark; checkboxes follow the app theme instead */
 :root[data-theme='light'] .wk-prose input[type='checkbox'] { color-scheme: light; }
+
+.wk-prose { font-family: var(--mf-content-font); }
+.wk-prose :is(h1,h2,h3,h4,h5,h6), .wk-title { font-family: var(--mf-heading-font); }

@@ -1,3 +1,4 @@
+import type { Appearance } from './appearance';
 // Pure slide-deck logic. A deck is Markdown in the subset Marp and Slidev both
 // read: `---` between slides, HTML comments as speaker notes, optional front
 // matter. No store or DOM here, so scripts/slides.ts can exercise it directly.
@@ -485,8 +486,14 @@ const WIKILINK = /\[\[([^[\]|]+)(?:\|([^[\]]+))?\]\]/g;
  * A deck as a standalone Markdown file for Marp or Slidev: live diagram embeds
  * become Mermaid fences and wikilinks become their text.
  */
-export function toMarkdown(deck: Deck, diagram: Diagram, nodeId?: string): string {
+export function toMarkdown(deck: Deck, diagram: Diagram, nodeId?: string, appearance?: Appearance): string {
   let source = deck.body.replace(/\r\n?/g, '\n');
+  if (appearance) {
+    const look = dress({ lead: false, invert: false }, parse(source).frontMatter, false);
+    for (const [key, value] of Object.entries({ backgroundColor: look.background ?? appearance.colors.bg, color: look.color ?? appearance.colors.text, font: look.font ?? appearance.contentFont, headingFont: look.headingFont ?? appearance.headingFont })) {
+      if (key === 'backgroundColor' || key === 'color' || key === 'font' || key === 'headingFont') source = setDeckStyle(source, key, value);
+    }
+  }
   for (const tag of tags(source).reverse()) source = `${source.slice(0, tag.from)}${standalone(tag)}${source.slice(tag.to)}`;
   const { frontMatter, tokens } = parse(source);
   const look = dress({ lead: false, invert: false }, frontMatter, false);
@@ -521,4 +528,23 @@ export function toMarkdown(deck: Deck, diagram: Diagram, nodeId?: string): strin
 export function deckFileName(deck: Deck): string {
   const slug = deck.title.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '');
   return `${slug || 'deck'}.md`;
+}
+
+/** Reset only styling owned by the app; fenced examples and speaker notes survive. */
+export function restyleDeck(body: string): string {
+  const { frontMatter, tokens } = parse(body);
+  const clean = (source: string) => source
+    .replace(/^\s*_?(?:backgroundColor|color|font|headingFont)\s*:.*$/gm, '')
+    .replace(/^(\s*_?class\s*:)(.*)$/gm, (_match, prefix: string, value: string) => `${prefix}${value.replace(/\binvert\b/g, '').trim()}`);
+  const front = clean(frontMatter).trim();
+  let source = (front ? `---\n${front}\n---\n` : '') + tokens.map((t) => t.type === 'html' && COMMENTS.test(t.raw)
+    ? t.raw.replace(/<!--([\s\S]*?)-->/g, (original, contents: string) => DIRECTIVE.test(contents.trim()) ? `<!--${clean(contents)}-->` : original)
+    : t.raw).join('');
+  for (const tag of tags(source).reverse()) {
+    const opening = source.slice(tag.from, tag.to);
+    const next = opening.replace(/class="([^"]*)"/, (_match, value: string) => `class="${value.split(' ').filter((name) => !FONTS.some((font) => font === name)).join(' ')}"`)
+      .replace(/style="([^"]*)"/, (_match, css: string) => `style="${css.split(';').filter((pair) => !/^\s*(background|border-color|color)\s*:/.test(pair)).join(';')}"`);
+    source = source.slice(0, tag.from) + next + source.slice(tag.to);
+  }
+  return source;
 }
