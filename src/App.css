@@ -2065,11 +2065,11 @@ body,
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
   animation: mf-fade 500ms ease-out backwards;
 }
 .mf-welcome-brand .mf-brand {
-  font-size: 40px;
+  font-size: 64px;
   padding: 0;
 }
 .mf-welcome-note {

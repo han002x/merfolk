@@ -8,7 +8,7 @@ export const WELCOME_EVENT = 'marmerlade:welcome';
 
 /** Frames the demo diagram below the notes. */
 export const FIRST_RUN_FIT: FitViewOptions = {
-  padding: { top: '320px', right: '80px', bottom: '60px', left: '80px' },
+  padding: { top: '350px', right: '80px', bottom: '60px', left: '80px' },
   maxZoom: 1,
 };
 
@@ -128,7 +128,7 @@ export function Welcome({ onDone }: { onDone: () => void }) {
         )}
       </svg>
       <div className="mf-welcome-brand" style={{ top: bar.bottom + 160 }}>
-        <img src="/favicon.svg" alt="" width="36" height="36" />
+        <img src="/favicon.svg" alt="" width="64" height="64" />
         <span className="mf-brand">marmerlade</span>
       </div>
       <p className="mf-welcome-note" style={{ left: left.x, top: left.y }}>
