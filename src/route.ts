@@ -5,18 +5,21 @@
 //   #/slides          deck index
 //   #/slides/<deckId> one deck; `?slide=<n>` presents it from slide n,
 //                     `&presenter=1` as the speaker's own window
+//   #/docs            the data model and ontology (ONTOLOGY.md)
 
 import { useSyncExternalStore } from 'react';
 
 export type Route =
   | { kind: 'canvas' }
+  | { kind: 'docs' }
   | { kind: 'node'; id: string }
   | { kind: 'wiki'; id: string | null; nodeId?: string }
   | { kind: 'slides'; id: string | null; nodeId?: string; slide?: number; presenter?: boolean };
 
 export function parseRoute(hash: string): Route {
-  const [, kind, id] = hash.match(/^#\/(wiki|node|slides)(?:\/([^/?]+))?/) ?? [];
+  const [, kind, id] = hash.match(/^#\/(wiki|node|slides|docs)(?:\/([^/?]+))?/) ?? [];
   const decoded = id ? decodeURIComponent(id) : null;
+  if (kind === 'docs') return { kind: 'docs' };
   if (kind === 'wiki' || kind === 'slides') {
     const query = new URLSearchParams(hash.split('?')[1]);
     const nodeId = query.get('node');
@@ -73,4 +76,9 @@ export function openSlides(deckId?: string, nodeId?: string) {
 /** Open (or reuse) the canvas window focused on a node. */
 export function openNode(nodeId: string) {
   window.open(`${window.location.pathname}${nodeHref(nodeId)}`, CANVAS)?.focus();
+}
+
+/** Open (or reuse) the docs window. */
+export function openDocs() {
+  window.open('#/docs', 'merfolk-docs')?.focus();
 }

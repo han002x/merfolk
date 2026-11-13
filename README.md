@@ -169,6 +169,12 @@ A canvas diagramming tool (think Excalidraw / Miro / FigJam) built around
 The bar for every screen and API: [`DESIGN.md`](DESIGN.md) — simple purpose,
 simple architecture, simple design, simple implementation, no filler text.
 
+## Data model
+
+[`ONTOLOGY.md`](ONTOLOGY.md) — entities, relationships, Mermaid mapping and
+how to build diagrams, wiki pages and slide decks that link to each other.
+It is also the in-app **Docs** page (`#/docs`, in More actions).
+
 ## Hotkeys
 
 | Key | Action |

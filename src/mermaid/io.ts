@@ -122,8 +122,60 @@ function parseNodeToken(
   return null;
 }
 
-const EDGE_RE =
-  /^(.+?)\s*(-->|---|-\.->|==>)\s*(?:\|(.+?)\|\s*)?(.+)$/;
+const ARROW_RE = /^(?:-->|---|-\.->|==>)(?:[ \t]*\|([^|]+)\|)?/;
+const OPENERS = '[({';
+const CLOSERS = '])}';
+
+/**
+ * Cut `text` at every top-level occurrence of a separator found by `match`
+ * (which returns the separator's length at index `i`, or 0). Quotes and
+ * brackets hide separators, so `A["x --> y"]` and `A[R&D]` stay whole.
+ */
+function splitTop(text: string, match: (i: number) => number): { parts: string[]; seps: number[] } {
+  const parts: string[] = [];
+  const seps: number[] = [];
+  let depth = 0;
+  let quoted = false;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') quoted = !quoted;
+    if (quoted || c === '"') continue;
+    if (OPENERS.includes(c)) depth++;
+    else if (CLOSERS.includes(c)) depth = Math.max(0, depth - 1);
+    else if (depth === 0) {
+      const len = match(i);
+      if (!len) continue;
+      parts.push(text.slice(start, i).trim());
+      seps.push(i);
+      i += len - 1;
+      start = i + 1;
+    }
+  }
+  parts.push(text.slice(start).trim());
+  return { parts, seps };
+}
+
+/**
+ * Split an edge line into steps. `A --> B -->|x| C` gives steps `[A] [B] [C]`
+ * and link labels `[undefined, 'x']`; `A & B --> C` gives `[A, B] [C]`, where
+ * `&` groups nodes that share a hop. Each hop links every node of one step to
+ * every node of the next. Returns null when the line holds no arrow or a node
+ * is missing.
+ */
+function splitChain(line: string): { steps: string[][]; labels: (string | undefined)[] } | null {
+  const labels: (string | undefined)[] = [];
+  const { parts } = splitTop(line, (i) => {
+    if (line[i] !== '-' && line[i] !== '=') return 0;
+    const arrow = ARROW_RE.exec(line.slice(i));
+    if (!arrow) return 0;
+    labels.push(arrow[1] ? stripQuotes(arrow[1]) : undefined);
+    return arrow[0].length;
+  });
+  if (labels.length === 0) return null;
+  const steps = parts.map((p) => splitTop(p, (i) => (p[i] === '&' ? 1 : 0)).parts);
+  return steps.every((s) => s.every(Boolean)) ? { steps, labels } : null;
+}
 
 /** A line that the parser could not make sense of, for `parseMermaid`. */
 export interface ParseIssue {
@@ -246,20 +298,17 @@ function parseCore(src: string): CoreResult {
       continue;
     }
 
-    // edge line
-    const em = line.match(EDGE_RE);
-    if (em) {
-      const left = parseNodeToken(em[1], parent);
-      const right = parseNodeToken(em[4], parent);
-      const label = em[3] ? stripQuotes(em[3]) : undefined;
-      if (left && right) {
-        ensureNode(left);
-        ensureNode(right);
-        edges.push({
-          id: `e${edgeSeq++}`,
-          source: left.id,
-          target: right.id,
-          label,
+    // edge line; chains and `&` groups expand to one edge per node pair
+    const chain = splitChain(line);
+    if (chain) {
+      const steps = chain.steps.map((tokens) => tokens.map((t) => parseNodeToken(t, parent)));
+      if (steps.every((s) => s.every((n) => n !== null))) {
+        const found = steps as ParsedNode[][];
+        found.flat().forEach(ensureNode);
+        chain.labels.forEach((label, i) => {
+          for (const from of found[i])
+            for (const to of found[i + 1])
+              edges.push({ id: `e${edgeSeq++}`, source: from.id, target: to.id, label });
         });
       } else {
         issues.push({ line: idx, text: line, reason: 'malformed edge endpoint' });

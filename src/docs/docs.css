@@ -1,0 +1,32 @@
+.dk {
+  height: 100vh;
+  overflow-y: auto;
+  background: var(--mf-bg);
+  color: var(--mf-text);
+  font-family: var(--mf-ui-font, var(--mf-sans));
+}
+.dk-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 24px;
+  background: var(--mf-panel);
+  border-bottom: 1px solid var(--mf-border);
+}
+.dk-head a {
+  color: var(--mf-muted);
+  text-decoration: none;
+}
+.dk-head a:hover {
+  color: var(--mf-text);
+}
+.dk .wk-prose {
+  padding-top: 24px;
+}
+.dk .wk-prose h2,
+.dk .wk-prose h3 {
+  scroll-margin-top: 56px;
+}

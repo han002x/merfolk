@@ -7,9 +7,16 @@ import { parseRoute, useHash } from './route.ts'
 // the wiki and the slides are their own windows; keep them out of the canvas bundle
 const WikiApp = lazy(() => import('./wiki/WikiApp.tsx'))
 const SlidesApp = lazy(() => import('./slides/SlidesApp.tsx'))
+const DocsApp = lazy(() => import('./docs/DocsApp.tsx'))
 
 function Route() {
   const route = parseRoute(useHash())
+  if (route.kind === 'docs')
+    return (
+      <Suspense fallback={null}>
+        <DocsApp />
+      </Suspense>
+    )
   if (route.kind === 'wiki')
     return (
       <Suspense fallback={null}>

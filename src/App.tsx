@@ -47,7 +47,7 @@ import { ImagePicker } from './components/ImagePicker';
 import { CatalogIcon, ShapeOutline } from './components/ShapeOutline';
 import { openAppearance, useTheme, activeAppearance } from './theme';
 import { foldedAncestors } from './pages.ts';
-import { nameCanvasWindow, parseRoute } from './route';
+import { nameCanvasWindow, openDocs, parseRoute } from './route';
 import { showDeck, showPage, useDock } from './dock';
 import { isTyping, useHotkeys } from './useHotkeys';
 import { copyImageNode, imagesFromClipboard, snapshotClipboard } from './clipboard';
@@ -993,6 +993,17 @@ function Canvas({ onTogglePanel }: { onTogglePanel: () => void }) {
               >
                 <Icon name={'shapes'} />
                 <span>Appearance</span>
+              </button>
+              <button
+                className="mf-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  openDocs();
+                }}
+              >
+                <Icon name="book" />
+                <span>Docs</span>
               </button>
               <span className="mf-menu-sep" />
               <button
