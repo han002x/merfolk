@@ -1,0 +1,13 @@
+{
+  "version": 3,
+  "diagram": {
+    "nodes": [
+      {"id":"platform","label":"Platform","shape":"rect","parentId":null,"collapsed":false,"position":{"x":0,"y":0},"pageIds":["overview"],"deckIds":["intro"]},
+      {"id":"api","label":"API","shape":"round","parentId":"platform","collapsed":false,"position":{"x":50,"y":80}},
+      {"id":"db","label":"Database","shape":"cylinder","parentId":"platform","collapsed":false,"position":{"x":50,"y":200}}
+    ],
+    "edges":[{"id":"request","source":"api","target":"db","label":"query"}],
+    "pages":[{"id":"overview","title":"Platform","body":"# Platform\n\n{{diagram}}\n\nThe API queries the database.","updatedAt":1}],
+    "decks":[{"id":"intro","title":"Platform","body":"# Platform\n\n---\n\n## Request path\n\n{{diagram}}","updatedAt":1}]
+  }
+}

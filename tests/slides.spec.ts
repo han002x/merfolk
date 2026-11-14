@@ -425,8 +425,8 @@ test('decks: create, link to a node, export, delete', async ({ page }) => {
 test('the canvas shows a node\'s deck in the Slides tab', async ({ page, context }) => {
   await seed(page, '/');
   const panel = page.getByRole('tabpanel', { name: 'Slides' });
-  // nothing selected: the toolbar opens the tab on the list of decks
-  await page.getByRole('button', { name: 'Slides', exact: true }).click();
+  // With nothing selected, the Slides tab lists decks.
+  await page.getByRole('tab', { name: 'Slides', exact: true }).click();
   await expect(page.getByRole('tab', { name: 'Slides', exact: true })).toHaveAttribute('aria-selected', 'true');
   await panel.getByRole('link', { name: 'Launch' }).click();
   await expect(panel.getByLabel('Deck title')).toHaveValue('Launch');

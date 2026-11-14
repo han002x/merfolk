@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import App from './App.tsx'
+import WorkspaceStatus from './components/WorkspaceStatus.tsx'
 import AppearanceDialog from './components/AppearanceDialog'
 
 import { parseRoute, useHash } from './route.ts'
@@ -32,4 +33,4 @@ function Route() {
   return <App />
 }
 
-export default function Root() { return <><Route /><AppearanceDialog /></>; }
+export default function Root() { return <><Route /><AppearanceDialog /><WorkspaceStatus /></>; }

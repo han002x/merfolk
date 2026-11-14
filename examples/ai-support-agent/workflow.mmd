@@ -1,0 +1,50 @@
+flowchart TD
+  Question(["Customer question"])
+
+  subgraph Retrieval ["Retrieve knowledge"]
+    Rewrite("Rewrite query")
+    subgraph Search ["Hybrid search"]
+      Embed("Embed query")
+      Vector[("Vector index")]
+      Keyword[("Keyword index")]
+      Merge("Merge results")
+    end
+    Rerank{{"Rerank evidence"}}
+  end
+
+  subgraph Generation ["Generate answer"]
+    Context["Build context"]
+    Prompt["Apply instructions"]
+    Draft("Draft answer")
+  end
+
+  subgraph Quality ["Check answer"]
+    Citations("Check citations")
+    Policy("Check policy")
+    Supported{"Ready to send?"}
+  end
+
+  subgraph Handoff ["Human handoff"]
+    Ticket[("Support ticket")]
+    Human("Support specialist")
+  end
+
+  Reply(["Customer reply"])
+
+  Question -->|question| Rewrite
+  Rewrite -->|semantic query| Embed
+  Rewrite -->|exact terms| Keyword
+  Embed -->|query vector| Vector
+  Vector -->|semantic matches| Merge
+  Keyword -->|keyword matches| Merge
+  Merge --> Rerank
+  Rerank -->|ranked sources| Context
+  Context --> Prompt
+  Prompt --> Draft
+  Draft -->|draft and sources| Citations
+  Citations --> Policy
+  Policy --> Supported
+  Supported -->|yes| Reply
+  Supported -->|no| Ticket
+  Ticket -->|assigned| Human
+  Human -->|reviewed answer| Reply

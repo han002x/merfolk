@@ -1,0 +1,65 @@
+flowchart TD
+  Question(["Customer question"])
+  subgraph Retrieval ["Retrieve knowledge"]
+    Rewrite("Rewrite query")
+    subgraph Search ["Hybrid search"]
+      Embed("Embed query")
+      Vector[("Vector index")]
+      Keyword[("Keyword index")]
+      Merge("Merge results")
+    end
+    Rerank{{"Rerank evidence"}}
+  end
+  subgraph Generation ["Generate answer"]
+    Context["Build context"]
+    Prompt["Apply instructions"]
+    Draft("Draft answer")
+  end
+  subgraph Quality ["Check answer"]
+    Citations("Check citations")
+    Policy("Check policy")
+    Supported{"Ready to send?"}
+  end
+  subgraph Handoff ["Human handoff"]
+    Ticket[("Support ticket")]
+    Human("Support specialist")
+  end
+  Reply(["Customer reply"])
+  Question -->|question| Rewrite
+  Rewrite -->|semantic query| Embed
+  Rewrite -->|exact terms| Keyword
+  Embed -->|query vector| Vector
+  Vector -->|semantic matches| Merge
+  Keyword -->|keyword matches| Merge
+  Merge --> Rerank
+  Rerank -->|ranked sources| Context
+  Context --> Prompt
+  Prompt --> Draft
+  Draft -->|draft and sources| Citations
+  Citations --> Policy
+  Policy --> Supported
+  Supported -->|yes| Reply
+  Supported -->|no| Ticket
+  Ticket -->|assigned| Human
+  Human -->|reviewed answer| Reply
+  %% marmerlade-decks Question ["support_walkthrough"]
+  click Question href "#/wiki/support_overview"
+  %% marmerlade-pages Question ["support_overview"]
+  %% marmerlade-decks Retrieval ["support_walkthrough"]
+  click Retrieval href "#/wiki/retrieval_design"
+  %% marmerlade-pages Retrieval ["retrieval_design","retrieval_runbook"]
+  click Search href "#/wiki/hybrid_search"
+  %% marmerlade-pages Search ["hybrid_search"]
+  click Generation href "#/wiki/answer_generation"
+  %% marmerlade-pages Generation ["answer_generation","response_contract"]
+  %% marmerlade-decks Quality ["support_walkthrough"]
+  click Quality href "#/wiki/answer_checks"
+  %% marmerlade-pages Quality ["answer_checks","response_contract"]
+  click Handoff href "#/wiki/human_handoff"
+  %% marmerlade-pages Handoff ["human_handoff"]
+  click Ticket href "#/wiki/human_handoff"
+  %% marmerlade-pages Ticket ["human_handoff"]
+  click Human href "#/wiki/human_handoff"
+  %% marmerlade-pages Human ["human_handoff"]
+  click Reply href "#/wiki/support_overview"
+  %% marmerlade-pages Reply ["support_overview","response_contract"]

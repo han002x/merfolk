@@ -1,16 +1,18 @@
 {
   "name": "marmerlade",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && tsc -p tsconfig.server.json && vite build --outDir dist/web && node scripts/build-package.mjs",
     "lint": "oxlint",
     "test": "node --experimental-strip-types scripts/roundtrip.ts && node --experimental-strip-types scripts/fold.ts && node --experimental-strip-types scripts/flow.ts && node --experimental-strip-types scripts/sync.ts && node --experimental-strip-types scripts/gif.ts && node --experimental-strip-types scripts/shapes.ts && node --experimental-strip-types scripts/rough.ts && node --experimental-strip-types scripts/mermaid-compat.ts && node --experimental-strip-types scripts/pages.ts && node --experimental-strip-types scripts/slides.ts && node --experimental-strip-types scripts/editor.ts",
     "icons": "node --experimental-strip-types scripts/icons.ts",
-    "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "preview": "vite preview --outDir dist/web",
+    "test:e2e": "playwright test",
+    "prepack": "npm run build",
+    "test:mcp": "node --experimental-strip-types scripts/workspace-test.ts",
+    "test:mcp:integration": "node scripts/mcp-integration.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "6.20.4",
@@ -25,6 +27,7 @@
     "@fontsource/jetbrains-mono": "^5.2.6",
     "@fontsource/kalam": "^5.3.0",
     "@lezer/highlight": "1.2.5",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@tiptap/core": "3.33.1",
     "@tiptap/extension-bubble-menu": "3.33.1",
     "@tiptap/extension-image": "3.33.1",
@@ -42,9 +45,13 @@
     "html-to-image": "^1.11.13",
     "marked": "18.2.0",
     "mermaid": "11.17.2",
+    "open": "^11.0.4",
+    "proper-lockfile": "^4.1.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "roughjs": "^4.6.6",
+    "ws": "^8.23.0",
+    "zod": "^4.6.7",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
@@ -52,12 +59,28 @@
     "@iconify-json/simple-icons": "^1.2.101",
     "@playwright/test": "^1.65.0",
     "@types/node": "^24.19.2",
+    "@types/proper-lockfile": "^4.1.4",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.1.2",
+    "esbuild": "^0.28.2",
     "jsdom": "^29.1.1",
     "oxlint": "^1.90.0",
     "typescript": "~7.0.2",
     "vite": "^8.3.6"
+  },
+  "description": "Foldable diagrams, linked wiki pages and slides with a live MCP canvas",
+  "bin": {
+    "marmerlade": "dist/cli.js"
+  },
+  "files": [
+    "dist/cli.js",
+    "dist/web",
+    "dist/guide.md",
+    "dist/example.marmerlade.json"
+  ],
+  "engines": {
+    "node": ">=22.12"
   }
 }

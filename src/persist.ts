@@ -3,6 +3,7 @@
 // promise — nothing is lost on refresh.
 
 import type { Diagram } from './types';
+import { isLiveWorkspace } from './liveWorkspace.ts';
 import { useDiagram } from './store.ts';
 import { normalizeDiagram } from './pages.ts';
 
@@ -27,6 +28,7 @@ export function readSaved(): Diagram | null {
 }
 
 export function write(diagram: Diagram) {
+  if (isLiveWorkspace()) return;
   try {
     localStorage.setItem(KEY, JSON.stringify({ version: VERSION, diagram: normalizeDiagram(diagram) }));
   } catch {
@@ -36,6 +38,7 @@ export function write(diagram: Diagram) {
 
 /** Subscribe the store to localStorage with a debounce. Call once at startup. */
 export function startAutosave(debounceMs = 400): () => void {
+  if (isLiveWorkspace()) return () => {};
   let timer: number | undefined;
   return useDiagram.subscribe((state) => {
     window.clearTimeout(timer);
@@ -48,6 +51,7 @@ export function startAutosave(debounceMs = 400): () => void {
 
 /** Follow the other window's saves. Call once at startup. */
 export function startSync(): () => void {
+  if (isLiveWorkspace()) return () => {};
   const onStorage = (e: StorageEvent) => {
     if (e.key !== KEY) return;
     const saved = readSaved();
@@ -59,6 +63,7 @@ export function startSync(): () => void {
 
 /** Restore the saved diagram into the store. Returns true if anything loaded. */
 export function restore(): boolean {
+  if (isLiveWorkspace()) return true;
   const saved = readSaved();
   if (!saved || (saved.nodes.length === 0 && !saved.pages?.length && !saved.decks?.length)) return false;
   useDiagram.getState().load(saved);
@@ -66,6 +71,7 @@ export function restore(): boolean {
 }
 
 export function clearSaved() {
+  if (isLiveWorkspace()) return;
   localStorage.removeItem(KEY);
 }
 

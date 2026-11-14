@@ -1,0 +1,566 @@
+{
+  "version": 3,
+  "diagram": {
+    "nodes": [
+      {
+        "id": "Question",
+        "label": "Customer question",
+        "shape": "stadium",
+        "parentId": null,
+        "collapsed": false,
+        "position": {
+          "x": 185,
+          "y": 20
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1
+        },
+        "pageIds": [
+          "support_overview"
+        ],
+        "deckIds": [
+          "support_walkthrough"
+        ]
+      },
+      {
+        "id": "Retrieval",
+        "label": "Retrieve knowledge",
+        "shape": "rect",
+        "parentId": null,
+        "collapsed": false,
+        "position": {
+          "x": 260,
+          "y": 120
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        },
+        "pageIds": [
+          "retrieval_design",
+          "retrieval_runbook"
+        ],
+        "deckIds": [
+          "support_walkthrough"
+        ]
+      },
+      {
+        "id": "Rewrite",
+        "label": "Rewrite query",
+        "shape": "round",
+        "parentId": "Retrieval",
+        "collapsed": false,
+        "position": {
+          "x": 190,
+          "y": 222
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        }
+      },
+      {
+        "id": "Search",
+        "label": "Hybrid search",
+        "shape": "rect",
+        "parentId": "Retrieval",
+        "collapsed": false,
+        "position": {
+          "x": 260,
+          "y": 300
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        },
+        "pageIds": [
+          "hybrid_search"
+        ]
+      },
+      {
+        "id": "Embed",
+        "label": "Embed query",
+        "shape": "round",
+        "parentId": "Search",
+        "collapsed": false,
+        "position": {
+          "x": 85,
+          "y": 424
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        }
+      },
+      {
+        "id": "Vector",
+        "label": "Vector index",
+        "shape": "cylinder",
+        "parentId": "Search",
+        "collapsed": false,
+        "position": {
+          "x": 80,
+          "y": 626
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        }
+      },
+      {
+        "id": "Keyword",
+        "label": "Keyword index",
+        "shape": "cylinder",
+        "parentId": "Search",
+        "collapsed": false,
+        "position": {
+          "x": 290,
+          "y": 626
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        }
+      },
+      {
+        "id": "Merge",
+        "label": "Merge results",
+        "shape": "round",
+        "parentId": "Search",
+        "collapsed": false,
+        "position": {
+          "x": 190,
+          "y": 840
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        }
+      },
+      {
+        "id": "Rerank",
+        "label": "Rerank evidence",
+        "shape": "hexagon",
+        "parentId": "Retrieval",
+        "collapsed": false,
+        "position": {
+          "x": 175,
+          "y": 1042
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#34658b",
+          "background": "#e5eff7"
+        }
+      },
+      {
+        "id": "Generation",
+        "label": "Generate answer",
+        "shape": "rect",
+        "parentId": null,
+        "collapsed": false,
+        "position": {
+          "x": 820,
+          "y": 120
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#70558b",
+          "background": "#f0e9f6"
+        },
+        "pageIds": [
+          "answer_generation",
+          "response_contract"
+        ]
+      },
+      {
+        "id": "Context",
+        "label": "Build context",
+        "shape": "rect",
+        "parentId": "Generation",
+        "collapsed": false,
+        "position": {
+          "x": 185,
+          "y": 1244
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#70558b",
+          "background": "#f0e9f6"
+        }
+      },
+      {
+        "id": "Prompt",
+        "label": "Apply instructions",
+        "shape": "rect",
+        "parentId": "Generation",
+        "collapsed": false,
+        "position": {
+          "x": 185,
+          "y": 1446
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#70558b",
+          "background": "#f0e9f6"
+        }
+      },
+      {
+        "id": "Draft",
+        "label": "Draft answer",
+        "shape": "round",
+        "parentId": "Generation",
+        "collapsed": false,
+        "position": {
+          "x": 190,
+          "y": 1648
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#70558b",
+          "background": "#f0e9f6"
+        }
+      },
+      {
+        "id": "Quality",
+        "label": "Check answer",
+        "shape": "rect",
+        "parentId": null,
+        "collapsed": false,
+        "position": {
+          "x": 1110,
+          "y": 120
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#916418",
+          "background": "#fbf0d6"
+        },
+        "pageIds": [
+          "answer_checks",
+          "response_contract"
+        ],
+        "deckIds": [
+          "support_walkthrough"
+        ]
+      },
+      {
+        "id": "Citations",
+        "label": "Check citations",
+        "shape": "round",
+        "parentId": "Quality",
+        "collapsed": false,
+        "position": {
+          "x": 190,
+          "y": 1850
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#916418",
+          "background": "#fbf0d6"
+        }
+      },
+      {
+        "id": "Policy",
+        "label": "Check policy",
+        "shape": "round",
+        "parentId": "Quality",
+        "collapsed": false,
+        "position": {
+          "x": 190,
+          "y": 2052
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#916418",
+          "background": "#fbf0d6"
+        }
+      },
+      {
+        "id": "Supported",
+        "label": "Ready to send?",
+        "shape": "diamond",
+        "parentId": "Quality",
+        "collapsed": false,
+        "position": {
+          "x": 205,
+          "y": 2254
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#916418",
+          "background": "#fbf0d6"
+        }
+      },
+      {
+        "id": "Handoff",
+        "label": "Human handoff",
+        "shape": "rect",
+        "parentId": null,
+        "collapsed": false,
+        "position": {
+          "x": 1390,
+          "y": 430
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#a95034",
+          "background": "#f9e5dc"
+        },
+        "pageIds": [
+          "human_handoff"
+        ]
+      },
+      {
+        "id": "Ticket",
+        "label": "Support ticket",
+        "shape": "cylinder",
+        "parentId": "Handoff",
+        "collapsed": false,
+        "position": {
+          "x": 252.5,
+          "y": 2514
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#a95034",
+          "background": "#f9e5dc"
+        },
+        "pageIds": [
+          "human_handoff"
+        ]
+      },
+      {
+        "id": "Human",
+        "label": "Support specialist",
+        "shape": "round",
+        "parentId": "Handoff",
+        "collapsed": false,
+        "position": {
+          "x": 257.5,
+          "y": 2728
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#a95034",
+          "background": "#f9e5dc"
+        },
+        "pageIds": [
+          "human_handoff"
+        ]
+      },
+      {
+        "id": "Reply",
+        "label": "Customer reply",
+        "shape": "stadium",
+        "parentId": null,
+        "collapsed": false,
+        "position": {
+          "x": 185,
+          "y": 2930
+        },
+        "style": {
+          "fontFamily": "sans",
+          "sloppiness": 1,
+          "stroke": "#31715d",
+          "background": "#e2f1e8"
+        },
+        "pageIds": [
+          "support_overview",
+          "response_contract"
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "id": "e0",
+        "source": "Question",
+        "target": "Rewrite",
+        "label": "question"
+      },
+      {
+        "id": "e1",
+        "source": "Rewrite",
+        "target": "Embed",
+        "label": "semantic query"
+      },
+      {
+        "id": "e2",
+        "source": "Rewrite",
+        "target": "Keyword",
+        "label": "exact terms"
+      },
+      {
+        "id": "e3",
+        "source": "Embed",
+        "target": "Vector",
+        "label": "query vector"
+      },
+      {
+        "id": "e4",
+        "source": "Vector",
+        "target": "Merge",
+        "label": "semantic matches"
+      },
+      {
+        "id": "e5",
+        "source": "Keyword",
+        "target": "Merge",
+        "label": "keyword matches"
+      },
+      {
+        "id": "e6",
+        "source": "Merge",
+        "target": "Rerank"
+      },
+      {
+        "id": "e7",
+        "source": "Rerank",
+        "target": "Context",
+        "label": "ranked sources"
+      },
+      {
+        "id": "e8",
+        "source": "Context",
+        "target": "Prompt"
+      },
+      {
+        "id": "e9",
+        "source": "Prompt",
+        "target": "Draft"
+      },
+      {
+        "id": "e10",
+        "source": "Draft",
+        "target": "Citations",
+        "label": "draft and sources"
+      },
+      {
+        "id": "e11",
+        "source": "Citations",
+        "target": "Policy"
+      },
+      {
+        "id": "e12",
+        "source": "Policy",
+        "target": "Supported"
+      },
+      {
+        "id": "e13",
+        "source": "Supported",
+        "target": "Reply",
+        "label": "yes",
+        "style": {
+          "stroke": "#31715d"
+        }
+      },
+      {
+        "id": "e14",
+        "source": "Supported",
+        "target": "Ticket",
+        "label": "no",
+        "style": {
+          "stroke": "#a95034",
+          "strokeStyle": "dashed"
+        }
+      },
+      {
+        "id": "e15",
+        "source": "Ticket",
+        "target": "Human",
+        "label": "assigned"
+      },
+      {
+        "id": "e16",
+        "source": "Human",
+        "target": "Reply",
+        "label": "reviewed answer"
+      }
+    ],
+    "pages": [
+      {
+        "id": "support_overview",
+        "title": "Support agent overview",
+        "body": "# Support agent overview\n\nHarbor Notes is a fictional workspace app. This example explains how its support agent answers a customer using product documentation, with a human handoff when an answer needs review. All content is synthetic.\n\n## Follow one question\n\n> How do I export my workspace?\n\n1. [[Retrieval design]] finds relevant documentation.\n2. [[Answer generation]] drafts an answer from the retrieved sources.\n3. [[Answer checks]] decides whether to send the answer or start a [[Human handoff]].\n4. Both paths finish at Customer reply.\n\n## Example source\n\n| Source ID | Title | Approved content |\n| --- | --- | --- |\n| exports-01 | Export a workspace | Open Workspace settings, choose Export, then Download JSON. |\n| exports-02 | Export contents | A JSON export contains the workspace's projects and notes. |\n\nThe normal path should answer: \"Open Workspace settings, choose Export, then Download JSON. The export includes your projects and notes.\"\n\n## Explore the map\n\nStart with Retrieve knowledge, Generate answer, Check answer, and Human handoff folded. Unfold Retrieve knowledge, then Hybrid search to see the query split into semantic and keyword search.\n\n[[Response contract]] is shared by generation, checking, and the final reply. [[Retrieval runbook]] gives a concrete example of an unsuccessful lookup.\n\nThis file describes a system. Merfolk's pulse animation illustrates its connections; the demo contains no API credentials or live integrations.\n",
+        "updatedAt": 1794528000000
+      },
+      {
+        "id": "retrieval_design",
+        "title": "Retrieval design",
+        "body": "# Retrieval design\n\nOwner: Knowledge team.\n\nRetrieval turns the customer's words into ranked, attributable evidence. It keeps exact product terms while also searching for related wording.\n\n{{diagram:Retrieval}}\n\n## Input and output\n\n| Boundary | Content |\n| --- | --- |\n| Input | Customer question and the active product version |\n| Output | Ranked excerpts, stable source IDs, titles, and document versions |\n| No useful result | An empty evidence list that [[Answer checks]] can identify |\n\n## Why two search paths?\n\n[[Hybrid search]] finds related wording through a vector index and exact terms through a keyword index. Both branches enter Merge results. Rerank evidence chooses the excerpts that best address the question.\n\nFor \"How do I export my workspace?\", preserve the words \"export\" and \"workspace\" and rank exports-01 above general workspace documentation.\n\n## Failure behavior\n\nAn unavailable index or irrelevant result must stay visible to the caller. Do not invent a source to fill the gap. See [[Retrieval runbook]] for the operating steps and [[Response contract]] for the evidence fields.\n\nContinue to [[Answer generation]] with the ranked excerpts.\n",
+        "updatedAt": 1794528000000
+      },
+      {
+        "id": "retrieval_runbook",
+        "title": "Retrieval runbook",
+        "body": "# Retrieval runbook\n\nOwner: Knowledge team.\n\nUse this page when retrieval returns no useful evidence or an index is unavailable. Retrieve knowledge links this runbook as its second page, after [[Retrieval design]].\n\n## Investigate\n\n- [ ] Record the customer's question and the product version.\n- [ ] Check that semantic and keyword searches used the same document version.\n- [ ] Inspect both result lists before Merge results.\n- [ ] Verify that Rerank evidence kept the original source IDs.\n- [ ] Pass an empty evidence list to [[Answer checks]] if no excerpt answers the question.\n- [ ] Follow [[Human handoff]] when an answer requires unsupported information.\n\n## Reproduce the exception\n\nAsk: \"Can you restore a workspace that I deleted last year?\"\n\nThe demo's approved sources cover exports only. They provide no restoration policy. A draft that promises restoration should fail the source check and create a support ticket.\n\n## Recovery\n\nAdd an approved restoration article to the knowledge source, rebuild both indexes, and retry the question. A recovered search should return the new source ID and version in the [[Response contract]].\n",
+        "updatedAt": 1794528000000
+      },
+      {
+        "id": "hybrid_search",
+        "title": "Hybrid search",
+        "body": "# Hybrid search\n\nOwner: Search team.\n\nRun both searches for the same rewritten question. Merge their results before reranking.\n\n{{diagram:Search}}\n\n| Branch | Purpose | Example |\n| --- | --- | --- |\n| Embed query, then Vector index | Match related wording | \"Save a copy of my workspace\" can match an export article. |\n| Keyword index | Preserve exact terms | \"Download JSON\" should match the documented command. |\n| Merge results | Deduplicate by source ID | exports-01 appears once even when both branches find it. |\n\nThis group is nested inside Retrieve knowledge. Folding it preserves the incoming semantic and exact-term connections as a combined crease. Unfold it to inspect the two paths again.\n\nReturn merged candidates to [[Retrieval design]]. Keep each excerpt's provenance for [[Response contract]].\n",
+        "updatedAt": 1794528000000
+      },
+      {
+        "id": "answer_generation",
+        "title": "Answer generation",
+        "body": "# Answer generation\n\nOwner: Assistant team.\n\nBuild a draft from the question, ranked excerpts, and support instructions. The draft remains subject to [[Answer checks]].\n\n{{diagram:Generation}}\n\n## Responsibilities\n\n| Step | Responsibility |\n| --- | --- |\n| Build context | Include the question, relevant excerpts, source IDs, and versions. |\n| Apply instructions | Ask for direct steps and require a source for factual claims. |\n| Draft answer | Return the proposed reply and its citations using [[Response contract]]. |\n\n## Example draft\n\n> Open Workspace settings, choose Export, then Download JSON. Your export includes your projects and notes.\n\nThe steps cite exports-01. The statement about contents cites exports-02. Both sources appear in [[Support agent overview]].\n\n## Insufficient evidence\n\nIf [[Retrieval design]] finds no relevant article, return an unresolved draft with an empty citation list. Leave the unsupported question for [[Human handoff]].\n",
+        "updatedAt": 1794528000000
+      },
+      {
+        "id": "answer_checks",
+        "title": "Answer checks",
+        "body": "# Answer checks\n\nOwner: Support platform team.\n\nAn answer reaches the customer automatically only when its factual claims have supporting excerpts and its proposed action follows the documented support policy.\n\n{{diagram:Quality}}\n\n## Decision table\n\n| Evidence | Policy | Result |\n| --- | --- | --- |\n| Citations support the answer | Action is documented | Follow yes to Customer reply. |\n| A claim has no supporting excerpt | Any | Follow no to [[Human handoff]]. |\n| Citations support the answer | Action needs a specialist | Follow no to [[Human handoff]]. |\n\nCheck citations first, then policy. Ready to send? combines those results. The demo animates both outgoing branches to explain the available paths; playback does not evaluate the customer's question.\n\n## Example outcomes\n\n\"How do I export my workspace?\" can follow yes using exports-01 and exports-02.\n\n\"Can you restore a workspace that I deleted last year?\" follows no because the demo provides no restoration policy. See [[Retrieval runbook]].\n\n[[Answer generation]] and this group share the same [[Response contract]] page.\n",
+        "updatedAt": 1794528000000
+      },
+      {
+        "id": "human_handoff",
+        "title": "Human handoff",
+        "body": "# Human handoff\n\nOwner: Customer support team.\n\nCreate a support ticket when [[Answer checks]] cannot approve the draft. A support specialist reviews the evidence and writes the final reply.\n\n{{diagram:Handoff}}\n\n## Ticket contents\n\n- The customer's original question.\n- Retrieved excerpts and their source IDs.\n- The proposed answer, if one exists.\n- The reason automatic delivery stopped.\n- The product and documentation versions.\n\nFor the restoration question, record: \"The available documentation covers workspace exports. No approved restoration policy was found.\"\n\n## Completion\n\nThe specialist verifies the applicable policy, responds to the customer, and adds missing documentation when appropriate. Both the automatic and reviewed paths finish at Customer reply.\n\nThis page is linked to Human handoff, Support ticket, and Support specialist. Editing it from any of those nodes changes the same page. Return to [[Support agent overview]] for the complete story.\n",
+        "updatedAt": 1794528000000
+      },
+      {
+        "id": "response_contract",
+        "title": "Response contract",
+        "body": "# Response contract\n\nOwner: Support platform team.\n\n[[Answer generation]], [[Answer checks]], and Customer reply link this shared page. Each component uses the same meaning for a proposed answer and its sources.\n\n| Field | Meaning |\n| --- | --- |\n| question | The customer's original words |\n| answer | Proposed customer-facing text |\n| citations | Source IDs and the claims they support |\n| outcome | ready or needs_review |\n| reason | Explanation when review is required |\n\n## Example\n\n```json\n{\n  \"question\": \"How do I export my workspace?\",\n  \"answer\": \"Open Workspace settings, choose Export, then Download JSON.\",\n  \"citations\": [\n    { \"source_id\": \"exports-01\", \"claim\": \"workspace export steps\" }\n  ],\n  \"outcome\": \"ready\",\n  \"reason\": \"\"\n}\n```\n\nThese are illustrative fields for the fictional support system, not Merfolk's import schema. The reimportable demo uses Merfolk's version 3 diagram format.\n\n[[Retrieval design]] supplies the evidence. [[Human handoff]] keeps the same evidence attached when a specialist must review the request.\n",
+        "updatedAt": 1794528000000
+      }
+    ],
+    "decks": [
+      {
+        "id": "support_walkthrough",
+        "title": "How a support agent answers a customer",
+        "body": "---\ntitle: How a support agent answers a customer\nbackgroundColor: '#f7f3e9'\ncolor: '#243447'\nfont: sans\nheadingFont: sans\ntransition: fade\n---\n\n<!-- _class: lead -->\n\n# One customer question\n\nHow do I export my workspace?\n\nHarbor Notes · Architecture walkthrough\n\n<!-- Harbor Notes is fictional. Start on the folded canvas before opening this deck. The same diagram supplies the live embeds on slides 3, 4, and 5. -->\n\n---\n\n## Follow the answer\n\n```mermaid\nflowchart LR\n  Q[Question] --> R[Retrieve]\n  R --> G[Generate]\n  G --> C{Check}\n  C -->|yes| A[Reply]\n  C -->|no| H[Human review]\n  H --> A\n```\n\nThe overview leads into the detailed groups on the canvas.\n\n<!-- This simplified overview is a static Mermaid fence. The following slides embed the actual groups. Play the canvas flow to explain both available routes. -->\n\n---\n\n## Retrieve attributable evidence\n\n{{diagram:Retrieval}}\n\n[[Retrieval design|Design]] · [[Hybrid search|Search]] · [[Retrieval runbook|Runbook]]\n\n<!-- Return to the canvas and unfold Retrieve knowledge, then Hybrid search. Point out semantic and keyword queries. Fold Search again to show that its two incoming connections merge into one crease. -->\n\n---\n\n## Generate from the sources\n\n{{diagram:Generation}}\n\nEach factual claim keeps a source ID. See [[Response contract]].\n\n<!-- Show exports-01 and exports-02 on Support agent overview. Open Answer generation from the node, then open its second page, Response contract. -->\n\n---\n\n## Decide whether to send\n\n{{diagram:Quality}}\n\nMissing evidence leads to [[Human handoff]].\n\n<!-- The export question has supporting sources. The restoration question does not. Playback illustrates both paths; it does not execute these checks. -->\n\n---\n\n## Update the system once\n\n1. Rename Rerank evidence to Rerank passages on the canvas.\n2. Open Retrieval design and this deck in separate windows.\n3. Watch the live diagrams update in both.\n4. Export the full JSON file and reimport it to restore the workspace.\n\n[[Support agent overview|Open the guide]]\n\n<!-- Return to slide 3 after the rename. The diagram updates while the authored prose stays as written. Export Mermaid for diagram structure and JSON for page content, decks, styling, layout, and folding. -->\n",
+        "updatedAt": 1794528000000
+      }
+    ]
+  }
+}
